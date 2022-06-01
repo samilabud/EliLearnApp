@@ -1,11 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ImageBackground } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ImageBackground,
+} from 'react-native';
 import { Audio } from 'expo-av';
 import LottieView from 'lottie-react-native';
-import { animalList } from "./animal.list";
+import { animalList } from './animal.list';
 
 const AnimalScreen = () => {
-  const backgroundImage = require("../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg");
+  const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
   const [sound, setSound] = React.useState();
 
@@ -13,50 +19,55 @@ const AnimalScreen = () => {
     animalList.forEach((animatedImage) => {
       animRef.current[animatedImage.name].reset();
     });
-  }
+  };
   const resetAndPlayAnim = (playCurrent, soundUrl) => {
     resetAnim();
     playSound(soundUrl);
     playCurrent.play();
-  }
-  
+  };
+
   async function playSound(soundFile) {
-    const { sound } = await Audio.Sound.createAsync(
-      soundFile
-    );
+    const { sound } = await Audio.Sound.createAsync(soundFile);
     setSound(sound);
-    await sound.playAsync(); 
+    await sound.playAsync();
   }
 
   return (
-    <View
-        style={styles.container}
+    <View style={styles.container}>
+      <ImageBackground
+        source={backgroundImage}
+        resizeMode="cover"
+        style={styles.backgroundImage}
       >
-       <ImageBackground source={backgroundImage} resizeMode="cover" style={styles.backgroundImage}>
         {animalList.map((animatedImage) => (
-            <TouchableOpacity
-              key={`${animatedImage.name}-animatedImage`}
-              style={styles.button}
-              onPress={()=>resetAndPlayAnim(animRef.current[animatedImage.name], animatedImage.sound)}
-            >
-                <LottieView
-                  autoPlay={false}
-                  autoSize={false}
-                  ref={el => (animRef.current[animatedImage.name] = el)}
-                  key="animation"
-                  resizeMode="contain"
-                  loop={false}
-                  source={animatedImage.animation_path}
-                  style={{zIndex: 2}}
-                />
-                <View style={styles.animationBackground}></View>
-              {/* <Text>{animatedImage.name}</Text>  */}
-            </TouchableOpacity>
+          <TouchableOpacity
+            key={`${animatedImage.name}-animatedImage`}
+            style={styles.button}
+            onPress={() =>
+              resetAndPlayAnim(
+                animRef.current[animatedImage.name],
+                animatedImage.sound
+              )
+            }
+          >
+            <LottieView
+              autoPlay={false}
+              autoSize={false}
+              ref={(el) => (animRef.current[animatedImage.name] = el)}
+              key="animation"
+              resizeMode="contain"
+              loop={false}
+              source={animatedImage.animation_path}
+              style={{ zIndex: 2 }}
+            />
+            <View style={styles.animationBackground} />
+            {/* <Text>{animatedImage.name}</Text>  */}
+          </TouchableOpacity>
         ))}
-        </ImageBackground>
-      </View>
-  )
-}
+      </ImageBackground>
+    </View>
+  );
+};
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -74,7 +85,7 @@ const styles = StyleSheet.create({
     width: '27%',
     height: 100,
     margin: 10,
-    
+
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -85,6 +96,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 1,
     position: 'absolute',
-  }
+  },
 });
 export default AnimalScreen;

@@ -1,5 +1,4 @@
 {
-  "editor.codeActionsOnSave": {
-  
-  }
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.fontLigatures": false
 }
