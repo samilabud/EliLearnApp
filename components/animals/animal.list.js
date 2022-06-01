@@ -64,16 +64,16 @@ export const animalList = [
   {
     name: 'turkey',
     animation_path: require(`${animation_path}turkey.json`),
-    sound: require(`${sound_path}/Wolf-Howling.mp3`),
+    sound: require(`${sound_path}/Turkey.mp3`),
   },
   {
     name: 'polar-bear',
     animation_path: require(`${animation_path}sleeping-polar-bear.json`),
-    sound: require(`${sound_path}/Wolf-Howling.mp3`),
+    sound: require(`${sound_path}/Panda-Bear.mp3`),
   },
   {
     name: 'dolphin',
     animation_path: require(`${animation_path}dolphin.json`),
-    sound: require(`${sound_path}/Wolf-Howling.mp3`),
+    sound: require(`${sound_path}/Dolphin-Chirping.mp3`),
   },
 ];

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -33,59 +34,62 @@ const AnimalScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      <ImageBackground
-        source={backgroundImage}
-        resizeMode="cover"
-        style={styles.backgroundImage}
-      >
-        {animalList.map((animatedImage) => (
-          <TouchableOpacity
-            key={`${animatedImage.name}-animatedImage`}
-            style={styles.button}
-            onPress={() =>
-              resetAndPlayAnim(
-                animRef.current[animatedImage.name],
-                animatedImage.sound
-              )
-            }
-          >
-            <LottieView
-              autoPlay={false}
-              autoSize={false}
-              ref={(el) => (animRef.current[animatedImage.name] = el)}
-              key="animation"
-              resizeMode="contain"
-              loop={false}
-              source={animatedImage.animation_path}
-              style={{ zIndex: 2 }}
-            />
-            <View style={styles.animationBackground} />
-            {/* <Text>{animatedImage.name}</Text>  */}
-          </TouchableOpacity>
-        ))}
-      </ImageBackground>
-    </View>
+    <ImageBackground
+      source={backgroundImage}
+      resizeMode="cover"
+      style={styles.backgroundImage}
+    >
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.animationContainer}>
+          {animalList.map((animatedImage) => (
+            <TouchableOpacity
+              key={`${animatedImage.name}-animatedImage`}
+              style={styles.button}
+              onPress={() =>
+                resetAndPlayAnim(
+                  animRef.current[animatedImage.name],
+                  animatedImage.sound
+                )
+              }
+            >
+              <LottieView
+                autoPlay={false}
+                autoSize={false}
+                ref={(el) => (animRef.current[animatedImage.name] = el)}
+                key="animation"
+                resizeMode="contain"
+                loop={false}
+                source={animatedImage.animation_path}
+                style={styles.animation}
+              />
+              <View style={styles.animationBackground} />
+              {/* <Text>{animatedImage.name}</Text>  */}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+    </ImageBackground>
   );
 };
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
   },
-  backgroundImage: {
-    flex: 1,
+  animationContainer: {
     width: '100%',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
-    alignContent: 'stretch',
     flexWrap: 'wrap',
     flexDirection: 'row',
   },
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
+  },
   button: {
-    width: '27%',
+    width: '26%',
     height: 100,
-    margin: 10,
-
+    marginTop: '12%',
+    margin: '2%',
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -96,6 +100,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 1,
     position: 'absolute',
+  },
+  animation: {
+    zIndex: 2,
   },
 });
 export default AnimalScreen;
