@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -14,7 +14,6 @@ import { animalList } from './animal.list';
 const AnimalScreen = () => {
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
-  const [sound, setSound] = React.useState();
 
   const resetAnim = () => {
     animalList.forEach((animatedImage) => {
@@ -29,7 +28,6 @@ const AnimalScreen = () => {
 
   async function playSound(soundFile) {
     const { sound } = await Audio.Sound.createAsync(soundFile);
-    setSound(sound);
     await sound.playAsync();
   }
 
@@ -77,9 +75,11 @@ const styles = StyleSheet.create({
   },
   animationContainer: {
     width: '100%',
-    justifyContent: 'space-between',
+    justifyContent: 'space-evenly',
+    alignContent: 'space-around',
     flexWrap: 'wrap',
     flexDirection: 'row',
+    paddingBottom: 60,
   },
   backgroundImage: {
     width: '100%',
@@ -89,7 +89,6 @@ const styles = StyleSheet.create({
     width: '26%',
     height: 100,
     marginTop: '12%',
-    margin: '2%',
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
