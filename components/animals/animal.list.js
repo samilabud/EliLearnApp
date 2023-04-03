@@ -81,7 +81,7 @@ export const animalList = [
   {
     id: 'wolf-howling',
     name: 'Wolf',
-    spanish_name: '',
+    spanish_name: 'Lobo',
     animation_path: require(`${animation_path}wolf-howling.json`),
     sound: require(`${sound_path}/Wolf-Howling.mp3`),
   },
@@ -102,8 +102,29 @@ export const animalList = [
   {
     id: 'dolphin',
     name: 'Dolphin',
-    spanish_name: '',
+    spanish_name: 'Delfin',
     animation_path: require(`${animation_path}dolphin.json`),
     sound: require(`${sound_path}/Dolphin-Chirping.mp3`),
+  },
+  {
+    id: 'horse',
+    name: 'Horse',
+    spanish_name: 'Caballo',
+    animation_path: require(`${animation_path}horse.json`),
+    sound: require(`${sound_path}/Horse-Whinnying.mp3`),
+  },
+  {
+    id: 'snake',
+    name: 'Snake',
+    spanish_name: 'Serpiente',
+    animation_path: require(`${animation_path}snake.json`),
+    sound: require(`${sound_path}/Snake-Hiss.mp3`),
+  },
+  {
+    id: 'frog',
+    name: 'Frog',
+    spanish_name: 'Rana',
+    animation_path: require(`${animation_path}frog.json`),
+    sound: require(`${sound_path}/Frog.mp3`),
   },
 ];
