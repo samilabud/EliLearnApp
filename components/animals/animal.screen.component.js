@@ -16,7 +16,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 SplashScreen.preventAutoHideAsync();
 
-const AnimalScreen = () => {
+const AnimalScreen = ({ currentLanguage }) => {
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
 
@@ -79,7 +79,11 @@ const AnimalScreen = () => {
                   style={styles.animation}
                 />
                 <View style={styles.animationBackground} />
-                <Text style={styles.animationName}>{animatedImage.name}</Text>
+                <Text style={styles.animationName}>
+                  {currentLanguage === 'en'
+                    ? animatedImage.name
+                    : animatedImage.spanish_name}
+                </Text>
               </TouchableOpacity>
             </React.Fragment>
           ))}
@@ -98,9 +102,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: Platform.OS === 'ios' ? 91 : 81,
     zIndex: 3,
-    textShadowColor: '#000',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowRadius: 20,
     textShadowOffset: { width: 1, height: 10 },
+    letterSpacing: 1,
   },
   animationContainer: {
     width: '100%',
