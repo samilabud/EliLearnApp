@@ -1,5 +1,9 @@
 const animation_path = '../../assets/animations/animals/';
 const sound_path = '../../assets/sounds/animals';
+const voice_path = '../../assets/sounds/voices/';
+const spanish_folder = voice_path + 'spanish/';
+const english_folder = voice_path + 'english/';
+
 export const animalList = [
   {
     id: 'butterfly-lottie-animation',
@@ -7,6 +11,8 @@ export const animalList = [
     spanish_name: 'Mariposa',
     animation_path: require(`${animation_path}butterfly-lottie-animation.json`),
     sound: require(`${sound_path}/Butterfly-Wings-Flapping.mp3`),
+    voice: require(`${english_folder}/butterfly.mp3`),
+    spanish_voice: require(`${spanish_folder}/mariposa.mp3`),
   },
   {
     id: 'chicken',
@@ -14,6 +20,8 @@ export const animalList = [
     spanish_name: 'Gallina',
     animation_path: require(`${animation_path}chicken.json`),
     sound: require(`${sound_path}/Chicken-Clucking.mp3`),
+    voice: require(`${english_folder}/chicken.mp3`),
+    spanish_voice: require(`${spanish_folder}/pollito.mp3`),
   },
   {
     id: 'cute-owl',
@@ -21,6 +29,8 @@ export const animalList = [
     spanish_name: 'Buho',
     animation_path: require(`${animation_path}cute-owl.json`),
     sound: require(`${sound_path}/Owl-Coo.mp3`),
+    voice: require(`${english_folder}/owl.mp3`),
+    spanish_voice: require(`${spanish_folder}/buho.mp3`),
   },
   {
     id: 'dog-tail-wag',
@@ -28,6 +38,8 @@ export const animalList = [
     spanish_name: 'Perro',
     animation_path: require(`${animation_path}dog-tail-wag.json`),
     sound: require(`${sound_path}/Dog.mp3`),
+    voice: require(`${english_folder}/dog.mp3`),
+    spanish_voice: require(`${spanish_folder}/perro.mp3`),
   },
   {
     id: 'fitness-cow',
@@ -35,6 +47,8 @@ export const animalList = [
     spanish_name: 'Vaca',
     animation_path: require(`${animation_path}fitness-cow.json`),
     sound: require(`${sound_path}/Cow-Mooing.mp3`),
+    voice: require(`${english_folder}/cow.mp3`),
+    spanish_voice: require(`${spanish_folder}/vaca.mp3`),
   },
   {
     id: 'just-a-pigeon',
@@ -42,6 +56,8 @@ export const animalList = [
     spanish_name: 'Paloma',
     animation_path: require(`${animation_path}just-a-pigeon.json`),
     sound: require(`${sound_path}/Pidgeons.mp3`),
+    voice: require(`${english_folder}/pigeon.mp3`),
+    spanish_voice: require(`${spanish_folder}/paloma.mp3`),
   },
   {
     id: 'little-chicken',
@@ -49,6 +65,8 @@ export const animalList = [
     spanish_name: 'Pollito',
     animation_path: require(`${animation_path}little-chicken.json`),
     sound: require(`${sound_path}/Duck-Chickens.mp3`),
+    voice: require(`${english_folder}/chick.mp3`),
+    spanish_voice: require(`${spanish_folder}/pollito.mp3`),
   },
   {
     id: 'monkey',
@@ -56,13 +74,17 @@ export const animalList = [
     spanish_name: 'Mono',
     animation_path: require(`${animation_path}monkey.json`),
     sound: require(`${sound_path}/Monkey.mp3`),
+    voice: require(`${english_folder}/monkey.mp3`),
+    spanish_voice: require(`${spanish_folder}/mono.mp3`),
   },
   {
     id: 'piggy-bank-laughing',
     name: 'Piggy',
-    spanish_name: 'Cerdito',
+    spanish_name: 'Cerdo',
     animation_path: require(`${animation_path}piggy-bank-laughing.json`),
     sound: require(`${sound_path}/Pig-Oinking.mp3`),
+    voice: require(`${english_folder}/piggy.mp3`),
+    spanish_voice: require(`${spanish_folder}/cerdo.mp3`),
   },
   {
     id: 'sheep',
@@ -70,6 +92,8 @@ export const animalList = [
     spanish_name: 'Oveja',
     animation_path: require(`${animation_path}sheep.json`),
     sound: require(`${sound_path}/Sheep-Lamb-Bah.mp3`),
+    voice: require(`${english_folder}/sheep.mp3`),
+    spanish_voice: require(`${spanish_folder}/oveja.mp3`),
   },
   {
     id: 'sleepy-cat',
@@ -77,6 +101,8 @@ export const animalList = [
     spanish_name: 'Gato',
     animation_path: require(`${animation_path}sleepy-cat.json`),
     sound: require(`${sound_path}/Cat-Cartoon.mp3`),
+    voice: require(`${english_folder}/cat.mp3`),
+    spanish_voice: require(`${spanish_folder}/gato.mp3`),
   },
   {
     id: 'wolf-howling',
@@ -84,6 +110,8 @@ export const animalList = [
     spanish_name: 'Lobo',
     animation_path: require(`${animation_path}wolf-howling.json`),
     sound: require(`${sound_path}/Wolf-Howling.mp3`),
+    voice: require(`${english_folder}/wolf.mp3`),
+    spanish_voice: require(`${spanish_folder}/lobo.mp3`),
   },
   {
     id: 'turkey',
@@ -91,6 +119,8 @@ export const animalList = [
     spanish_name: '',
     animation_path: require(`${animation_path}turkey.json`),
     sound: require(`${sound_path}/Turkey.mp3`),
+    voice: require(`${english_folder}/turkey.mp3`),
+    spanish_voice: require(`${spanish_folder}/pavo.mp3`),
   },
   {
     id: 'koala',
@@ -98,6 +128,8 @@ export const animalList = [
     spanish_name: 'Coala',
     animation_path: require(`${animation_path}sleeping-polar-bear.json`),
     sound: require(`${sound_path}/Panda-Bear.mp3`),
+    voice: require(`${english_folder}/koala.mp3`),
+    spanish_voice: require(`${spanish_folder}/coala.mp3`),
   },
   {
     id: 'dolphin',
@@ -105,6 +137,8 @@ export const animalList = [
     spanish_name: 'Delfin',
     animation_path: require(`${animation_path}dolphin.json`),
     sound: require(`${sound_path}/Dolphin-Chirping.mp3`),
+    voice: require(`${english_folder}/dolphin.mp3`),
+    spanish_voice: require(`${spanish_folder}/delfin.mp3`),
   },
   {
     id: 'horse',
@@ -112,6 +146,8 @@ export const animalList = [
     spanish_name: 'Caballo',
     animation_path: require(`${animation_path}horse.json`),
     sound: require(`${sound_path}/Horse-Whinnying.mp3`),
+    voice: require(`${english_folder}/horse.mp3`),
+    spanish_voice: require(`${spanish_folder}/caballo.mp3`),
   },
   {
     id: 'snake',
@@ -119,6 +155,8 @@ export const animalList = [
     spanish_name: 'Serpiente',
     animation_path: require(`${animation_path}snake.json`),
     sound: require(`${sound_path}/Snake-Hiss.mp3`),
+    voice: require(`${english_folder}/snake.mp3`),
+    spanish_voice: require(`${spanish_folder}/serpiente.mp3`),
   },
   {
     id: 'frog',
@@ -126,5 +164,7 @@ export const animalList = [
     spanish_name: 'Rana',
     animation_path: require(`${animation_path}frog.json`),
     sound: require(`${sound_path}/Frog.mp3`),
+    voice: require(`${english_folder}/frog.mp3`),
+    spanish_voice: require(`${spanish_folder}/rana.mp3`),
   },
 ];

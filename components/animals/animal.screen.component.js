@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -6,15 +6,23 @@ import {
   View,
   TouchableOpacity,
   ImageBackground,
+  Platform,
 } from 'react-native';
 import { Audio } from 'expo-av';
 import LottieView from 'lottie-react-native';
 import { animalList } from './animal.list';
+import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 
 const AnimalScreen = () => {
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
 
+  const [fontsLoaded] = useFonts({
+    Bangers_400Regular,
+  });
   const resetAnim = () => {
     animalList.forEach((animatedImage) => {
       animRef.current[animatedImage.name].reset();
@@ -31,6 +39,16 @@ const AnimalScreen = () => {
     await sound.playAsync();
   }
 
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <ImageBackground
       source={backgroundImage}
@@ -38,40 +56,51 @@ const AnimalScreen = () => {
       style={styles.backgroundImage}
     >
       <ScrollView style={styles.scrollView}>
-        <View style={styles.animationContainer}>
+        <View style={styles.animationContainer} onLayout={onLayoutRootView}>
           {animalList.map((animatedImage) => (
-            <TouchableOpacity
-              key={`${animatedImage.name}-animatedImage`}
-              style={styles.button}
-              onPress={() =>
-                resetAndPlayAnim(
-                  animRef.current[animatedImage.name],
-                  animatedImage.sound
-                )
-              }
-            >
-              <LottieView
-                autoPlay={false}
-                autoSize={false}
-                ref={(el) => (animRef.current[animatedImage.name] = el)}
-                key="animation"
-                resizeMode="contain"
-                loop={false}
-                source={animatedImage.animation_path}
-                style={styles.animation}
-              />
-              <View style={styles.animationBackground} />
-              {/* <Text>{animatedImage.name}</Text>  */}
-            </TouchableOpacity>
+            <React.Fragment key={`${animatedImage.name}-animatedImage`}>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() =>
+                  resetAndPlayAnim(
+                    animRef.current[animatedImage.name],
+                    animatedImage.sound
+                  )
+                }
+              >
+                <LottieView
+                  autoPlay={false}
+                  autoSize={false}
+                  ref={(el) => (animRef.current[animatedImage.name] = el)}
+                  key="animation"
+                  resizeMode="contain"
+                  loop={false}
+                  source={animatedImage.animation_path}
+                  style={styles.animation}
+                />
+                <View style={styles.animationBackground} />
+                <Text style={styles.animationName}>{animatedImage.name}</Text>
+              </TouchableOpacity>
+            </React.Fragment>
           ))}
         </View>
       </ScrollView>
     </ImageBackground>
   );
 };
+
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
+  },
+  animationName: {
+    fontFamily: 'Bangers_400Regular',
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 91 : 81,
+    zIndex: 3,
+    textShadowColor: '#000',
+    textShadowRadius: 20,
+    textShadowOffset: { width: 1, height: 10 },
   },
   animationContainer: {
     width: '100%',
