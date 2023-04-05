@@ -21,7 +21,7 @@ export const animalList = [
     animation_path: require(`${animation_path}chicken.json`),
     sound: require(`${sound_path}/Chicken-Clucking.mp3`),
     voice: require(`${english_folder}/chicken.mp3`),
-    spanish_voice: require(`${spanish_folder}/pollito.mp3`),
+    spanish_voice: require(`${spanish_folder}/gallina.mp3`),
   },
   {
     id: 'cute-owl',

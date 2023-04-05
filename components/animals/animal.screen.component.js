@@ -18,6 +18,7 @@ SplashScreen.preventAutoHideAsync();
 
 const AnimalScreen = ({ currentLanguage }) => {
   const [sound, setSound] = React.useState();
+  const [voice, setVoice] = React.useState();
   const [currentAnimation, setCurrentAnimation] = useState();
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
@@ -27,19 +28,28 @@ const AnimalScreen = ({ currentLanguage }) => {
     Bangers_400Regular,
   });
 
-  const resetAndPlayAnim = (playCurrent, soundUrl) => {
+  const resetAndPlayAnim = (playCurrent, soundUrl, voiceUrl) => {
     if (currentAnimation) {
       currentAnimation.reset();
     }
     setCurrentAnimation(playCurrent);
-    playSound(soundUrl);
-    playCurrent.play();
+    playSound(soundUrl, voiceUrl);
+    delay(1500).then(() => {
+      playCurrent.play();
+    });
   };
-
-  async function playSound(soundFile) {
-    const { sound: thesound } = await Audio.Sound.createAsync(soundFile);
-    setSound(thesound);
-    await thesound.playAsync();
+  function delay(time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
+  }
+  async function playSound(soundFile, voiceFile) {
+    const { sound: theSound } = await Audio.Sound.createAsync(soundFile);
+    const { sound: theVoice } = await Audio.Sound.createAsync(voiceFile);
+    setSound(theSound);
+    setVoice(theVoice);
+    delay(1000).then(() => {
+      theSound.playAsync();
+    });
+    await theVoice.playAsync();
   }
 
   React.useEffect(() => {
@@ -49,6 +59,14 @@ const AnimalScreen = ({ currentLanguage }) => {
         }
       : undefined;
   }, [sound]);
+
+  React.useEffect(() => {
+    return voice
+      ? () => {
+          voice.unloadAsync();
+        }
+      : undefined;
+  }, [voice]);
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
@@ -75,7 +93,10 @@ const AnimalScreen = ({ currentLanguage }) => {
                 onPress={() =>
                   resetAndPlayAnim(
                     animRef.current[animatedImage.name],
-                    animatedImage.sound
+                    animatedImage.sound,
+                    currentLanguage === 'en'
+                      ? animatedImage.voice
+                      : animatedImage.spanish_voice
                   )
                 }
               >
