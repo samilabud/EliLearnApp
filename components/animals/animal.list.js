@@ -116,7 +116,7 @@ export const animalList = [
   {
     id: 'turkey',
     name: 'Turkey',
-    spanish_name: '',
+    spanish_name: 'Pavo',
     animation_path: require(`${animation_path}turkey.json`),
     sound: require(`${sound_path}/Turkey.mp3`),
     voice: require(`${english_folder}/turkey.mp3`),
