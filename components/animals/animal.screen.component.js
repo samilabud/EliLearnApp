@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -17,27 +17,38 @@ import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
 
 const AnimalScreen = ({ currentLanguage }) => {
+  const [sound, setSound] = React.useState();
+  const [currentAnimation, setCurrentAnimation] = useState();
+
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
 
   const [fontsLoaded] = useFonts({
     Bangers_400Regular,
   });
-  const resetAnim = () => {
-    animalList.forEach((animatedImage) => {
-      animRef.current[animatedImage.name].reset();
-    });
-  };
+
   const resetAndPlayAnim = (playCurrent, soundUrl) => {
-    resetAnim();
+    if (currentAnimation) {
+      currentAnimation.reset();
+    }
+    setCurrentAnimation(playCurrent);
     playSound(soundUrl);
     playCurrent.play();
   };
 
   async function playSound(soundFile) {
-    const { sound } = await Audio.Sound.createAsync(soundFile);
-    await sound.playAsync();
+    const { sound: thesound } = await Audio.Sound.createAsync(soundFile);
+    setSound(thesound);
+    await thesound.playAsync();
   }
+
+  React.useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
 
   const onLayoutRootView = useCallback(async () => {
     if (fontsLoaded) {
