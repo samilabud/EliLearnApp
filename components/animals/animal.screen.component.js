@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -12,9 +12,6 @@ import { Audio } from 'expo-av';
 import LottieView from 'lottie-react-native';
 import { animalList } from './animal.list';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import * as SplashScreen from 'expo-splash-screen';
-
-SplashScreen.preventAutoHideAsync();
 
 const AnimalScreen = ({ currentLanguage }) => {
   const [sound, setSound] = React.useState();
@@ -68,12 +65,6 @@ const AnimalScreen = ({ currentLanguage }) => {
       : undefined;
   }, [voice]);
 
-  const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
-
   if (!fontsLoaded) {
     return null;
   }
@@ -85,7 +76,7 @@ const AnimalScreen = ({ currentLanguage }) => {
       style={styles.backgroundImage}
     >
       <ScrollView style={styles.scrollView}>
-        <View style={styles.animationContainer} onLayout={onLayoutRootView}>
+        <View style={styles.animationContainer}>
           {animalList.map((animatedImage) => (
             <React.Fragment key={`${animatedImage.name}-animatedImage`}>
               <TouchableOpacity
