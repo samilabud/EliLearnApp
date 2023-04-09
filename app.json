@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "EliLearnApp",
-    "slug": "EliLearnApp",
-    "version": "1.0.0",
+    "name": "EliLearn-AnimalAdventures",
+    "slug": "EliLearnAnimalAdventures",
+    "version": "1.2.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#000"
+      "backgroundColor": "#BD0000"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -17,7 +17,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.samilabud.EliLearnApp"
+      "package": "com.samilabud.EliLearnApp.AnimalAdventures"
     },
     "web": {
       "favicon": "./assets/favicon.png"
