@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "EliLearn-AnimalAdventures",
-    "slug": "EliLearnAnimalAdventures",
+    "name": "Animal Adventures",
+    "slug": "AnimalAdventuresEliLearn",
     "version": "1.2.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,10 +17,13 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.elilearnapps.animaladventures",
+      "buildNumber": "1.2.4"
     },
     "android": {
-      "package": "com.samilabud.EliLearnApp.AnimalAdventures"
+      "package": "com.elilearnapps.animaladventures",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"

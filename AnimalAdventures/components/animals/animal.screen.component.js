@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: '100%',
     height: '100%',
+    backgroundColor: '#BD0000',
   },
   button: {
     width: '26%',
