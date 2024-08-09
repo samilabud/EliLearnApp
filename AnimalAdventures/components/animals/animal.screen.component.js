@@ -76,6 +76,17 @@ const AnimalScreen = ({ currentLanguage }) => {
       style={styles.backgroundImage}
     >
       <ScrollView style={styles.scrollView}>
+        {/* <LottieView
+          autoPlay={false}
+          autoSize={false}
+          key="animationw"
+          resizeMode="contain"
+          loop={false}
+          // source={animatedImage.animation_path}
+          source={require(`../../assets/animations/animals/test.json`)}
+          // style={styles.animation}
+          style={{ width: 200, height: 200 }}
+        /> */}
         <View style={styles.animationContainer}>
           {animalList.map((animatedImage) => (
             <React.Fragment key={`${animatedImage.name}-animatedImage`}>
@@ -160,6 +171,8 @@ const styles = StyleSheet.create({
   },
   animation: {
     zIndex: 2,
+    width: 80,
+    height: 80,
   },
 });
 export default AnimalScreen;
