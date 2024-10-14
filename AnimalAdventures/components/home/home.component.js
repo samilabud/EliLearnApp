@@ -6,19 +6,14 @@ import {
   View,
   Text,
   Platform,
-  Button,
+  ScrollView,
+  Image,
 } from 'react-native';
 import AnimalScreen from '../animals/animal.screen.component';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
-import {
-  createDrawerNavigator,
-  DrawerContentScrollView,
-  DrawerItemList,
-} from '@react-navigation/drawer';
-
-const Drawer = createDrawerNavigator();
+import SideMenu from '../side_menu/side_menu.component';
 
 function HomeScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -27,12 +22,15 @@ function HomeScreen({ navigation }) {
   const onButtonToggle = () => {
     setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
   };
+
   function delay(time) {
     return new Promise((resolve) => setTimeout(resolve, time));
   }
+
   useEffect(() => {
     delay(4000).then(() => setIsLoading(false));
   }, []);
+
   return (
     <SafeAreaProvider>
       {isLoading ? (
@@ -41,15 +39,21 @@ function HomeScreen({ navigation }) {
           <StatusBar style="auto" />
         </View>
       ) : (
-        <View style={styles.container}>
-          <Button
-            style={styles.settings}
-            onPress={() => navigation.openDrawer()}
-            title="Open Right Side Menu"
-          />
-          <AnimalScreen currentLanguage={currentLanguage} />
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <Image
+              source={require('../../assets/logo/logoEliLearn.png')}
+              style={styles.logo}
+            />
+            <SideMenu />
+          </View>
+
+          {/* Scrollable Content */}
+          <ScrollView style={styles.content}>
+            <AnimalScreen currentLanguage={currentLanguage} />
+          </ScrollView>
           <StatusBar style="auto" />
-        </View>
+        </SafeAreaView>
       )}
     </SafeAreaProvider>
   );
@@ -59,50 +63,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#BD0000',
-    height: '100%',
   },
-  settings: {
-    position: 'absolute',
-    zIndex: 4,
-    left: '92%',
-    top: Platform.OS === 'ios' ? '5%' : '4%',
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    zIndex: 10,
+    paddingHorizontal: 10,
   },
-  languageText: {
-    fontSize: 10,
+  logo: {
+    width: 100,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  content: {
+    flex: 1,
   },
 });
 
-function CustomDrawerContent(props) {
-  const [currentLanguage, setCurrentLanguage] = useState('en');
-  const onButtonToggle = () => {
-    setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
-  };
-  return (
-    <DrawerContentScrollView {...props}>
-      <DrawerItemList {...props} />
-      <TouchableOpacity style={styles.settings} onPress={onButtonToggle}>
-        <Text style={styles.languageText}>{currentLanguage}</Text>
-        {currentLanguage === 'es' ? (
-          <MaterialIcons name="translate" size={20} color="black" />
-        ) : (
-          <MaterialCommunityIcons
-            name="translate-off"
-            size={20}
-            color="black"
-          />
-        )}
-      </TouchableOpacity>
-    </DrawerContentScrollView>
-  );
-}
-
-export default function DrawerNavigator() {
-  return (
-    <Drawer.Navigator
-      drawerPosition="right" // Set drawer position to right
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
-    >
-      <Drawer.Screen name="Home" component={HomeScreen} />
-    </Drawer.Navigator>
-  );
-}
+export default HomeScreen;

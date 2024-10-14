@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState, Fragment, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -14,8 +14,8 @@ import { animalList } from './animal.list';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 
 const AnimalScreen = ({ currentLanguage }) => {
-  const [sound, setSound] = React.useState();
-  const [voice, setVoice] = React.useState();
+  const [sound, setSound] = useState();
+  const [voice, setVoice] = useState();
   const [currentAnimation, setCurrentAnimation] = useState();
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
@@ -49,7 +49,7 @@ const AnimalScreen = ({ currentLanguage }) => {
     await theVoice.playAsync();
   }
 
-  React.useEffect(() => {
+  useEffect(() => {
     return sound
       ? () => {
           sound.unloadAsync();
@@ -57,7 +57,7 @@ const AnimalScreen = ({ currentLanguage }) => {
       : undefined;
   }, [sound]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     return voice
       ? () => {
           voice.unloadAsync();
@@ -76,20 +76,9 @@ const AnimalScreen = ({ currentLanguage }) => {
       style={styles.backgroundImage}
     >
       <ScrollView style={styles.scrollView}>
-        {/* <LottieView
-          autoPlay={false}
-          autoSize={false}
-          key="animationw"
-          resizeMode="contain"
-          loop={false}
-          // source={animatedImage.animation_path}
-          source={require(`../../assets/animations/animals/test.json`)}
-          // style={styles.animation}
-          style={{ width: 200, height: 200 }}
-        /> */}
         <View style={styles.animationContainer}>
           {animalList.map((animatedImage) => (
-            <React.Fragment key={`${animatedImage.name}-animatedImage`}>
+            <Fragment key={`${animatedImage.name}-animatedImage`}>
               <TouchableOpacity
                 style={styles.button}
                 onPress={() =>
@@ -119,7 +108,7 @@ const AnimalScreen = ({ currentLanguage }) => {
                     : animatedImage.spanish_name}
                 </Text>
               </TouchableOpacity>
-            </React.Fragment>
+            </Fragment>
           ))}
         </View>
       </ScrollView>
@@ -157,7 +146,7 @@ const styles = StyleSheet.create({
   button: {
     width: '26%',
     height: 100,
-    marginTop: '12%',
+    marginTop: '7%',
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
