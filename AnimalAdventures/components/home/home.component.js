@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   View,
   Text,
-  Platform,
   ScrollView,
   Image,
 } from 'react-native';
@@ -15,7 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
 import SideMenu from '../side_menu/side_menu.component';
 
-function HomeScreen({ navigation }) {
+function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentLanguage, setCurrentLanguage] = useState('en');
 
@@ -45,6 +44,15 @@ function HomeScreen({ navigation }) {
               source={require('../../assets/logo/logoEliLearn.png')}
               style={styles.logo}
             />
+            <TouchableOpacity
+              style={styles.languageToggle}
+              onPress={onButtonToggle}
+            >
+              <MaterialIcons name="translate" size={24} color="black" />
+              <Text style={styles.languageText}>
+                {currentLanguage.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
             <SideMenu />
           </View>
 
@@ -81,6 +89,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  languageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
+  languageText: {
+    marginLeft: 4,
+    fontSize: 16,
   },
 });
 
