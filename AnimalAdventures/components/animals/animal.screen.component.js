@@ -36,7 +36,7 @@ const AnimalScreen = ({ currentLanguage }) => {
     });
   };
   function delay(time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
+    return new Promise(resolve => setTimeout(resolve, time));
   }
   async function playSound(soundFile, voiceFile) {
     const { sound: theSound } = await Audio.Sound.createAsync(soundFile);
@@ -77,7 +77,7 @@ const AnimalScreen = ({ currentLanguage }) => {
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.animationContainer}>
-          {animalList.map((animatedImage) => (
+          {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
               <TouchableOpacity
                 style={styles.button}
@@ -94,7 +94,7 @@ const AnimalScreen = ({ currentLanguage }) => {
                 <LottieView
                   autoPlay={false}
                   autoSize={false}
-                  ref={(el) => (animRef.current[animatedImage.name] = el)}
+                  ref={el => (animRef.current[animatedImage.name] = el)}
                   key="animation"
                   resizeMode="contain"
                   loop={false}
