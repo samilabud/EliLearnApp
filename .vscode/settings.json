@@ -1,4 +1,6 @@
 {
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.fontLigatures": false
+  "editor.fontLigatures": false,
+  "eslint.requireConfigFile": false,
+  "javascript.validate.enable": true
 }

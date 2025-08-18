@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const SideMenu = () => {
+const SideMenu = ({ onBackToMenu, currentLanguage }) => {
   const [menuVisible, setMenuVisible] = useState(false);
 
   // Toggle menu visibility
@@ -10,11 +10,16 @@ const SideMenu = () => {
     setMenuVisible(!menuVisible);
   };
 
+  const handleBackToMenu = () => {
+    setMenuVisible(false);
+    onBackToMenu();
+  };
+
   return (
     <View style={styles.container}>
       {/* Button to open the options menu */}
       <TouchableOpacity style={styles.button} onPress={toggleMenu}>
-        <MaterialIcons name="menu" size={15} color="black" />
+        <MaterialIcons name="menu" size={20} color="white" />
       </TouchableOpacity>
 
       {/* Modal for the options menu */}
@@ -30,12 +35,14 @@ const SideMenu = () => {
           onPress={toggleMenu} // Close menu when tapping outside
         >
           <View style={styles.menu}>
-            <TouchableOpacity onPress={() => console.log('Option 1')}>
-              <Text style={styles.optionText}>Option 1</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => console.log('Option 2')}>
-              <Text style={styles.optionText}>Option 2</Text>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleBackToMenu}
+            >
+              <MaterialIcons name="home" size={20} color="#007BFF" />
+              <Text style={styles.optionText}>
+                {currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}
+              </Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -46,18 +53,16 @@ const SideMenu = () => {
 
 const styles = StyleSheet.create({
   container: {
-    width: 30,
+    width: 40,
     alignContent: 'center',
     alignItems: 'center',
   },
   button: {
-    padding: 7,
-    backgroundColor: '#007BFF',
-    borderRadius: 5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
   overlay: {
     flex: 1,
@@ -68,13 +73,27 @@ const styles = StyleSheet.create({
   menu: {
     backgroundColor: '#fff',
     width: 200,
-    padding: 10,
-    marginRight: 10, // Align to the right
-    borderRadius: 5,
+    padding: 15,
+    marginRight: 10,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
   },
   optionText: {
     fontSize: 18,
     padding: 10,
+    color: '#333',
+    fontWeight: '600',
   },
 });
 

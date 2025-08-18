@@ -14,13 +14,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
 import SideMenu from '../side_menu/side_menu.component';
 
-function HomeScreen() {
+function HomeScreen({ currentLanguage, onBackToMenu }) {
   const [isLoading, setIsLoading] = useState(true);
-  const [currentLanguage, setCurrentLanguage] = useState('en');
-
-  const onButtonToggle = () => {
-    setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
-  };
 
   function delay(time) {
     return new Promise(resolve => setTimeout(resolve, time));
@@ -40,20 +35,22 @@ function HomeScreen() {
       ) : (
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>
+              <MaterialIcons name="arrow-back" size={28} color="white" />
+              <Text style={styles.backButtonText}>
+                {currentLanguage === 'en' ? 'Back' : 'Atrás'}
+              </Text>
+            </TouchableOpacity>
+
             <Image
               source={require('../../assets/logo/logoEliLearn.png')}
               style={styles.logo}
             />
-            <TouchableOpacity
-              style={styles.languageToggle}
-              onPress={onButtonToggle}
-            >
-              <MaterialIcons name="translate" size={24} color="black" />
-              <Text style={styles.languageText}>
-                {currentLanguage.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-            <SideMenu />
+
+            <SideMenu
+              onBackToMenu={onBackToMenu}
+              currentLanguage={currentLanguage}
+            />
           </View>
 
           {/* Scrollable Content */}
@@ -77,10 +74,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomWidth: 2,
+    borderBottomColor: '#FFD700',
     zIndex: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  backButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
   },
   logo: {
     width: 100,
@@ -89,15 +103,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  languageToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 10,
-  },
-  languageText: {
-    marginLeft: 4,
-    fontSize: 16,
   },
 });
 
