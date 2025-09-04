@@ -7,8 +7,9 @@ import {
   Text,
   ScrollView,
   Image,
+  Animated,
 } from 'react-native';
-import AnimalScreen from '../animals/animal.screen.component';
+import AnimalScreen from '../animals/animal.screen.component.jsx';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
@@ -16,6 +17,7 @@ import SideMenu from '../side_menu/side_menu.component';
 
 function HomeScreen({ currentLanguage, onBackToMenu }) {
   const [isLoading, setIsLoading] = useState(true);
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
   function delay(time) {
     return new Promise(resolve => setTimeout(resolve, time));
@@ -25,10 +27,20 @@ function HomeScreen({ currentLanguage, onBackToMenu }) {
     delay(4000).then(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!isLoading) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isLoading, fadeAnim]);
+
   return (
     <SafeAreaProvider>
       {isLoading ? (
-        <View>
+        <View style={{ flex: 1, backgroundColor: '#BD0000' }}>
           <MySplashScreen />
           <StatusBar style="auto" />
         </View>
@@ -54,9 +66,11 @@ function HomeScreen({ currentLanguage, onBackToMenu }) {
           </View>
 
           {/* Scrollable Content */}
-          <ScrollView style={styles.content}>
-            <AnimalScreen currentLanguage={currentLanguage} />
-          </ScrollView>
+          <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+            <ScrollView style={styles.content}>
+              <AnimalScreen currentLanguage={currentLanguage} />
+            </ScrollView>
+          </Animated.View>
           <StatusBar style="auto" />
         </SafeAreaView>
       )}
@@ -84,21 +98,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 25,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 28,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
   backButtonText: {
     marginLeft: 8,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
   },
   logo: {
-    width: 100,
-    height: 40,
+    width: 120,
+    height: 48,
     resizeMode: 'contain',
   },
   content: {
@@ -107,3 +121,5 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreen;
+
+

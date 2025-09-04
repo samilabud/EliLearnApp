@@ -13,11 +13,17 @@ export const MySplashScreen = () => {
     theSound.playAsync();
   }
   useEffect(() => {
-    if (animRef) {
-      playSound();
-      animRef.current.play();
-    }
-  }, [animRef]);
+    playSound();
+    // Fallback: ensure animation starts shortly after mount
+    const raf = requestAnimationFrame(() => {
+      if (animRef.current && typeof animRef.current.play === 'function') {
+        try {
+          animRef.current.play();
+        } catch (_) {}
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   React.useEffect(() => {
     return sound
@@ -30,14 +36,20 @@ export const MySplashScreen = () => {
   return (
     <View style={styles.splashContainer}>
       <LottieView
-        autoPlay={false}
-        autoSize={true}
+        autoPlay
         key="animation"
         resizeMode="cover"
         loop={false}
         source={require('../../assets/animations/logo/logo-animation.json')}
         style={styles.introAnimation}
         ref={animRef}
+        onLayout={() => {
+          if (animRef.current && typeof animRef.current.play === 'function') {
+            try {
+              animRef.current.play();
+            } catch (_) {}
+          }
+        }}
       />
     </View>
   );
@@ -52,5 +64,6 @@ const styles = StyleSheet.create({
   },
   introAnimation: {
     width: '100%',
+    height: '100%',
   },
 });

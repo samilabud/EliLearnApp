@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, TouchableOpacity, View, Text, Image } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Text, Image, Animated } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
+import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 
 function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   const [isLoading, setIsLoading] = useState(true);
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
   function delay(time) {
     return new Promise(resolve => setTimeout(resolve, time));
@@ -16,13 +19,23 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
     delay(4000).then(() => setIsLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!isLoading) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isLoading, fadeAnim]);
+
   const onLanguageToggle = () => {
     setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
   };
 
   if (isLoading) {
     return (
-      <View>
+      <View style={{ flex: 1, backgroundColor: '#BD0000' }}>
         <MySplashScreen />
         <StatusBar style="auto" />
       </View>
@@ -52,8 +65,8 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
         </View>
 
         {/* Main Content */}
-        <View style={styles.content}>
-          <Text style={styles.title}>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          <Text style={[styles.title, fontsLoaded && { fontFamily: 'Bangers_400Regular' }]}>
             {currentLanguage === 'en'
               ? 'Animal Adventures'
               : 'Aventuras de Animales'}
@@ -75,7 +88,7 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
               <View style={styles.modeIconContainer}>
                 <MaterialIcons name="school" size={60} color="#4CAF50" />
               </View>
-              <Text style={styles.modeTitle}>
+              <Text style={[styles.modeTitle, fontsLoaded && { fontFamily: 'Bangers_400Regular' }]}>
                 {currentLanguage === 'en'
                   ? 'Learn Animal Sounds & Names'
                   : 'Aprende Sonidos y Nombres'}
@@ -102,7 +115,7 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
               <View style={styles.modeIconContainer}>
                 <MaterialIcons name="construction" size={60} color="#FF9800" />
               </View>
-              <Text style={styles.modeTitle}>
+              <Text style={[styles.modeTitle, fontsLoaded && { fontFamily: 'Bangers_400Regular' }]}>
                 {currentLanguage === 'en'
                   ? 'Guess the Animal'
                   : 'Adivina el Animal'}
@@ -121,7 +134,7 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
               </View>
             </TouchableOpacity>
           </View>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -170,17 +183,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   title: {
-    fontSize: 36,
+    fontSize: 42,
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
     marginBottom: 10,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 6,
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: 22,
     color: '#FFD700',
     textAlign: 'center',
     marginBottom: 50,
@@ -192,13 +205,13 @@ const styles = StyleSheet.create({
   },
   modeButton: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 25,
+    borderRadius: 24,
+    padding: 28,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 10,
     elevation: 8,
     borderWidth: 3,
     borderColor: '#FFD700',
@@ -211,14 +224,14 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   modeTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
     marginBottom: 10,
   },
   modeDescription: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
     textAlign: 'center',
     lineHeight: 22,
@@ -241,3 +254,5 @@ const styles = StyleSheet.create({
 });
 
 export default MainMenu;
+
+
