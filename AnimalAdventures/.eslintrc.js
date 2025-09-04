@@ -2,6 +2,7 @@ module.exports = {
   root: true,
   env: {
     es6: true,
+    es2021: true,
     node: true,
     jest: true,
     'react-native/react-native': true,
@@ -20,9 +21,6 @@ module.exports = {
     ecmaFeatures: {
       jsx: true,
     },
-    babelOptions: {
-      presets: ['module:metro-react-native-babel-preset'],
-    },
   },
   plugins: ['react', 'react-native', 'prettier'],
   settings: {
@@ -39,37 +37,12 @@ module.exports = {
         ecmaVersion: 'latest',
         sourceType: 'module',
         ecmaFeatures: { jsx: true },
-        babelOptions: {
-          presets: ['module:metro-react-native-babel-preset'],
-        },
       },
     },
   ],
   rules: {
     'prettier/prettier': 'off',
     'react/prop-types': 'off',
-  },
-};
-
-module.exports = {
-  root: true,
-  extends: ['@react-native-community'],
-  parser: '@babel/eslint-parser',
-  parserOptions: {
-    requireConfigFile: false,
-    ecmaFeatures: {
-      jsx: true,
-    },
-  },
-  env: {
-    'react-native/react-native': true,
-    es2021: true,
-    node: true,
-  },
-  settings: {
-    react: {
-      version: 'detect',
-    },
   },
   ignorePatterns: [
     'node_modules/',

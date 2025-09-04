@@ -66,7 +66,12 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
 
         {/* Main Content */}
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <Text style={[styles.title, fontsLoaded && { fontFamily: 'Bangers_400Regular' }]}>
+          <Text
+            style={[
+              styles.title,
+              fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+            ]}
+          >
             {currentLanguage === 'en'
               ? 'Animal Adventures'
               : 'Aventuras de Animales'}
@@ -88,7 +93,12 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
               <View style={styles.modeIconContainer}>
                 <MaterialIcons name="school" size={60} color="#4CAF50" />
               </View>
-              <Text style={[styles.modeTitle, fontsLoaded && { fontFamily: 'Bangers_400Regular' }]}>
+              <Text
+                style={[
+                  styles.modeTitle,
+                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                ]}
+              >
                 {currentLanguage === 'en'
                   ? 'Learn Animal Sounds & Names'
                   : 'Aprende Sonidos y Nombres'}
@@ -100,22 +110,20 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
               </Text>
             </TouchableOpacity>
 
-            {/* Mode 2: Guessing Game (Under Construction) */}
+            {/* Mode 2: Guessing Game */}
             <TouchableOpacity
-              style={[styles.modeButton, styles.underConstruction]}
-              onPress={() => {
-                // Show under construction message
-                alert(
-                  currentLanguage === 'en'
-                    ? 'Coming Soon! This feature is under construction.'
-                    : '¡Pronto! Esta función está en construcción.'
-                );
-              }}
+              style={styles.modeButton}
+              onPress={() => onModeSelect('guess')}
             >
               <View style={styles.modeIconContainer}>
-                <MaterialIcons name="construction" size={60} color="#FF9800" />
+                <MaterialIcons name="quiz" size={60} color="#FF9800" />
               </View>
-              <Text style={[styles.modeTitle, fontsLoaded && { fontFamily: 'Bangers_400Regular' }]}>
+              <Text
+                style={[
+                  styles.modeTitle,
+                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                ]}
+              >
                 {currentLanguage === 'en'
                   ? 'Guess the Animal'
                   : 'Adivina el Animal'}
@@ -125,13 +133,6 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
                   ? 'Test your knowledge!'
                   : '¡Pon a prueba tu conocimiento!'}
               </Text>
-              <View style={styles.constructionBadge}>
-                <Text style={styles.constructionText}>
-                  {currentLanguage === 'en'
-                    ? 'UNDER CONSTRUCTION'
-                    : 'EN CONSTRUCCIÓN'}
-                </Text>
-              </View>
             </TouchableOpacity>
           </View>
         </Animated.View>
