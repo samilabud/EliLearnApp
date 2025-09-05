@@ -27,7 +27,6 @@
     "@react-navigation/stack": "^6.4.1",
     "expo": "53.0.22",
     "expo-av": "~15.1.7",
-    "expo-dev-client": "~5.2.4",
     "expo-font": "~13.3.2",
     "expo-status-bar": "~2.2.3",
     "expo-updates": "~0.28.17",
@@ -44,6 +43,7 @@
     "styled-components": "^5.3.11"
   },
   "devDependencies": {
+    "expo-dev-client": "~5.2.4",
     "@babel/core": "^7.28.3",
     "@babel/eslint-parser": "^7.28.0",
     "@react-native-community/cli": "^20.0.1",

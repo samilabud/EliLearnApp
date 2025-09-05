@@ -12,3 +12,7 @@
 -keep class com.facebook.react.turbomodule.** { *; }
 
 # Add any project specific keep options here:
+
+# Keep RN/SoLoader merged JNI mapping to avoid missing libreact_featureflagsjni
+-keep class com.facebook.soloader.MergedSoMapping { *; }
+-keep class com.facebook.react.soloader.OpenSourceMergedSoMapping { *; }

@@ -11,6 +11,10 @@ import com.facebook.react.ReactHost
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
+import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
+import com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsDefaults
+import com.facebook.react.soloader.OpenSourceMergedSoMapping
+import com.facebook.soloader.ExternalSoMapping
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
@@ -40,7 +44,31 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
-    SoLoader.init(this, false)
+    // Initialize SoLoader with React's external mapping so merged libs resolve
+    try {
+      SoLoader.init(this, object : ExternalSoMapping {
+        override fun mapLibName(input: String): String {
+          return OpenSourceMergedSoMapping.mapLibName(input)
+        }
+
+        override fun invokeJniOnload(libraryName: String) {
+          OpenSourceMergedSoMapping.invokeJniOnload(libraryName)
+        }
+      })
+    } catch (_: Throwable) {
+      SoLoader.init(this, false)
+    }
+    // Ensure RN merged JNI mapping is available (react_featureflagsjni, etc.)
+    // Disable bridgeless-related feature flags to avoid loading libreact_featureflagsjni in release
+    try {
+      val flagsProvider = object : ReactNativeFeatureFlagsDefaults() {
+        override fun enableBridgelessArchitecture(): Boolean = false
+        override fun useTurboModules(): Boolean = false
+        override fun enableFabricRenderer(): Boolean = false
+        override fun useFabricInterop(): Boolean = false
+      }
+      ReactNativeFeatureFlags.dangerouslyForceOverride(flagsProvider)
+    } catch (_: Throwable) {}
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
