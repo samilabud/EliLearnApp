@@ -133,6 +133,24 @@ npm run submit:android
 npm run submit:ios
 ```
 
+### Version bump + EAS build (Android)
+
+```bash
+# Patch bump versionCode and versionName, then run production build
+npm run production-build-eas:android
+
+# Other bump options (no build):
+npm run bump:patch      # 1.2.3 -> 1.2.4
+npm run bump:minor      # 1.2.3 -> 1.3.0
+npm run bump:major      # 1.2.3 -> 2.0.0
+npm run bump:set -- 4.2.0   # set exact version (keeps code auto +1)
+npm run bump:dry-run    # show planned changes only
+```
+
+Notes:
+- The bump script updates `package.json`, `app.json` (`expo.version`, `ios.buildNumber`, `android.versionCode`), and `android/app/build.gradle` (`versionName`, `versionCode`).
+- `android.versionCode` is incremented by +1 unless overridden via `--code N` when running the script directly.
+
 ## 🤝 Contributing
 
 1. Fork the repository

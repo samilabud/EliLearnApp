@@ -18,7 +18,12 @@
     "submit:android": "eas submit --platform android",
     "submit:ios": "eas submit --platform ios",
     "preview-build-eas:android": "eas build --platform android --profile preview",
-    "production-build-eas:android": "eas build --platform android --profile production --non-interactive"
+    "bump:patch": "node scripts/bump-version.js --type patch",
+    "bump:minor": "node scripts/bump-version.js --type minor",
+    "bump:major": "node scripts/bump-version.js --type major",
+    "bump:set": "node scripts/bump-version.js --set",
+    "bump:dry-run": "node scripts/bump-version.js --dry-run",
+    "production-build-eas:android": "node scripts/bump-version.js --type patch && eas build --platform android --profile production --non-interactive"
   },
   "dependencies": {
     "@expo-google-fonts/bangers": "^0.4.0",
