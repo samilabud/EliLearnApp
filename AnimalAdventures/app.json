@@ -2,7 +2,7 @@
   "expo": {
     "name": "Animal Adventures",
     "slug": "EliLearnAnimalAdventures",
-    "version": "3.1.2",
+    "version": "4.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,17 +13,15 @@
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/3b6c1a9f-1097-41b7-a8ee-eccc8de29e48"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.elilearnapps.animaladventures",
-      "buildNumber": "3.1.2"
+      "buildNumber": "4.0.1"
     },
     "android": {
       "package": "com.elilearnapps.animaladventures",
-      "versionCode": 7
+      "versionCode": 9
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -34,8 +32,6 @@
       }
     },
     "runtimeVersion": "3.0.0",
-    "plugins": [
-      "expo-audio"
-    ]
+    "plugins": ["expo-audio"]
   }
 }

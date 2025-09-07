@@ -1,6 +1,6 @@
 {
   "name": "elilearn-animaladventures-app",
-  "version": "3.1.2",
+  "version": "4.0.1",
   "description": "Animal Adventures - An educational app for learning about animals",
   "main": "index.js",
   "scripts": {
