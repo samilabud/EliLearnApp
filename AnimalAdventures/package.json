@@ -40,7 +40,8 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-web": "^0.20.0",
-    "styled-components": "^5.3.11"
+    "styled-components": "^5.3.11",
+    "expo-audio": "~0.4.9"
   },
   "devDependencies": {
     "expo-dev-client": "~5.2.4",

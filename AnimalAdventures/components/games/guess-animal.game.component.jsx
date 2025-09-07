@@ -1,6 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Platform, Animated } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Platform,
+  Animated,
+  Easing,
+} from 'react-native';
+import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
@@ -16,18 +25,25 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const [options, setOptions] = useState([]);
   const [isCorrect, setIsCorrect] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
-  const [sound, setSound] = useState(null);
+  const promptPlayer = useAudioPlayer(null);
   const [feedbackAnim] = useState(new Animated.Value(0));
+  const [promptPulse] = useState(new Animated.Value(0));
   const [wrongCount, setWrongCount] = useState(0);
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [wrongSound, setWrongSound] = useState(null);
+  const wrongPlayer = useAudioPlayer(null);
+  const gameOverPlayer = useAudioPlayer(null);
+  const gameWinPlayer = useAudioPlayer(null);
+  const gameSuccessPlayer = useAudioPlayer(null);
   const [confettiKey, setConfettiKey] = useState(0);
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const optionAnimRefs = useRef({});
   const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
+  const gameOverSoundFile = require('../../assets/sounds/game/game_over.mp3');
+  const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
+  const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
   const optionsCount = useMemo(() => {
     // Level 1 -> 2 options, Level 2 -> 3, ... Level 5 -> 6
@@ -36,30 +52,82 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
   const stopAndUnload = useCallback(async () => {
     try {
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-      }
-    } catch (e) {
-      // no-op
-    }
-  }, [sound]);
+      promptPlayer.pause();
+      await promptPlayer.seekTo(0);
+    } catch (e) {}
+  }, [promptPlayer]);
 
   useEffect(() => {
     return () => {
       stopAndUnload();
-    };
-  }, [stopAndUnload]);
-
-  useEffect(() => {
-    return () => {
       try {
-        if (wrongSound) {
-          wrongSound.unloadAsync();
-        }
+        promptPlayer.remove();
+      } catch (e) {}
+      try {
+        wrongPlayer.remove();
+      } catch (e) {}
+      try {
+        gameOverPlayer.remove();
+      } catch (e) {}
+      try {
+        gameWinPlayer.remove();
+      } catch (e) {}
+      try {
+        gameSuccessPlayer.remove();
       } catch (e) {}
     };
-  }, [wrongSound]);
+  }, [
+    stopAndUnload,
+    promptPlayer,
+    wrongPlayer,
+    gameOverPlayer,
+    gameWinPlayer,
+    gameSuccessPlayer,
+  ]);
+
+  // wrongPlayer is removed in the cleanup above
+
+  // Play game over sound when gameOver becomes true
+  useEffect(() => {
+    if (gameOver) {
+      try {
+        gameOverPlayer.replace(gameOverSoundFile);
+        gameOverPlayer.play();
+      } catch (e) {}
+    }
+  }, [gameOver, gameOverPlayer]);
+
+  // Continuous bubble effect on Play Sound button
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(promptPulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(promptPulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [promptPulse]);
+
+  // Play win sound when the user completes all levels
+  useEffect(() => {
+    if (showComplete) {
+      try {
+        gameWinPlayer.replace(gameWinSoundFile);
+        gameWinPlayer.play();
+      } catch (e) {}
+    }
+  }, [showComplete, gameWinPlayer]);
 
   const shuffle = useCallback(arr => {
     const copy = [...arr];
@@ -89,41 +157,65 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const playPrompt = useCallback(async () => {
     if (!targetAnimal) return;
     await stopAndUnload();
-    const { sound: promptSound } = await Audio.Sound.createAsync(targetAnimal.sound);
-    setSound(promptSound);
     try {
-      await promptSound.replayAsync();
-    } catch (e) {
-      // no-op
+      promptPlayer.replace(targetAnimal.sound);
+      promptPlayer.play();
+    } catch (e) {}
+  }, [targetAnimal, stopAndUnload, promptPlayer]);
+
+  useEffect(() => {
+    if (targetAnimal) {
+      playPrompt();
     }
-  }, [targetAnimal, stopAndUnload]);
+  }, [targetAnimal, playPrompt]);
 
   const onSelect = useCallback(
     async selected => {
-      if (gameOver || showComplete) return;
+      if (gameOver || showComplete || isCorrect) return;
       const correct = selected.id === targetAnimal.id;
       if (correct) {
         setIsCorrect(true);
         setWrongCount(0);
+        // play success sound on correct selection (non-final levels)
         try {
-          if (optionAnimRefs.current[selected.id] && optionAnimRefs.current[selected.id].play) {
+          if (level < MAX_LEVEL) {
+            gameSuccessPlayer.replace(gameSuccessSoundFile);
+            gameSuccessPlayer.play();
+          }
+        } catch (e) {}
+        try {
+          if (
+            optionAnimRefs.current[selected.id] &&
+            optionAnimRefs.current[selected.id].play
+          ) {
             optionAnimRefs.current[selected.id].play();
           }
         } catch (e) {}
 
         Animated.sequence([
-          Animated.timing(feedbackAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-          Animated.timing(feedbackAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.timing(feedbackAnim, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(feedbackAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
         ]).start();
 
         setConfettiKey(prev => prev + 1);
 
         setTimeout(() => {
-          if (level < MAX_LEVEL) {
-            setLevel(prev => prev + 1);
-          } else {
-            setShowComplete(true);
-          }
+          setLevel(prev => {
+            if (prev < MAX_LEVEL) {
+              return prev + 1;
+            } else {
+              setShowComplete(true);
+              return prev;
+            }
+          });
         }, 800);
       } else {
         // wrong feedback
@@ -134,9 +226,8 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           if (wrongAnim && wrongAnim.reset) wrongAnim.reset();
         } catch (e) {}
         try {
-          const { sound: w } = await Audio.Sound.createAsync(wrongSoundFile);
-          setWrongSound(w);
-          await w.replayAsync();
+          wrongPlayer.replace(wrongSoundFile);
+          wrongPlayer.play();
         } catch (e) {}
         setWrongCount(prev => {
           const next = prev + 1;
@@ -147,7 +238,17 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         });
       }
     },
-    [targetAnimal, level, feedbackAnim, wrongSoundFile, showComplete, gameOver]
+    [
+      targetAnimal,
+      level,
+      feedbackAnim,
+      wrongSoundFile,
+      showComplete,
+      gameOver,
+      wrongPlayer,
+      gameSuccessPlayer,
+      isCorrect,
+    ]
   );
 
   const onReset = useCallback(() => {
@@ -160,9 +261,17 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   }, [pickRound]);
 
   if (!fontsLoaded) return null;
+  const promptScale = promptPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.06],
+  });
 
   return (
-    <ImageBackground source={backgroundImage} resizeMode="cover" style={styles.backgroundImage}>
+    <ImageBackground
+      source={backgroundImage}
+      resizeMode="cover"
+      style={styles.backgroundImage}
+    >
       <AmbientBackground />
 
       {/* Top controls */}
@@ -172,24 +281,34 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         </Text>
         <View style={styles.topActions}>
           <TouchableOpacity onPress={onReset} style={styles.actionButton}>
-            <Text style={styles.actionText}>{currentLanguage === 'en' ? 'Reset' : 'Reiniciar'}</Text>
+            <Text style={styles.actionText}>
+              {currentLanguage === 'en' ? 'Reset' : 'Reiniciar'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onBackToMenu} style={styles.actionButton}>
-            <Text style={styles.actionText}>{currentLanguage === 'en' ? 'Main Menu' : 'Menú'}</Text>
+            <Text style={styles.actionText}>
+              {currentLanguage === 'en' ? 'Main Menu' : 'Menú'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Prompt */}
       <View style={styles.promptContainer}>
-        <TouchableOpacity onPress={playPrompt} style={styles.promptButton}>
-          <Text style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}>
-            {currentLanguage === 'en' ? 'Play Sound' : 'Reproducir Sonido'}
-          </Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+          <TouchableOpacity onPress={playPrompt} style={styles.promptButton}>
+            <Text
+              style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}
+            >
+              {currentLanguage === 'en' ? 'Play Sound' : 'Reproducir Sonido'}
+            </Text>
+          </TouchableOpacity>
+        </Animated.View>
         {!!targetAnimal && (
           <Text style={styles.helperText}>
-            {currentLanguage === 'en' ? 'Which animal makes this sound?' : '¿Qué animal hace este sonido?'}
+            {currentLanguage === 'en'
+              ? 'Which animal makes this sound?'
+              : '¿Qué animal hace este sonido?'}
           </Text>
         )}
       </View>
@@ -197,7 +316,11 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       {/* Options grid */}
       <View style={styles.optionsContainer}>
         {options.map(opt => (
-          <TouchableOpacity key={opt.id} style={styles.optionCard} onPress={() => onSelect(opt)}>
+          <TouchableOpacity
+            key={opt.id}
+            style={styles.optionCard}
+            onPress={() => onSelect(opt)}
+          >
             <View style={styles.optionInner}>
               <View style={styles.animationBackground} />
               <LottieView
@@ -219,8 +342,19 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           pointerEvents="none"
           style={[styles.feedbackOverlay, { opacity: feedbackAnim }]}
         >
-          <Text style={[styles.feedbackText, { fontFamily: 'Bangers_400Regular' }]}>✅</Text>
-          <ConfettiCannon key={`confetti-${confettiKey}`} count={80} fadeOut={true} explosionSpeed={350} fallSpeed={3000} origin={{ x: 0, y: 0 }} />
+          <Text
+            style={[styles.feedbackText, { fontFamily: 'Bangers_400Regular' }]}
+          >
+            ✅
+          </Text>
+          <ConfettiCannon
+            key={`confetti-${confettiKey}`}
+            count={80}
+            fadeOut={true}
+            explosionSpeed={350}
+            fallSpeed={3000}
+            origin={{ x: 0, y: 0 }}
+          />
         </Animated.View>
       )}
 
@@ -234,19 +368,42 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       {/* Completion overlay */}
       {showComplete && (
         <View style={styles.completionOverlay}>
-          <Text style={[styles.completionTitle, { fontFamily: 'Bangers_400Regular' }]}>
+          <Text
+            style={[
+              styles.completionTitle,
+              { fontFamily: 'Bangers_400Regular' },
+            ]}
+          >
             {currentLanguage === 'en' ? 'Amazing!' : '¡Increíble!'}
           </Text>
           <Text style={styles.completionSubtitle}>
-            {currentLanguage === 'en' ? 'You finished all levels!' : '¡Terminaste todos los niveles!'}
+            {currentLanguage === 'en'
+              ? 'You finished all levels!'
+              : '¡Terminaste todos los niveles!'}
           </Text>
-          <ConfettiCannon key={`final-${confettiKey}-final`} count={200} fadeOut={true} explosionSpeed={300} fallSpeed={3500} origin={{ x: 0, y: 0 }} />
+          <ConfettiCannon
+            key={`final-${confettiKey}-final`}
+            count={200}
+            fadeOut={true}
+            explosionSpeed={300}
+            fallSpeed={3500}
+            origin={{ x: 0, y: 0 }}
+          />
           <View style={styles.completionActions}>
-            <TouchableOpacity onPress={onReset} style={styles.bigButton}>
-              <Text style={styles.bigButtonText}>{currentLanguage === 'en' ? 'Restart' : 'Reiniciar'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onBackToMenu} style={styles.bigButton}>
-              <Text style={styles.bigButtonText}>{currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}</Text>
+            <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+              <TouchableOpacity onPress={onReset} style={styles.bigButton}>
+                <Text style={styles.bigButtonText}>
+                  {currentLanguage === 'en' ? 'Restart' : 'Reiniciar'}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+            <TouchableOpacity
+              onPress={onBackToMenu}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -255,16 +412,32 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       {/* Game Over overlay after two wrong attempts */}
       {gameOver && !showComplete && (
         <View style={styles.completionOverlay}>
-          <Text style={[styles.completionTitle, { fontFamily: 'Bangers_400Regular', color: '#FF5252' }]}>✖️</Text>
+          <Text
+            style={[
+              styles.completionTitle,
+              { fontFamily: 'Bangers_400Regular', color: '#FF5252' },
+            ]}
+          >
+            ✖️
+          </Text>
           <Text style={styles.completionSubtitle}>
             {currentLanguage === 'en' ? 'Game Over' : 'Juego Terminado'}
           </Text>
           <View style={styles.completionActions}>
-            <TouchableOpacity onPress={onReset} style={styles.bigButton}>
-              <Text style={styles.bigButtonText}>{currentLanguage === 'en' ? 'Try Again' : 'Intentar de Nuevo'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onBackToMenu} style={styles.bigButton}>
-              <Text style={styles.bigButtonText}>{currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}</Text>
+            <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+              <TouchableOpacity onPress={onReset} style={styles.bigButton}>
+                <Text style={styles.bigButtonText}>
+                  {currentLanguage === 'en' ? 'Try Again' : 'Intentar de Nuevo'}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+            <TouchableOpacity
+              onPress={onBackToMenu}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -281,7 +454,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     width: '100%',
-    paddingTop: 14,
+    paddingTop: 34,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -293,10 +466,12 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
+    paddingBottom: 34,
   },
   topActions: {
     flexDirection: 'row',
     gap: 10,
+    paddingBottom: 34,
   },
   actionButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -324,13 +499,14 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
   },
   promptText: {
-    fontSize: 20,
+    fontSize: 24,
     color: '#0A3D62',
     letterSpacing: 1,
   },
   helperText: {
     marginTop: 6,
     color: 'white',
+    fontSize: 20,
   },
   optionsContainer: {
     flexDirection: 'row',
@@ -380,6 +556,7 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 80,
     color: 'white',
+    paddingBottom: 34,
   },
   wrongText: {
     fontSize: 120,
@@ -387,6 +564,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowRadius: 8,
     textShadowOffset: { width: 0, height: 4 },
+    paddingBottom: 34,
   },
   completionOverlay: {
     position: 'absolute',
@@ -425,6 +603,19 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
   },
   bigButtonText: {
+    color: '#0A3D62',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 26,
+    borderWidth: 3,
+    borderColor: '#FFD700',
+  },
+  secondaryButtonText: {
     color: '#0A3D62',
     fontSize: 18,
     fontWeight: 'bold',

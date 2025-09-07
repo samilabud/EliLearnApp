@@ -13,7 +13,9 @@
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/3b6c1a9f-1097-41b7-a8ee-eccc8de29e48"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.elilearnapps.animaladventures",
@@ -31,6 +33,9 @@
         "projectId": "3b6c1a9f-1097-41b7-a8ee-eccc8de29e48"
       }
     },
-    "runtimeVersion": "3.0.0"
+    "runtimeVersion": "3.0.0",
+    "plugins": [
+      "expo-audio"
+    ]
   }
 }

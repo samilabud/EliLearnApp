@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, TouchableOpacity, View, Text, Image, Animated } from 'react-native';
+import {
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  Text,
+  Image,
+  Animated,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
+import { AmbientBackground } from '../utility/ambient-background.component';
 
 function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -65,76 +75,96 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
         </View>
 
         {/* Main Content */}
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <Text
-            style={[
-              styles.title,
-              fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-            ]}
+        <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
           >
-            {currentLanguage === 'en'
-              ? 'Animal Adventures'
-              : 'Aventuras de Animales'}
-          </Text>
-
-          <Text style={styles.subtitle}>
-            {currentLanguage === 'en'
-              ? 'Choose your adventure!'
-              : '¡Elige tu aventura!'}
-          </Text>
-
-          {/* Mode Selection Buttons */}
-          <View style={styles.modeContainer}>
-            {/* Mode 1: Learn Animal Sounds and Names */}
-            <TouchableOpacity
-              style={styles.modeButton}
-              onPress={() => onModeSelect('learn')}
+            <Text
+              style={[
+                styles.title,
+                fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+              ]}
             >
-              <View style={styles.modeIconContainer}>
-                <MaterialIcons name="school" size={60} color="#4CAF50" />
-              </View>
-              <Text
-                style={[
-                  styles.modeTitle,
-                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                ]}
-              >
-                {currentLanguage === 'en'
-                  ? 'Learn Animal Sounds & Names'
-                  : 'Aprende Sonidos y Nombres'}
-              </Text>
-              <Text style={styles.modeDescription}>
-                {currentLanguage === 'en'
-                  ? 'Discover animals and their sounds'
-                  : 'Descubre animales y sus sonidos'}
-              </Text>
-            </TouchableOpacity>
+              {currentLanguage === 'en'
+                ? 'Animal Adventures'
+                : 'Aventuras de Animales'}
+            </Text>
 
-            {/* Mode 2: Guessing Game */}
-            <TouchableOpacity
-              style={styles.modeButton}
-              onPress={() => onModeSelect('guess')}
-            >
-              <View style={styles.modeIconContainer}>
-                <MaterialIcons name="quiz" size={60} color="#FF9800" />
-              </View>
-              <Text
-                style={[
-                  styles.modeTitle,
-                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                ]}
+            <Text style={styles.subtitle}>
+              {currentLanguage === 'en'
+                ? 'Choose your adventure!'
+                : '¡Elige tu aventura!'}
+            </Text>
+
+            {/* Mode Selection Buttons */}
+            <View style={styles.modeContainer}>
+              <AmbientBackground />
+              {/* Mode 1: Learn Animal Sounds and Names */}
+              <TouchableOpacity
+                style={styles.modeButton}
+                onPress={() => onModeSelect('learn')}
               >
-                {currentLanguage === 'en'
-                  ? 'Guess the Animal'
-                  : 'Adivina el Animal'}
-              </Text>
-              <Text style={styles.modeDescription}>
-                {currentLanguage === 'en'
-                  ? 'Test your knowledge!'
-                  : '¡Pon a prueba tu conocimiento!'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                <View style={styles.modeIconContainer}>
+                  <LottieView
+                    source={require('../../assets/animations/icons/learn_icon.json')}
+                    autoPlay
+                    loop
+                    resizeMode="contain"
+                    style={{ width: 90, height: 90 }}
+                    autoSize={false}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.modeTitle,
+                    fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                  ]}
+                >
+                  {currentLanguage === 'en'
+                    ? 'Learn Animal Sounds & Names'
+                    : 'Aprende Sonidos y Nombres'}
+                </Text>
+                <Text style={styles.modeDescription}>
+                  {currentLanguage === 'en'
+                    ? 'Discover animals and their sounds'
+                    : 'Descubre animales y sus sonidos'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Mode 2: Guessing Game */}
+              <TouchableOpacity
+                style={styles.modeButton}
+                onPress={() => onModeSelect('guess')}
+              >
+                <View style={styles.modeIconContainer}>
+                  <LottieView
+                    source={require('../../assets/animations/icons/guess_icon.json')}
+                    autoPlay
+                    loop
+                    resizeMode="contain"
+                    style={{ width: 90, height: 90 }}
+                    autoSize={false}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.modeTitle,
+                    fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                  ]}
+                >
+                  {currentLanguage === 'en'
+                    ? 'Guess the Animal'
+                    : 'Adivina el Animal'}
+                </Text>
+                <Text style={styles.modeDescription}>
+                  {currentLanguage === 'en'
+                    ? 'Test your knowledge!'
+                    : '¡Pon a prueba tu conocimiento!'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </Animated.View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -178,10 +208,14 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 30,
+    paddingBottom: 24,
+  },
+  contentWrapper: {
+    flex: 1,
   },
   title: {
     fontSize: 42,

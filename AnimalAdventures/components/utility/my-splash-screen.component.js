@@ -1,17 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import LottieView from 'lottie-react-native';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 
 export const MySplashScreen = () => {
-  const [sound, setSound] = React.useState();
   const animRef = useRef(null);
-  async function playSound() {
-    const soundFile = require('../../assets/sounds/background/intro/Stinger_2-2020-10-19_-_Its_A_Good_Day_-_www.FesliyanStudios.com_Steve_Oxen.mp3');
-    const { sound: theSound } = await Audio.Sound.createAsync(soundFile);
-    setSound(theSound);
-    theSound.playAsync();
-  }
+  const soundFile = require('../../assets/sounds/background/intro/Stinger_2-2020-10-19_-_Its_A_Good_Day_-_www.FesliyanStudios.com_Steve_Oxen.mp3');
+  const player = useAudioPlayer(soundFile);
+  const playSound = React.useCallback(() => {
+    try {
+      player.play();
+    } catch (_) {}
+  }, [player]);
   useEffect(() => {
     playSound();
     // Fallback: ensure animation starts shortly after mount
@@ -23,15 +23,15 @@ export const MySplashScreen = () => {
       }
     });
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [playSound]);
 
   React.useEffect(() => {
-    return sound
-      ? () => {
-          sound.unloadAsync();
-        }
-      : undefined;
-  }, [sound]);
+    return () => {
+      try {
+        player.remove();
+      } catch (_) {}
+    };
+  }, [player]);
 
   return (
     <View style={styles.splashContainer}>

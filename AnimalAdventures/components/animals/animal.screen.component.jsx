@@ -1,4 +1,4 @@
-import { useRef, useState, Fragment, useEffect } from 'react';
+import React, { useRef, useState, Fragment, useEffect } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -8,15 +8,15 @@ import {
   ImageBackground,
   Platform,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { animalList } from './animal.list';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 
 const AnimalScreen = ({ currentLanguage }) => {
-  const [sound, setSound] = useState();
-  const [voice, setVoice] = useState();
+  const soundPlayer = useAudioPlayer(null);
+  const voicePlayer = useAudioPlayer(null);
   const [currentAnimation, setCurrentAnimation] = useState();
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
@@ -50,31 +50,28 @@ const AnimalScreen = ({ currentLanguage }) => {
     return new Promise(resolve => setTimeout(resolve, time));
   }
   async function playSound(soundFile, voiceFile) {
-    const { sound: theSound } = await Audio.Sound.createAsync(soundFile);
-    const { sound: theVoice } = await Audio.Sound.createAsync(voiceFile);
-    setSound(theSound);
-    setVoice(theVoice);
-    delay(1000).then(() => {
-      theSound.playAsync();
-    });
-    await theVoice.playAsync();
+    try {
+      soundPlayer.replace(soundFile);
+      voicePlayer.replace(voiceFile);
+      delay(1000).then(() => {
+        try {
+          soundPlayer.play();
+        } catch (e) {}
+      });
+      await voicePlayer.play();
+    } catch (e) {}
   }
 
   useEffect(() => {
-    return sound
-      ? () => {
-          sound.unloadAsync();
-        }
-      : undefined;
-  }, [sound]);
-
-  useEffect(() => {
-    return voice
-      ? () => {
-          voice.unloadAsync();
-        }
-      : undefined;
-  }, [voice]);
+    return () => {
+      try {
+        soundPlayer.remove();
+      } catch (e) {}
+      try {
+        voicePlayer.remove();
+      } catch (e) {}
+    };
+  }, [soundPlayer, voicePlayer]);
 
   if (!fontsLoaded) {
     return null;
@@ -87,7 +84,10 @@ const AnimalScreen = ({ currentLanguage }) => {
       style={styles.backgroundImage}
     >
       <AmbientBackground />
-      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingTop: 10 }}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingTop: 10 }}
+      >
         <View style={styles.animationContainer}>
           {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
@@ -179,5 +179,3 @@ const styles = StyleSheet.create({
   },
 });
 export default AnimalScreen;
-
-
