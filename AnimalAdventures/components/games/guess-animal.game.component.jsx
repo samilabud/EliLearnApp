@@ -16,7 +16,7 @@ import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
-const MAX_LEVEL = 5;
+const MAX_LEVEL = 8;
 
 export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
@@ -35,6 +35,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const gameOverPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
+  const animalNamePlayer = useAudioPlayer(null);
   const [confettiKey, setConfettiKey] = useState(0);
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
@@ -75,6 +76,9 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       try {
         gameSuccessPlayer.remove();
       } catch (e) {}
+      try {
+        animalNamePlayer.remove();
+      } catch (e) {}
     };
   }, [
     stopAndUnload,
@@ -83,9 +87,8 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     gameOverPlayer,
     gameWinPlayer,
     gameSuccessPlayer,
+    animalNamePlayer,
   ]);
-
-  // wrongPlayer is removed in the cleanup above
 
   // Play game over sound when gameOver becomes true
   useEffect(() => {
@@ -163,6 +166,18 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     } catch (e) {}
   }, [targetAnimal, stopAndUnload, promptPlayer]);
 
+  const playAnimalName = useCallback(
+    async animal => {
+      try {
+        const soundFile =
+          currentLanguage === 'en' ? animal.voice : animal.spanish_voice;
+        animalNamePlayer.replace(soundFile);
+        animalNamePlayer.play();
+      } catch (e) {}
+    },
+    [animalNamePlayer, currentLanguage]
+  );
+
   useEffect(() => {
     if (targetAnimal) {
       playPrompt();
@@ -176,13 +191,20 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       if (correct) {
         setIsCorrect(true);
         setWrongCount(0);
-        // play success sound on correct selection (non-final levels)
-        try {
-          if (level < MAX_LEVEL) {
-            gameSuccessPlayer.replace(gameSuccessSoundFile);
-            gameSuccessPlayer.play();
-          }
-        } catch (e) {}
+
+        // Play animal name sound first
+        playAnimalName(selected);
+
+        // Play success sound after 1 second (non-final levels)
+        setTimeout(() => {
+          try {
+            if (level < MAX_LEVEL) {
+              gameSuccessPlayer.replace(gameSuccessSoundFile);
+              gameSuccessPlayer.play();
+            }
+          } catch (e) {}
+        }, 1000);
+
         try {
           if (
             optionAnimRefs.current[selected.id] &&
@@ -195,12 +217,12 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         Animated.sequence([
           Animated.timing(feedbackAnim, {
             toValue: 1,
-            duration: 150,
+            duration: 2000,
             useNativeDriver: true,
           }),
           Animated.timing(feedbackAnim, {
             toValue: 0,
-            duration: 300,
+            duration: 1900,
             useNativeDriver: true,
           }),
         ]).start();
@@ -216,7 +238,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
               return prev;
             }
           });
-        }, 800);
+        }, 2500);
       } else {
         // wrong feedback
         setShowWrongOverlay(true);
@@ -247,6 +269,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       gameOver,
       wrongPlayer,
       gameSuccessPlayer,
+      playAnimalName,
       isCorrect,
     ]
   );
