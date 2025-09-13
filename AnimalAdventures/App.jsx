@@ -3,6 +3,7 @@ import { Animated } from 'react-native';
 import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
+import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 
 export default function App() {
   const [currentMode, setCurrentMode] = useState(null);
@@ -45,6 +46,13 @@ export default function App() {
   } else if (currentMode === 'guess') {
     content = (
       <GuessAnimalGame
+        currentLanguage={currentLanguage}
+        onBackToMenu={handleBackToMenu}
+      />
+    );
+  } else if (currentMode === 'memory') {
+    content = (
+      <MemoryAnimalGame
         currentLanguage={currentLanguage}
         onBackToMenu={handleBackToMenu}
       />

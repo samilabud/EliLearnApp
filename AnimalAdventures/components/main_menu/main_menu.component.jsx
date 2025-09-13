@@ -163,6 +163,38 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
                     : '¡Pon a prueba tu conocimiento!'}
                 </Text>
               </TouchableOpacity>
+
+              {/* Mode 3: Memory Game */}
+              <TouchableOpacity
+                style={styles.modeButton}
+                onPress={() => onModeSelect('memory')}
+              >
+                <View style={styles.modeIconContainer}>
+                  <LottieView
+                    source={require('../../assets/animations/icons/memory_icon.json')}
+                    autoPlay
+                    loop
+                    resizeMode="contain"
+                    style={{ width: 90, height: 90 }}
+                    autoSize={false}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.modeTitle,
+                    fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                  ]}
+                >
+                  {currentLanguage === 'en'
+                    ? 'Train Your Memory'
+                    : 'Entrena tu Memoria'}
+                </Text>
+                <Text style={styles.modeDescription}>
+                  {currentLanguage === 'en'
+                    ? 'Find matching animal pairs!'
+                    : '¡Encuentra parejas de animales!'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </Animated.View>
