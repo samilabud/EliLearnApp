@@ -30,7 +30,7 @@ AnimalAdventures/
 ```
 
 ### New Configuration Files
-- **`.eslintrc.js`**: Modern ESLint configuration with React Native rules
+- **`eslint.config.js`**: ESLint flat configuration with React Native rules
 - **`.prettierrc`**: Prettier formatting rules
 - **`.gitignore`**: Comprehensive ignore patterns
 - **`babel.config.js`**: Updated with module aliases

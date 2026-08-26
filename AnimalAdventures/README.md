@@ -20,7 +20,7 @@ An educational React Native app for learning about animals, built with Expo and 
 ## 🛠 Tech Stack
 
 - **Framework**: React Native 0.81.0
-- **Expo**: SDK 53
+- **Expo**: SDK 57
 - **Navigation**: React Navigation 7
 - **State Management**: React Hooks
 - **Styling**: Styled Components 6
@@ -79,7 +79,7 @@ AnimalAdventures/
 │   └── utility/          # Utility components
 ├── android/               # Android-specific code
 ├── ios/                   # iOS-specific code
-├── App.js                 # Main app component
+├── App.jsx                # Main app component
 ├── index.js              # Entry point
 └── package.json          # Dependencies and scripts
 ```
@@ -100,7 +100,7 @@ AnimalAdventures/
 
 ## 🔧 Configuration Files
 
-- `.eslintrc.js` - ESLint configuration
+- `eslint.config.js` - ESLint configuration (flat config)
 - `.prettierrc` - Prettier formatting rules
 - `tsconfig.json` - TypeScript configuration
 - `babel.config.js` - Babel configuration

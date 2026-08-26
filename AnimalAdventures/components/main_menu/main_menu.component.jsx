@@ -9,7 +9,7 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
@@ -53,7 +53,6 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   }
 
   return (
-    <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
         <StatusBar style="auto" />
 
@@ -199,7 +198,6 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
-    </SafeAreaProvider>
   );
 }
 

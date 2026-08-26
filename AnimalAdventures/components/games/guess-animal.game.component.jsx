@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
@@ -19,6 +20,7 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 const MAX_LEVEL = 8;
 
 export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
+  const insets = useSafeAreaInsets();
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   const [level, setLevel] = useState(1);
   const [targetAnimal, setTargetAnimal] = useState(null);
@@ -298,7 +300,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       <AmbientBackground />
 
       {/* Top controls */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <Text style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}>
           {currentLanguage === 'en' ? 'Level' : 'Nivel'} {level}/{MAX_LEVEL}
         </Text>
@@ -337,7 +339,12 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       </View>
 
       {/* Options grid */}
-      <View style={styles.optionsContainer}>
+      <View
+        style={[
+          styles.optionsContainer,
+          { paddingBottom: Math.max(60, insets.bottom + 24) },
+        ]}
+      >
         {options.map(opt => (
           <TouchableOpacity
             key={opt.id}
@@ -477,7 +484,6 @@ const styles = StyleSheet.create({
   },
   topBar: {
     width: '100%',
-    paddingTop: 34,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',

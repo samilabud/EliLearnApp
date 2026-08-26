@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
@@ -20,6 +21,7 @@ const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 car
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
 
 export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
+  const insets = useSafeAreaInsets();
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   const [level, setLevel] = useState(1);
   const [cards, setCards] = useState([]);
@@ -249,7 +251,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       <AmbientBackground />
 
       {/* Top controls */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <View style={styles.gameInfo}>
           <Text style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}>
             {currentLanguage === 'en' ? 'Memory Game' : 'Juego de Memoria'}
@@ -285,7 +287,12 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       </View>
 
       {/* Cards grid */}
-      <View style={styles.gridContainer}>
+      <View
+        style={[
+          styles.gridContainer,
+          { paddingBottom: Math.max(60, insets.bottom + 24) },
+        ]}
+      >
         {cards.map((card) => (
           <TouchableOpacity
             key={card.position}
@@ -396,7 +403,6 @@ const styles = StyleSheet.create({
   },
   topBar: {
     width: '100%',
-    paddingTop: 34,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',

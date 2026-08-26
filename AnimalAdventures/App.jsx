@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
@@ -60,7 +61,9 @@ export default function App() {
   }
 
   return (
-    <Animated.View style={{ flex: 1, opacity: fade }}>{content}</Animated.View>
+    <SafeAreaProvider>
+      <Animated.View style={{ flex: 1, opacity: fade }}>{content}</Animated.View>
+    </SafeAreaProvider>
   );
 }
 
