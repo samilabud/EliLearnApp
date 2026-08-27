@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /*
-  Bump app versions for Android + Expo config.
+  Bump app versions in the Expo config (CNG / prebuild project).
 
   Usage examples:
     - Patch bump (default):        node scripts/bump-version.js
@@ -18,8 +18,10 @@
     - Updates:
         package.json: version
         app.json: expo.version, ios.buildNumber (string), android.versionCode (int)
-        android/app/build.gradle: versionName (string), versionCode (int)
-    - iOS native Info.plist is not modified by default.
+    - This project uses Expo Prebuild (CNG): the android/ and ios/ folders are
+      generated and gitignored, so native files are never edited here. Gradle's
+      versionName/versionCode and the iOS Info.plist are derived from app.json
+      by `expo prebuild`.
 */
 
 const fs = require('fs');
@@ -28,7 +30,6 @@ const path = require('path');
 const rootDir = path.resolve(__dirname, '..');
 const packageJsonPath = path.join(rootDir, 'package.json');
 const appJsonPath = path.join(rootDir, 'app.json');
-const androidGradlePath = path.join(rootDir, 'android', 'app', 'build.gradle');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -101,22 +102,6 @@ function bumpSemver(version, type) {
   return formatSemver(v);
 }
 
-function getAndroidVersionCodeFromGradle(gradleContent) {
-  const m = gradleContent.match(/versionCode\s+(\d+)/);
-  return m ? Number(m[1]) : null;
-}
-
-function updateGradleVersion(gradleContent, { versionName, versionCode }) {
-  let updated = gradleContent;
-  if (versionCode != null) {
-    updated = updated.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
-  }
-  if (versionName) {
-    updated = updated.replace(/versionName\s+"[^"]+"/, `versionName "${versionName}"`);
-  }
-  return updated;
-}
-
 function main() {
   const args = parseArgs(process.argv);
 
@@ -126,24 +111,14 @@ function main() {
 
   const pkg = readJson(packageJsonPath);
   const app = readJson(appJsonPath);
-  const gradle = readText(androidGradlePath);
 
   const currentSemver = pkg.version;
   const nextSemver = args.set ? args.set : bumpSemver(currentSemver, args.type);
 
-  const currentAndroidCode = getAndroidVersionCodeFromGradle(gradle) ?? app?.expo?.android?.versionCode ?? 1;
+  const currentAndroidCode = app?.expo?.android?.versionCode ?? 1;
   const nextAndroidCode = args.code != null ? Number(args.code) : Number(currentAndroidCode) + 1;
 
   const changes = [];
-
-  if (!args.iosOnly) {
-    // Update Android Gradle
-    const nextGradle = updateGradleVersion(gradle, { versionName: nextSemver, versionCode: nextAndroidCode });
-    if (nextGradle !== gradle) {
-      changes.push({ file: androidGradlePath, description: `versionName ${currentSemver} -> ${nextSemver}, versionCode ${currentAndroidCode} -> ${nextAndroidCode}` });
-      if (!args.dryRun) writeText(androidGradlePath, nextGradle);
-    }
-  }
 
   // Update package.json
   if (pkg.version !== nextSemver && !args.androidOnly) {

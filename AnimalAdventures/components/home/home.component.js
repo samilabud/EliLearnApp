@@ -10,7 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import AnimalScreen from '../animals/animal.screen.component.jsx';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
 import SideMenu from '../side_menu/side_menu.component';
@@ -38,7 +38,7 @@ function HomeScreen({ currentLanguage, onBackToMenu }) {
   }, [isLoading, fadeAnim]);
 
   return (
-    <SafeAreaProvider>
+    <>
       {isLoading ? (
         <View style={{ flex: 1, backgroundColor: '#BD0000' }}>
           <MySplashScreen />
@@ -74,7 +74,7 @@ function HomeScreen({ currentLanguage, onBackToMenu }) {
           <StatusBar style="auto" />
         </SafeAreaView>
       )}
-    </SafeAreaProvider>
+    </>
   );
 }
 
