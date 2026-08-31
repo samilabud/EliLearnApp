@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
-import { MySplashScreen } from '../utility/my-splash-screen.component';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
@@ -42,27 +41,17 @@ const MODES = [
 ];
 
 function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
-  const [isLoading, setIsLoading] = useState(true);
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
-  function delay(time) {
-    return new Promise(resolve => setTimeout(resolve, time));
-  }
-
+  // The launch splash now lives in App, so this screen just fades itself in.
   useEffect(() => {
-    delay(4000).then(() => setIsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isLoading, fadeAnim]);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   const onLanguageToggle = () => {
     tapFeedback();
@@ -73,15 +62,6 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
     selectFeedback();
     onModeSelect(mode);
   };
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#BD0000' }}>
-        <MySplashScreen />
-        <StatusBar style="auto" />
-      </View>
-    );
-  }
 
   return (
       <SafeAreaView style={styles.container}>
