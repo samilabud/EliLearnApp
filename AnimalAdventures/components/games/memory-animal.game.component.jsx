@@ -16,6 +16,12 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { t, MIN_TOUCH_TARGET } from '../../constants';
+import {
+  tapFeedback,
+  successFeedback,
+  celebrationFeedback,
+} from '../../utils/haptics';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -109,6 +115,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     
     if (matchedPairs.length === pairsNeeded && !gameComplete && !showLevelComplete) {
       // Level completed
+      celebrationFeedback();
       setShowLevelComplete(true);
       
       if (level < MAX_LEVEL) {
@@ -156,6 +163,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     }
 
     // Play card flip sound
+    tapFeedback();
     await playCardFlipSound(card);
 
     // Flip the card
@@ -183,6 +191,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
       if (isMatch) {
         // Cards match
+        successFeedback();
         setMatchedPairs(prev => [...prev, firstCard.id]);
         setCards(prevCards =>
           prevCards.map(c =>
@@ -240,6 +249,16 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     setConfettiKey(prev => prev + 1);
   }, []);
 
+  const handleReset = useCallback(() => {
+    tapFeedback();
+    onReset();
+  }, [onReset]);
+
+  const handleBackToMenu = useCallback(() => {
+    tapFeedback();
+    onBackToMenu();
+  }, [onBackToMenu]);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -254,24 +273,34 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
         <View style={styles.gameInfo}>
           <Text style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}>
-            {currentLanguage === 'en' ? 'Memory Game' : 'Juego de Memoria'}
+            {t(currentLanguage, 'memoryGame')}
           </Text>
           <Text style={styles.levelText}>
-            {currentLanguage === 'en' ? 'Level' : 'Nivel'} {level}/{MAX_LEVEL}
+            {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
           </Text>
           <Text style={styles.movesText}>
-            {currentLanguage === 'en' ? 'Moves' : 'Movimientos'}: {moves}
+            {t(currentLanguage, 'moves')}: {moves}
           </Text>
         </View>
         <View style={styles.topActions}>
-          <TouchableOpacity onPress={onReset} style={styles.actionButton}>
-            <Text style={styles.actionText}>
-              {currentLanguage === 'en' ? 'Reset' : 'Reiniciar'}
-            </Text>
+          <TouchableOpacity
+            onPress={handleReset}
+            style={styles.actionButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+          >
+            <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onBackToMenu} style={styles.actionButton}>
+          <TouchableOpacity
+            onPress={handleBackToMenu}
+            style={styles.actionButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+          >
             <Text style={styles.actionText}>
-              {currentLanguage === 'en' ? 'Main Menu' : 'Menú'}
+              {t(currentLanguage, 'mainMenu')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -280,9 +309,9 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       {/* Game instructions */}
       <View style={styles.instructionsContainer}>
         <Text style={[styles.instructionsText, { fontFamily: 'Bangers_400Regular' }]}>
-          {currentLanguage === 'en'
-            ? `Find matching animal pairs! (${getCardsPerLevel(level)} cards)`
-            : `¡Encuentra parejas de animales! (${getCardsPerLevel(level)} cartas)`}
+          {t(currentLanguage, 'findPairs', {
+            count: getCardsPerLevel(level),
+          })}
         </Text>
       </View>
 
@@ -299,6 +328,19 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
             style={styles.cardContainer}
             onPress={() => handleCardPress(card)}
             disabled={isProcessing}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isProcessing }}
+            accessibilityLabel={
+              card.isFlipped || card.isMatched
+                ? t(currentLanguage, 'a11yMemoryCardRevealed', {
+                    animal:
+                      currentLanguage === 'en' ? card.name : card.spanish_name,
+                  })
+                : t(currentLanguage, 'a11yMemoryCard', {
+                    number: card.position + 1,
+                  })
+            }
           >
             <View style={styles.card}>
               {card.isFlipped || card.isMatched ? (
@@ -332,12 +374,10 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               { fontFamily: 'Bangers_400Regular' },
             ]}
           >
-            {currentLanguage === 'en' ? 'Level Complete!' : '¡Nivel Completado!'}
+            {t(currentLanguage, 'levelComplete')}
           </Text>
           <Text style={styles.levelCompleteSubtitle}>
-            {currentLanguage === 'en'
-              ? `Moving to level ${level + 1}...`
-              : `Pasando al nivel ${level + 1}...`}
+            {t(currentLanguage, 'movingToLevel', { level: level + 1 })}
           </Text>
           <ConfettiCannon
             key={`level-${level}-complete`}
@@ -359,12 +399,10 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               { fontFamily: 'Bangers_400Regular' },
             ]}
           >
-            {currentLanguage === 'en' ? 'Amazing!' : '¡Increíble!'}
+            {t(currentLanguage, 'amazing')}
           </Text>
           <Text style={styles.completionSubtitle}>
-            {currentLanguage === 'en'
-              ? 'You completed all memory levels!'
-              : '¡Completaste todos los niveles de memoria!'}
+            {t(currentLanguage, 'completedAllMemoryLevels')}
           </Text>
           <ConfettiCannon
             key={`memory-${confettiKey}-complete`}
@@ -375,17 +413,26 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
             origin={{ x: 0, y: 0 }}
           />
           <View style={styles.completionActions}>
-            <TouchableOpacity onPress={onReset} style={styles.bigButton}>
+            <TouchableOpacity
+              onPress={handleReset}
+              style={styles.bigButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+            >
               <Text style={styles.bigButtonText}>
-                {currentLanguage === 'en' ? 'Play Again' : 'Jugar de Nuevo'}
+                {t(currentLanguage, 'playAgain')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={onBackToMenu}
+              onPress={handleBackToMenu}
               style={styles.secondaryButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
               <Text style={styles.secondaryButtonText}>
-                {currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}
+                {t(currentLanguage, 'mainMenuFull')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -438,8 +485,10 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
@@ -447,6 +496,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 18,
   },
   instructionsContainer: {
     paddingTop: 16,

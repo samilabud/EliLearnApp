@@ -13,6 +13,8 @@ import LottieView from 'lottie-react-native';
 import { animalList } from './animal.list';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
+import { t } from '../../constants';
+import { tapFeedback } from '../../utils/haptics';
 
 const AnimalScreen = ({ currentLanguage }) => {
   const soundPlayer = useAudioPlayer(null);
@@ -27,6 +29,7 @@ const AnimalScreen = ({ currentLanguage }) => {
   });
 
   const resetAndPlayAnim = (playCurrent, soundUrl, voiceUrl) => {
+    tapFeedback();
     if (currentAnimation && typeof currentAnimation.reset === 'function') {
       try {
         currentAnimation.reset();
@@ -102,6 +105,14 @@ const AnimalScreen = ({ currentLanguage }) => {
                       : animatedImage.spanish_voice
                   )
                 }
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t(currentLanguage, 'a11yAnimalCard', {
+                  animal:
+                    currentLanguage === 'en'
+                      ? animatedImage.name
+                      : animatedImage.spanish_name,
+                })}
               >
                 <LottieView
                   autoPlay={false}
@@ -113,7 +124,7 @@ const AnimalScreen = ({ currentLanguage }) => {
                   style={styles.animation}
                 />
                 <View style={styles.animationBackground} />
-                <Text style={styles.animationName}>
+                <Text style={styles.animationName} accessible={false}>
                   {currentLanguage === 'en'
                     ? animatedImage.name
                     : animatedImage.spanish_name}
@@ -133,6 +144,7 @@ const styles = StyleSheet.create({
   },
   animationName: {
     fontFamily: 'Bangers_400Regular',
+    fontSize: 18,
     position: 'absolute',
     top: Platform.OS === 'ios' ? 91 : 116,
     zIndex: 3,
@@ -157,7 +169,7 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '26%',
-    height: 120,
+    height: 132,
     marginTop: '7%',
     justifyContent: 'flex-end',
     alignItems: 'center',

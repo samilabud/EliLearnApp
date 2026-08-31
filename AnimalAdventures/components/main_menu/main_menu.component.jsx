@@ -15,6 +15,31 @@ import LottieView from 'lottie-react-native';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
+import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
+import { tapFeedback, selectFeedback } from '../../utils/haptics';
+
+// The three cards differ only by icon and copy, so they are described once
+// here and rendered in a loop. Keeps their accessibility wiring identical.
+const MODES = [
+  {
+    key: 'learn',
+    icon: require('../../assets/animations/icons/learn_icon.json'),
+    titleKey: 'modeLearnTitle',
+    descriptionKey: 'modeLearnDescription',
+  },
+  {
+    key: 'guess',
+    icon: require('../../assets/animations/icons/guess_icon.json'),
+    titleKey: 'modeGuessTitle',
+    descriptionKey: 'modeGuessDescription',
+  },
+  {
+    key: 'memory',
+    icon: require('../../assets/animations/icons/memory_icon.json'),
+    titleKey: 'modeMemoryTitle',
+    descriptionKey: 'modeMemoryDescription',
+  },
+];
 
 function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   const [isLoading, setIsLoading] = useState(true);
@@ -40,7 +65,13 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   }, [isLoading, fadeAnim]);
 
   const onLanguageToggle = () => {
+    tapFeedback();
     setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
+  };
+
+  const handleModeSelect = mode => {
+    selectFeedback();
+    onModeSelect(mode);
   };
 
   if (isLoading) {
@@ -61,10 +92,15 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
           <Image
             source={require('../../assets/logo/logoEliLearn.png')}
             style={styles.logo}
+            accessible={false}
+            accessibilityRole="image"
           />
           <TouchableOpacity
             style={styles.languageToggle}
             onPress={onLanguageToggle}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yLanguageToggle')}
           >
             <MaterialIcons name="translate" size={28} color="white" />
             <Text style={styles.languageText}>
@@ -85,115 +121,54 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
                 fontsLoaded && { fontFamily: 'Bangers_400Regular' },
               ]}
             >
-              {currentLanguage === 'en'
-                ? 'Animal Adventures'
-                : 'Aventuras de Animales'}
+              {t(currentLanguage, 'appTitle')}
             </Text>
 
             <Text style={styles.subtitle}>
-              {currentLanguage === 'en'
-                ? 'Choose your adventure!'
-                : '¡Elige tu aventura!'}
+              {t(currentLanguage, 'chooseAdventure')}
             </Text>
 
             {/* Mode Selection Buttons */}
             <View style={styles.modeContainer}>
               <AmbientBackground />
-              {/* Mode 1: Learn Animal Sounds and Names */}
-              <TouchableOpacity
-                style={styles.modeButton}
-                onPress={() => onModeSelect('learn')}
-              >
-                <View style={styles.modeIconContainer}>
-                  <LottieView
-                    source={require('../../assets/animations/icons/learn_icon.json')}
-                    autoPlay
-                    loop
-                    resizeMode="contain"
-                    style={{ width: 90, height: 90 }}
-                    autoSize={false}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.modeTitle,
-                    fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                  ]}
-                >
-                  {currentLanguage === 'en'
-                    ? 'Learn Animal Sounds & Names'
-                    : 'Aprende Sonidos y Nombres'}
-                </Text>
-                <Text style={styles.modeDescription}>
-                  {currentLanguage === 'en'
-                    ? 'Discover animals and their sounds'
-                    : 'Descubre animales y sus sonidos'}
-                </Text>
-              </TouchableOpacity>
+              {MODES.map(mode => {
+                const title = t(currentLanguage, mode.titleKey);
+                const description = t(currentLanguage, mode.descriptionKey);
 
-              {/* Mode 2: Guessing Game */}
-              <TouchableOpacity
-                style={styles.modeButton}
-                onPress={() => onModeSelect('guess')}
-              >
-                <View style={styles.modeIconContainer}>
-                  <LottieView
-                    source={require('../../assets/animations/icons/guess_icon.json')}
-                    autoPlay
-                    loop
-                    resizeMode="contain"
-                    style={{ width: 90, height: 90 }}
-                    autoSize={false}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.modeTitle,
-                    fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                  ]}
-                >
-                  {currentLanguage === 'en'
-                    ? 'Guess the Animal'
-                    : 'Adivina el Animal'}
-                </Text>
-                <Text style={styles.modeDescription}>
-                  {currentLanguage === 'en'
-                    ? 'Test your knowledge!'
-                    : '¡Pon a prueba tu conocimiento!'}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Mode 3: Memory Game */}
-              <TouchableOpacity
-                style={styles.modeButton}
-                onPress={() => onModeSelect('memory')}
-              >
-                <View style={styles.modeIconContainer}>
-                  <LottieView
-                    source={require('../../assets/animations/icons/memory_icon.json')}
-                    autoPlay
-                    loop
-                    resizeMode="contain"
-                    style={{ width: 90, height: 90 }}
-                    autoSize={false}
-                  />
-                </View>
-                <Text
-                  style={[
-                    styles.modeTitle,
-                    fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                  ]}
-                >
-                  {currentLanguage === 'en'
-                    ? 'Train Your Memory'
-                    : 'Entrena tu Memoria'}
-                </Text>
-                <Text style={styles.modeDescription}>
-                  {currentLanguage === 'en'
-                    ? 'Find matching animal pairs!'
-                    : '¡Encuentra parejas de animales!'}
-                </Text>
-              </TouchableOpacity>
+                return (
+                  <TouchableOpacity
+                    key={mode.key}
+                    style={styles.modeButton}
+                    onPress={() => handleModeSelect(mode.key)}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
+                      title,
+                      description,
+                    })}
+                  >
+                    <View style={styles.modeIconContainer}>
+                      <LottieView
+                        source={mode.icon}
+                        autoPlay
+                        loop
+                        resizeMode="contain"
+                        style={{ width: 90, height: 90 }}
+                        autoSize={false}
+                      />
+                    </View>
+                    <Text
+                      style={[
+                        styles.modeTitle,
+                        fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                      ]}
+                    >
+                      {title}
+                    </Text>
+                    <Text style={styles.modeDescription}>{description}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
         </Animated.View>
@@ -224,6 +199,9 @@ const styles = StyleSheet.create({
   languageToggle: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: LARGE_TOUCH_TARGET,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 15,
     paddingVertical: 8,
@@ -233,7 +211,7 @@ const styles = StyleSheet.create({
   },
   languageText: {
     marginLeft: 8,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
   },
@@ -281,10 +259,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFD700',
   },
-  underConstruction: {
-    opacity: 0.8,
-    backgroundColor: '#F5F5F5',
-  },
   modeIconContainer: {
     marginBottom: 15,
   },
@@ -297,24 +271,9 @@ const styles = StyleSheet.create({
   },
   modeDescription: {
     fontSize: 18,
-    color: '#666',
+    color: '#5A5A5A',
     textAlign: 'center',
-    lineHeight: 22,
-  },
-  constructionBadge: {
-    backgroundColor: '#FF9800',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 15,
-    marginTop: 15,
-    borderWidth: 2,
-    borderColor: '#E65100',
-  },
-  constructionText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    lineHeight: 24,
   },
 });
 

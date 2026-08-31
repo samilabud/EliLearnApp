@@ -16,6 +16,12 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
+import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
+import {
+  tapFeedback,
+  successFeedback,
+  errorFeedback,
+} from '../../utils/haptics';
 
 const MAX_LEVEL = 8;
 
@@ -191,6 +197,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       if (gameOver || showComplete || isCorrect) return;
       const correct = selected.id === targetAnimal.id;
       if (correct) {
+        successFeedback();
         setIsCorrect(true);
         setWrongCount(0);
 
@@ -243,6 +250,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         }, 2500);
       } else {
         // wrong feedback
+        errorFeedback();
         setShowWrongOverlay(true);
         setTimeout(() => setShowWrongOverlay(false), 900);
         try {
@@ -285,6 +293,21 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     pickRound();
   }, [pickRound]);
 
+  const handleReset = useCallback(() => {
+    tapFeedback();
+    onReset();
+  }, [onReset]);
+
+  const handleBackToMenu = useCallback(() => {
+    tapFeedback();
+    onBackToMenu();
+  }, [onBackToMenu]);
+
+  const handlePlayPrompt = useCallback(() => {
+    tapFeedback();
+    playPrompt();
+  }, [playPrompt]);
+
   if (!fontsLoaded) return null;
   const promptScale = promptPulse.interpolate({
     inputRange: [0, 1],
@@ -301,18 +324,35 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
       {/* Top controls */}
       <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}>
-          {currentLanguage === 'en' ? 'Level' : 'Nivel'} {level}/{MAX_LEVEL}
+        <Text
+          style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
+          accessibilityRole="header"
+          accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
+            level,
+            max: MAX_LEVEL,
+          })}
+        >
+          {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
         </Text>
         <View style={styles.topActions}>
-          <TouchableOpacity onPress={onReset} style={styles.actionButton}>
-            <Text style={styles.actionText}>
-              {currentLanguage === 'en' ? 'Reset' : 'Reiniciar'}
-            </Text>
+          <TouchableOpacity
+            onPress={handleReset}
+            style={styles.actionButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+          >
+            <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onBackToMenu} style={styles.actionButton}>
+          <TouchableOpacity
+            onPress={handleBackToMenu}
+            style={styles.actionButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+          >
             <Text style={styles.actionText}>
-              {currentLanguage === 'en' ? 'Main Menu' : 'Menú'}
+              {t(currentLanguage, 'mainMenu')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -321,19 +361,23 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       {/* Prompt */}
       <View style={styles.promptContainer}>
         <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-          <TouchableOpacity onPress={playPrompt} style={styles.promptButton}>
+          <TouchableOpacity
+            onPress={handlePlayPrompt}
+            style={styles.promptButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
+          >
             <Text
               style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}
             >
-              {currentLanguage === 'en' ? 'Play Sound' : 'Reproducir Sonido'}
+              {t(currentLanguage, 'playSound')}
             </Text>
           </TouchableOpacity>
         </Animated.View>
         {!!targetAnimal && (
           <Text style={styles.helperText}>
-            {currentLanguage === 'en'
-              ? 'Which animal makes this sound?'
-              : '¿Qué animal hace este sonido?'}
+            {t(currentLanguage, 'whichAnimal')}
           </Text>
         )}
       </View>
@@ -350,6 +394,11 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
             key={opt.id}
             style={styles.optionCard}
             onPress={() => onSelect(opt)}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yAnswerOption', {
+              animal: currentLanguage === 'en' ? opt.name : opt.spanish_name,
+            })}
           >
             <View style={styles.optionInner}>
               <View style={styles.animationBackground} />
@@ -404,12 +453,10 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
               { fontFamily: 'Bangers_400Regular' },
             ]}
           >
-            {currentLanguage === 'en' ? 'Amazing!' : '¡Increíble!'}
+            {t(currentLanguage, 'amazing')}
           </Text>
           <Text style={styles.completionSubtitle}>
-            {currentLanguage === 'en'
-              ? 'You finished all levels!'
-              : '¡Terminaste todos los niveles!'}
+            {t(currentLanguage, 'finishedAllLevels')}
           </Text>
           <ConfettiCannon
             key={`final-${confettiKey}-final`}
@@ -421,18 +468,27 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           />
           <View style={styles.completionActions}>
             <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-              <TouchableOpacity onPress={onReset} style={styles.bigButton}>
+              <TouchableOpacity
+                onPress={handleReset}
+                style={styles.bigButton}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+              >
                 <Text style={styles.bigButtonText}>
-                  {currentLanguage === 'en' ? 'Restart' : 'Reiniciar'}
+                  {t(currentLanguage, 'restart')}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
             <TouchableOpacity
-              onPress={onBackToMenu}
+              onPress={handleBackToMenu}
               style={styles.secondaryButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
               <Text style={styles.secondaryButtonText}>
-                {currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}
+                {t(currentLanguage, 'mainMenuFull')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -451,22 +507,31 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
             ✖️
           </Text>
           <Text style={styles.completionSubtitle}>
-            {currentLanguage === 'en' ? 'Game Over' : 'Juego Terminado'}
+            {t(currentLanguage, 'gameOver')}
           </Text>
           <View style={styles.completionActions}>
             <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-              <TouchableOpacity onPress={onReset} style={styles.bigButton}>
+              <TouchableOpacity
+                onPress={handleReset}
+                style={styles.bigButton}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+              >
                 <Text style={styles.bigButtonText}>
-                  {currentLanguage === 'en' ? 'Try Again' : 'Intentar de Nuevo'}
+                  {t(currentLanguage, 'tryAgain')}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
             <TouchableOpacity
-              onPress={onBackToMenu}
+              onPress={handleBackToMenu}
               style={styles.secondaryButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
               <Text style={styles.secondaryButtonText}>
-                {currentLanguage === 'en' ? 'Main Menu' : 'Menú Principal'}
+                {t(currentLanguage, 'mainMenuFull')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -504,8 +569,10 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
@@ -513,6 +580,7 @@ const styles = StyleSheet.create({
   actionText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 18,
   },
   promptContainer: {
     paddingTop: 8,
@@ -521,9 +589,11 @@ const styles = StyleSheet.create({
   },
   promptButton: {
     backgroundColor: '#FFD700',
-    borderRadius: 24,
-    paddingHorizontal: 28,
-    paddingVertical: 10,
+    borderRadius: 30,
+    minHeight: LARGE_TOUCH_TARGET,
+    justifyContent: 'center',
+    paddingHorizontal: 36,
+    paddingVertical: 12,
     borderWidth: 3,
     borderColor: '#ffffff',
   },

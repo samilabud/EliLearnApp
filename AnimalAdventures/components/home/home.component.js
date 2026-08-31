@@ -14,9 +14,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { MySplashScreen } from '../utility/my-splash-screen.component';
 import SideMenu from '../side_menu/side_menu.component';
+import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { tapFeedback } from '../../utils/haptics';
 
 function HomeScreen({ currentLanguage, onBackToMenu }) {
   const [isLoading, setIsLoading] = useState(true);
+
+  const handleBack = () => {
+    tapFeedback();
+    onBackToMenu();
+  };
+
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
   function delay(time) {
@@ -47,16 +55,24 @@ function HomeScreen({ currentLanguage, onBackToMenu }) {
       ) : (
         <SafeAreaView style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={onBackToMenu}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yBackButton')}
+            >
               <MaterialIcons name="arrow-back" size={28} color="white" />
               <Text style={styles.backButtonText}>
-                {currentLanguage === 'en' ? 'Back' : 'Atrás'}
+                {t(currentLanguage, 'back')}
               </Text>
             </TouchableOpacity>
 
             <Image
               source={require('../../assets/logo/logoEliLearn.png')}
               style={styles.logo}
+              accessible={false}
+              accessibilityRole="image"
             />
 
             <SideMenu
@@ -97,6 +113,7 @@ const styles = StyleSheet.create({
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: MIN_TOUCH_TARGET,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 18,
     paddingVertical: 10,
@@ -106,7 +123,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     marginLeft: 8,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
   },
