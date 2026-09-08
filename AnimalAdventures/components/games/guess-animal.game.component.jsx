@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ImageBackground,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   Platform,
   Animated,
@@ -23,10 +25,30 @@ import {
   errorFeedback,
 } from '../../utils/haptics';
 
+const GRID_PADDING_H = 16;
+const OPTION_GAP = 12;
+const PORTRAIT_COLUMNS = 3;
+const LANDSCAPE_COLUMNS = 6;
+// The answer artwork is a fixed 100dp square, so cards must never shrink past it.
+const MIN_OPTION_SIZE = 104;
+
 const MAX_LEVEL = 8;
 
 export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const insets = useSafeAreaInsets();
+  // Android 16 ignores the portrait lock on large screens, so the answer grid
+  // has to lay out sensibly at any aspect ratio. A wide screen gets one row of
+  // six instead of two rows of stretched cards.
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const optionColumns =
+    windowWidth > windowHeight ? LANDSCAPE_COLUMNS : PORTRAIT_COLUMNS;
+  const optionSize = Math.max(
+    MIN_OPTION_SIZE,
+    Math.floor(
+      (windowWidth - GRID_PADDING_H * 2 - OPTION_GAP * optionColumns) /
+        optionColumns
+    )
+  );
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   const [level, setLevel] = useState(1);
   const [targetAnimal, setTargetAnimal] = useState(null);
@@ -322,98 +344,101 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     >
       <AmbientBackground />
 
-      {/* Top controls */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <Text
-          style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
-          accessibilityRole="header"
-          accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
-            level,
-            max: MAX_LEVEL,
-          })}
-        >
-          {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
-        </Text>
-        <View style={styles.topActions}>
-          <TouchableOpacity
-            onPress={handleReset}
-            style={styles.actionButton}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-          >
-            <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleBackToMenu}
-            style={styles.actionButton}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-          >
-            <Text style={styles.actionText}>
-              {t(currentLanguage, 'mainMenu')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Prompt */}
-      <View style={styles.promptContainer}>
-        <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-          <TouchableOpacity
-            onPress={handlePlayPrompt}
-            style={styles.promptButton}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
-          >
-            <Text
-              style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}
-            >
-              {t(currentLanguage, 'playSound')}
-            </Text>
-          </TouchableOpacity>
-        </Animated.View>
-        {!!targetAnimal && (
-          <Text style={styles.helperText}>
-            {t(currentLanguage, 'whichAnimal')}
-          </Text>
-        )}
-      </View>
-
-      {/* Options grid */}
-      <View
-        style={[
-          styles.optionsContainer,
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={[
+          styles.scrollContent,
           { paddingBottom: Math.max(60, insets.bottom + 24) },
         ]}
       >
-        {options.map(opt => (
-          <TouchableOpacity
-            key={opt.id}
-            style={styles.optionCard}
-            onPress={() => onSelect(opt)}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yAnswerOption', {
-              animal: currentLanguage === 'en' ? opt.name : opt.spanish_name,
+        {/* Top controls */}
+        <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+          <Text
+            style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
+            accessibilityRole="header"
+            accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
+              level,
+              max: MAX_LEVEL,
             })}
           >
-            <View style={styles.optionInner}>
-              <View style={styles.animationBackground} />
-              <LottieView
-                autoPlay={false}
-                loop={false}
-                ref={el => (optionAnimRefs.current[opt.id] = el)}
-                resizeMode="contain"
-                source={opt.animation_path}
-                style={styles.animation}
-              />
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+            {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
+          </Text>
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              onPress={handleReset}
+              style={styles.actionButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+            >
+              <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleBackToMenu}
+              style={styles.actionButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+            >
+              <Text style={styles.actionText}>
+                {t(currentLanguage, 'mainMenu')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Prompt */}
+        <View style={styles.promptContainer}>
+          <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+            <TouchableOpacity
+              onPress={handlePlayPrompt}
+              style={styles.promptButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
+            >
+              <Text
+                style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}
+              >
+                {t(currentLanguage, 'playSound')}
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+          {!!targetAnimal && (
+            <Text style={styles.helperText}>
+              {t(currentLanguage, 'whichAnimal')}
+            </Text>
+          )}
+        </View>
+
+        {/* Options grid */}
+        <View style={styles.optionsContainer}>
+          {options.map(opt => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { width: optionSize }]}
+              onPress={() => onSelect(opt)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yAnswerOption', {
+                animal: currentLanguage === 'en' ? opt.name : opt.spanish_name,
+              })}
+            >
+              <View style={styles.optionInner}>
+                <View style={styles.animationBackground} />
+                <LottieView
+                  autoPlay={false}
+                  loop={false}
+                  ref={el => (optionAnimRefs.current[opt.id] = el)}
+                  resizeMode="contain"
+                  source={opt.animation_path}
+                  style={styles.animation}
+                />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
       {/* Correct feedback + confetti */}
       {isCorrect && (
@@ -607,18 +632,24 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 20,
   },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   optionsContainer: {
+    flexGrow: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-evenly',
     alignContent: 'space-around',
     paddingTop: 6,
-    paddingBottom: 60,
+    paddingHorizontal: GRID_PADDING_H,
   },
   optionCard: {
-    width: '28%',
     height: 130,
-    marginTop: '7%',
+    marginTop: 20,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },

@@ -8,6 +8,7 @@ import {
   Image,
   Animated,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,6 +17,9 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
+
+const ICON_SIZE = { width: 90, height: 90 };
+const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
 
 // The three cards differ only by icon and copy, so they are described once
 // here and rendered in a loop. Keeps their accessibility wiring identical.
@@ -43,6 +47,11 @@ const MODES = [
 function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
+  // Stacked full-width cards give one card per screen on a landscape tablet,
+  // which Android 16 can force regardless of the manifest. Side by side keeps
+  // all three adventures reachable without scrolling.
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
 
   // The launch splash now lives in App, so this screen just fades itself in.
   useEffect(() => {
@@ -92,24 +101,33 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
         {/* Main Content */}
         <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              isLandscape && styles.contentLandscape,
+            ]}
             showsVerticalScrollIndicator={false}
           >
             <Text
               style={[
                 styles.title,
+                isLandscape && styles.titleLandscape,
                 fontsLoaded && { fontFamily: 'Bangers_400Regular' },
               ]}
             >
               {t(currentLanguage, 'appTitle')}
             </Text>
 
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, isLandscape && styles.subtitleLandscape]}>
               {t(currentLanguage, 'chooseAdventure')}
             </Text>
 
             {/* Mode Selection Buttons */}
-            <View style={styles.modeContainer}>
+            <View
+              style={[
+                styles.modeContainer,
+                isLandscape && styles.modeContainerLandscape,
+              ]}
+            >
               <AmbientBackground />
               {MODES.map(mode => {
                 const title = t(currentLanguage, mode.titleKey);
@@ -118,7 +136,10 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
                 return (
                   <TouchableOpacity
                     key={mode.key}
-                    style={styles.modeButton}
+                    style={[
+                      styles.modeButton,
+                      isLandscape && styles.modeButtonLandscape,
+                    ]}
                     onPress={() => handleModeSelect(mode.key)}
                     accessible={true}
                     accessibilityRole="button"
@@ -127,19 +148,25 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
                       description,
                     })}
                   >
-                    <View style={styles.modeIconContainer}>
+                    <View
+                      style={[
+                        styles.modeIconContainer,
+                        isLandscape && styles.modeIconContainerLandscape,
+                      ]}
+                    >
                       <LottieView
                         source={mode.icon}
                         autoPlay
                         loop
                         resizeMode="contain"
-                        style={{ width: 90, height: 90 }}
+                        style={isLandscape ? ICON_SIZE_LANDSCAPE : ICON_SIZE}
                         autoSize={false}
                       />
                     </View>
                     <Text
                       style={[
                         styles.modeTitle,
+                        isLandscape && styles.modeTitleLandscape,
                         fontsLoaded && { fontFamily: 'Bangers_400Regular' },
                       ]}
                     >
@@ -202,6 +229,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     paddingBottom: 24,
   },
+  contentLandscape: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
   contentWrapper: {
     flex: 1,
   },
@@ -215,6 +246,10 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 3, height: 3 },
     textShadowRadius: 6,
   },
+  titleLandscape: {
+    fontSize: 30,
+    marginBottom: 2,
+  },
   subtitle: {
     fontSize: 22,
     color: '#FFD700',
@@ -222,9 +257,18 @@ const styles = StyleSheet.create({
     marginBottom: 50,
     fontWeight: '600',
   },
+  subtitleLandscape: {
+    fontSize: 17,
+    marginBottom: 14,
+  },
   modeContainer: {
     width: '100%',
     gap: 30,
+  },
+  modeContainerLandscape: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 16,
   },
   modeButton: {
     backgroundColor: 'white',
@@ -239,8 +283,16 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFD700',
   },
+  modeButtonLandscape: {
+    flex: 1,
+    padding: 14,
+    justifyContent: 'center',
+  },
   modeIconContainer: {
     marginBottom: 15,
+  },
+  modeIconContainerLandscape: {
+    marginBottom: 6,
   },
   modeTitle: {
     fontSize: 24,
@@ -248,6 +300,12 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
     marginBottom: 10,
+  },
+  // Only the heading shrinks in landscape; the description stays at the
+  // MIN_FONT_SIZE floor set for young readers.
+  modeTitleLandscape: {
+    fontSize: 20,
+    marginBottom: 6,
   },
   modeDescription: {
     fontSize: 18,

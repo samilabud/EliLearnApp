@@ -14,7 +14,7 @@ export const STRINGS = {
 
     // Shared navigation
     back: 'Back',
-    mainMenu: 'Menú',
+    mainMenu: 'Menu',
     mainMenuFull: 'Main Menu',
     reset: 'Reset',
     level: 'Level',
