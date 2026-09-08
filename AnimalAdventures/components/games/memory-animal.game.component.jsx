@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ImageBackground,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   Platform,
   Animated,
@@ -25,9 +27,22 @@ import {
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
+const GRID_PADDING_H = 16;
+const CARD_GAP = 8;
+const PORTRAIT_COLUMNS = 4;
+const LANDSCAPE_COLUMNS = 8;
 
 export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
   const insets = useSafeAreaInsets();
+  // Android 16 ignores the portrait lock on large screens, so the grid has to
+  // lay out sensibly at any aspect ratio. Sizing cards from the window keeps
+  // them square instead of stretching them into wide slabs in landscape.
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const columns =
+    windowWidth > windowHeight ? LANDSCAPE_COLUMNS : PORTRAIT_COLUMNS;
+  const cardSize = Math.floor(
+    (windowWidth - GRID_PADDING_H * 2 - CARD_GAP * columns) / columns
+  );
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   const [level, setLevel] = useState(1);
   const [cards, setCards] = useState([]);
@@ -269,101 +284,104 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     >
       <AmbientBackground />
 
-      {/* Top controls */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.gameInfo}>
-          <Text style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}>
-            {t(currentLanguage, 'memoryGame')}
-          </Text>
-          <Text style={styles.levelText}>
-            {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
-          </Text>
-          <Text style={styles.movesText}>
-            {t(currentLanguage, 'moves')}: {moves}
-          </Text>
-        </View>
-        <View style={styles.topActions}>
-          <TouchableOpacity
-            onPress={handleReset}
-            style={styles.actionButton}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-          >
-            <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleBackToMenu}
-            style={styles.actionButton}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-          >
-            <Text style={styles.actionText}>
-              {t(currentLanguage, 'mainMenu')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Game instructions */}
-      <View style={styles.instructionsContainer}>
-        <Text style={[styles.instructionsText, { fontFamily: 'Bangers_400Regular' }]}>
-          {t(currentLanguage, 'findPairs', {
-            count: getCardsPerLevel(level),
-          })}
-        </Text>
-      </View>
-
-      {/* Cards grid */}
-      <View
-        style={[
-          styles.gridContainer,
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={[
+          styles.scrollContent,
           { paddingBottom: Math.max(60, insets.bottom + 24) },
         ]}
       >
-        {cards.map((card) => (
-          <TouchableOpacity
-            key={card.position}
-            style={styles.cardContainer}
-            onPress={() => handleCardPress(card)}
-            disabled={isProcessing}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isProcessing }}
-            accessibilityLabel={
-              card.isFlipped || card.isMatched
-                ? t(currentLanguage, 'a11yMemoryCardRevealed', {
-                    animal:
-                      currentLanguage === 'en' ? card.name : card.spanish_name,
-                  })
-                : t(currentLanguage, 'a11yMemoryCard', {
-                    number: card.position + 1,
-                  })
-            }
-          >
-            <View style={styles.card}>
-              {card.isFlipped || card.isMatched ? (
-                <View style={styles.cardInner}>
-                  <View style={styles.animationBackground} />
-                  <LottieView
-                    autoPlay={false}
-                    loop={false}
-                    ref={el => (cardAnimRefs.current[card.position] = el)}
-                    resizeMode="contain"
-                    source={card.animation_path}
-                    style={styles.animation}
-                  />
-                </View>
-              ) : (
-                <View style={styles.cardBack}>
-                  <Text style={styles.cardBackText}>?</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+        {/* Top controls */}
+        <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.gameInfo}>
+            <Text style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}>
+              {t(currentLanguage, 'memoryGame')}
+            </Text>
+            <Text style={styles.levelText}>
+              {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
+            </Text>
+            <Text style={styles.movesText}>
+              {t(currentLanguage, 'moves')}: {moves}
+            </Text>
+          </View>
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              onPress={handleReset}
+              style={styles.actionButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
+            >
+              <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleBackToMenu}
+              style={styles.actionButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+            >
+              <Text style={styles.actionText}>
+                {t(currentLanguage, 'mainMenu')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Game instructions */}
+        <View style={styles.instructionsContainer}>
+          <Text style={[styles.instructionsText, { fontFamily: 'Bangers_400Regular' }]}>
+            {t(currentLanguage, 'findPairs', {
+              count: getCardsPerLevel(level),
+            })}
+          </Text>
+        </View>
+
+        {/* Cards grid */}
+        <View style={styles.gridContainer}>
+          {cards.map((card) => (
+            <TouchableOpacity
+              key={card.position}
+              style={[styles.cardContainer, { width: cardSize, height: cardSize }]}
+              onPress={() => handleCardPress(card)}
+              disabled={isProcessing}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isProcessing }}
+              accessibilityLabel={
+                card.isFlipped || card.isMatched
+                  ? t(currentLanguage, 'a11yMemoryCardRevealed', {
+                      animal:
+                        currentLanguage === 'en' ? card.name : card.spanish_name,
+                    })
+                  : t(currentLanguage, 'a11yMemoryCard', {
+                      number: card.position + 1,
+                    })
+              }
+            >
+              <View style={styles.card}>
+                {card.isFlipped || card.isMatched ? (
+                  <View style={styles.cardInner}>
+                    <View style={styles.animationBackground} />
+                    <LottieView
+                      autoPlay={false}
+                      loop={false}
+                      ref={el => (cardAnimRefs.current[card.position] = el)}
+                      resizeMode="contain"
+                      source={card.animation_path}
+                      style={styles.animation}
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.cardBack}>
+                    <Text style={styles.cardBackText}>?</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
       {/* Level completion overlay */}
       {showLevelComplete && (
@@ -511,20 +529,23 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 2 },
   },
-  gridContainer: {
+  scrollArea: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  gridContainer: {
+    flexGrow: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-evenly',
     alignContent: 'space-around',
     paddingTop: 20,
-    paddingBottom: 60,
-    paddingHorizontal: 16,
+    paddingHorizontal: GRID_PADDING_H,
   },
   cardContainer: {
-    width: '22%',
-    height: 100,
-    marginBottom: 8,
+    marginBottom: CARD_GAP,
   },
   card: {
     width: '100%',

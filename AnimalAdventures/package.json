@@ -1,6 +1,6 @@
 {
   "name": "elilearn-animaladventures-app",
-  "version": "5.2.1",
+  "version": "5.2.2",
   "description": "Animal Adventures - An educational app for learning about animals",
   "main": "index.js",
   "scripts": {
@@ -34,6 +34,7 @@
     "expo": "~57.0.20",
     "expo-asset": "~57.0.14",
     "expo-audio": "~57.0.4",
+    "expo-build-properties": "~57.0.17",
     "expo-font": "~57.0.1",
     "expo-haptics": "~57.0.2",
     "expo-splash-screen": "~57.0.8",
