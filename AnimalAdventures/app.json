@@ -3,7 +3,7 @@
     "name": "Animal Adventures",
     "slug": "EliLearnAnimalAdventures",
     "scheme": "com.elilearnapps.animaladventures",
-    "version": "5.2.2",
+    "version": "5.2.3",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,11 +20,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.elilearnapps.animaladventures",
-      "buildNumber": "5.2.2"
+      "buildNumber": "5.2.3"
     },
     "android": {
       "package": "com.elilearnapps.animaladventures",
-      "versionCode": 15,
+      "versionCode": 16,
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.VIBRATE",
