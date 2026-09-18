@@ -25,6 +25,8 @@ const CARD_MARGIN_TOP = 20;
 const PORTRAIT_COLUMNS = 3;
 const LANDSCAPE_COLUMNS = 6;
 const MIN_CARD_WIDTH = 104;
+const CARD_HEIGHT = 128;
+const BOX_HEIGHT = 96;
 
 /**
  * Every animal in the app, shown as met or not yet met.
@@ -141,8 +143,13 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
                       : t(currentLanguage, 'a11yAlbumLocked')
                   }
                 >
-                  {isMet ? (
-                    <>
+                  <View
+                    style={[
+                      styles.box,
+                      isMet ? styles.boxMet : styles.boxLocked,
+                    ]}
+                  >
+                    {isMet ? (
                       <LottieView
                         autoPlay={false}
                         loop={false}
@@ -152,19 +159,20 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
                         source={animal.animation_path}
                         style={styles.animation}
                       />
-                      <View style={styles.cardBackground} />
-                      <Text style={styles.cardName}>{name}</Text>
-                    </>
-                  ) : (
-                    <>
-                      <View style={styles.lockedBackground}>
-                        <Text style={styles.lockedMark}>?</Text>
-                      </View>
-                      <Text style={styles.lockedName}>
-                        {t(currentLanguage, 'notMetYet')}
-                      </Text>
-                    </>
-                  )}
+                    ) : (
+                      <Text style={styles.lockedMark}>?</Text>
+                    )}
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.label,
+                      isMet ? styles.labelMet : styles.labelLocked,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {isMet ? name : t(currentLanguage, 'notMetYet')}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -236,60 +244,61 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
   },
   card: {
-    height: 132,
+    height: CARD_HEIGHT,
     marginTop: CARD_MARGIN_TOP,
-    justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  cardBackground: {
-    backgroundColor: '#ffffff',
-    height: 85,
-    width: '100%',
-    borderRadius: 18,
-    zIndex: 1,
-    position: 'absolute',
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  animation: {
-    zIndex: 2,
-    width: 90,
-    height: 90,
-  },
-  cardName: {
-    fontFamily: 'Bangers_400Regular',
-    fontSize: 18,
-    position: 'absolute',
-    bottom: 0,
-    zIndex: 3,
-    letterSpacing: 1,
-    color: '#0A3D62',
-    textShadowColor: 'rgba(0, 34, 68, 0.55)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  lockedBackground: {
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-    height: 85,
-    width: '100%',
-    borderRadius: 18,
+  // Met and unmet cards share one geometry. They used to differ - the locked
+  // box was pinned with top: 0 while the met box had no inset and fell back
+  // to its static position - which stacked the two states at different
+  // heights and made every row look ragged.
+  box: {
     position: 'absolute',
     top: 0,
+    left: 0,
+    right: 0,
+    height: BOX_HEIGHT,
+    borderRadius: 18,
     borderWidth: 3,
-    borderColor: 'rgba(255, 215, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  boxMet: {
+    backgroundColor: '#ffffff',
+    borderColor: '#FFD700',
+  },
+  boxLocked: {
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderColor: 'rgba(255, 215, 0, 0.5)',
+  },
+  animation: {
+    width: BOX_HEIGHT - 14,
+    height: BOX_HEIGHT - 14,
   },
   lockedMark: {
     fontSize: 34,
     fontWeight: 'bold',
     color: 'rgba(10, 61, 98, 0.45)',
   },
-  lockedName: {
-    fontSize: 14,
+  label: {
     position: 'absolute',
-    bottom: 0,
-    color: 'rgba(255,255,255,0.85)',
+    bottom: 2,
+    left: 0,
+    right: 0,
     textAlign: 'center',
+  },
+  labelMet: {
+    fontFamily: 'Bangers_400Regular',
+    fontSize: 18,
+    letterSpacing: 1,
+    color: '#0A3D62',
+    textShadowColor: 'rgba(255, 255, 255, 0.85)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 1 },
+  },
+  labelLocked: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
   },
 });
