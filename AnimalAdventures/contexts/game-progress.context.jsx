@@ -75,6 +75,28 @@ const guessIsUsable = guess => {
 };
 
 /**
+ * Cards left face up by a comparison that never resolved.
+ *
+ * A card's revealed state is saved, so it is the only source of truth for
+ * which cards are face up. Anything tracking the current turn must derive it
+ * from here rather than keep its own copy, or the two drift apart the moment
+ * the game unmounts.
+ *
+ * @param {object[]} cards - Saved cards.
+ * @returns {object[]} Face-up cards that are not yet matched.
+ */
+export const unresolvedFlips = cards =>
+  (cards || []).filter(card => card.isFlipped && !card.isMatched);
+
+/**
+ * Turn every unmatched card face down, leaving matches revealed.
+ * @param {object[]} cards - Saved cards.
+ * @returns {object[]} Cards at a clean turn boundary.
+ */
+export const faceDownUnmatched = cards =>
+  cards.map(card => (card.isMatched ? card : { ...card, isFlipped: false }));
+
+/**
  * Clear end-of-game states that should not greet a child on a fresh launch.
  *
  * Finishing every level is worth celebrating in the moment, but reopening the
@@ -111,12 +133,8 @@ const clearTerminalStates = (memory, guess) => ({
  */
 const sanitizeMemory = memory => {
   const cards = memory.cards || [];
-  const flippedUnmatched = cards.filter(c => c.isFlipped && !c.isMatched);
-  if (flippedUnmatched.length < 2) return memory;
-  return {
-    ...memory,
-    cards: cards.map(c => (c.isMatched ? c : { ...c, isFlipped: false })),
-  };
+  if (unresolvedFlips(cards).length < 2) return memory;
+  return { ...memory, cards: faceDownUnmatched(cards) };
 };
 
 export function GameProgressProvider({ children }) {

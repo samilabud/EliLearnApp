@@ -28,7 +28,11 @@ import {
   successFeedback,
   celebrationFeedback,
 } from '../../utils/haptics';
-import { useGameProgress } from '../../contexts/game-progress.context';
+import {
+  faceDownUnmatched,
+  unresolvedFlips,
+  useGameProgress,
+} from '../../contexts/game-progress.context';
 import { EVENTS, track } from '../../utils/analytics';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
@@ -60,7 +64,6 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
   const { memory, updateMemory, resetMemory } = useGameProgress();
   const { level, matchedPairs, moves, gameComplete } = memory;
 
-  const [flippedCards, setFlippedCards] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showLevelComplete, setShowLevelComplete] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -119,6 +122,12 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     [memory.cards, animalsById]
   );
 
+  // The turn is derived from the board rather than tracked alongside it.
+  // Keeping a separate list meant a trip to the menu dropped the local copy
+  // while the saved cards stayed face up, so the returning player got a free
+  // third card and the first pick was silently ignored.
+  const flippedCards = useMemo(() => unresolvedFlips(cards), [cards]);
+
   const dealBoard = useCallback(
     levelNum => {
       const pairsNeeded = getCardsPerLevel(levelNum) / 2;
@@ -141,7 +150,6 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
         moves: 0,
         gameComplete: false,
       });
-      setFlippedCards([]);
       setIsProcessing(false);
       setConfettiKey(prev => prev + 1);
       levelStartedAt.current = Date.now();
@@ -158,6 +166,17 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       dealBoard(level);
     }
   }, [memory.cards.length, expectedCardCount, level, dealBoard]);
+
+  // Leaving during the compare-and-flip-back window cancels that timer, so a
+  // returning player would find two unmatched cards face up and no way to
+  // resolve them. Restoring a clean turn boundary on mount mirrors what
+  // hydration does for a relaunch.
+  useEffect(() => {
+    if (unresolvedFlips(memory.cards).length < 2) return;
+    updateMemory(prev => ({ cards: faceDownUnmatched(prev.cards) }));
+    // Mount only: mid-turn flips during play are resolved by their own timer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     levelStartedAt.current = Date.now();
@@ -281,10 +300,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
       const newFlippedCards = [...flippedCards, card];
 
-      if (newFlippedCards.length === 1) {
-        setFlippedCards(newFlippedCards);
-      } else if (newFlippedCards.length === 2) {
-        setFlippedCards(newFlippedCards);
+      if (newFlippedCards.length === 2) {
         setIsProcessing(true);
         updateMemory(prev => ({ moves: prev.moves + 1 }));
 
@@ -314,10 +330,9 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
             });
           } catch (e) {}
 
-          later(() => {
-            setFlippedCards([]);
-            setIsProcessing(false);
-          }, 500);
+          // Matching clears the pair from the derived turn on its own; this
+          // only holds the board briefly so the celebration can play.
+          later(() => setIsProcessing(false), 500);
         } else {
           later(() => {
             updateMemory(prev => ({
@@ -327,7 +342,6 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
                   : c
               ),
             }));
-            setFlippedCards([]);
             setIsProcessing(false);
           }, CARD_FLIP_DELAY);
         }
@@ -348,7 +362,6 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
   const handleReset = useCallback(() => {
     tapFeedback();
     track(EVENTS.GAME_RESET, { game: 'memory', level });
-    setFlippedCards([]);
     setIsProcessing(false);
     setShowLevelComplete(false);
     setConfettiKey(prev => prev + 1);
