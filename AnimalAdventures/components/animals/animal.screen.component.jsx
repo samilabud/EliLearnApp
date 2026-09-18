@@ -17,6 +17,8 @@ import { AmbientBackground } from '../utility/ambient-background.component';
 import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { EVENTS, track } from '../../utils/analytics';
+import { playClip, releasePlayer } from '../../utils/sound';
+import { useGameProgress } from '../../contexts/game-progress.context';
 
 const GRID_PADDING_H = 12;
 const CARD_MARGIN_TOP = 24;
@@ -29,6 +31,7 @@ const MIN_CARD_WIDTH = 104;
 const AnimalScreen = ({ currentLanguage }) => {
   const soundPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
+  const { markAnimalMet } = useGameProgress();
   const [currentAnimation, setCurrentAnimation] = useState();
 
   // Cards used to be a flat 26% of the container width. With the portrait lock
@@ -53,6 +56,8 @@ const AnimalScreen = ({ currentLanguage }) => {
   const resetAndPlayAnim = (playCurrent, soundUrl, voiceUrl, animalId) => {
     tapFeedback();
     track(EVENTS.ANIMAL_VIEWED, { animal: animalId });
+    // Hearing an animal counts as meeting it, so Learn fills the album too.
+    markAnimalMet(animalId);
     if (currentAnimation && typeof currentAnimation.reset === 'function') {
       try {
         currentAnimation.reset();
@@ -75,27 +80,15 @@ const AnimalScreen = ({ currentLanguage }) => {
   function delay(time) {
     return new Promise(resolve => setTimeout(resolve, time));
   }
-  async function playSound(soundFile, voiceFile) {
-    try {
-      soundPlayer.replace(soundFile);
-      voicePlayer.replace(voiceFile);
-      delay(1000).then(() => {
-        try {
-          soundPlayer.play();
-        } catch (e) {}
-      });
-      await voicePlayer.play();
-    } catch (e) {}
+  function playSound(soundFile, voiceFile) {
+    playClip(voicePlayer, voiceFile);
+    delay(1000).then(() => playClip(soundPlayer, soundFile));
   }
 
   useEffect(() => {
     return () => {
-      try {
-        soundPlayer.remove();
-      } catch (e) {}
-      try {
-        voicePlayer.remove();
-      } catch (e) {}
+      releasePlayer(soundPlayer);
+      releasePlayer(voicePlayer);
     };
   }, [soundPlayer, voicePlayer]);
 

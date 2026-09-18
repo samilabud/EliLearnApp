@@ -34,6 +34,7 @@ import {
   useGameProgress,
 } from '../../contexts/game-progress.context';
 import { EVENTS, track } from '../../utils/analytics';
+import { playClip, releasePlayer } from '../../utils/sound';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -41,6 +42,24 @@ const GRID_PADDING_H = 16;
 const CARD_GAP = 8;
 const PORTRAIT_COLUMNS = 4;
 const LANDSCAPE_COLUMNS = 8;
+
+// Children habituate to a repeated reward quickly, so the celebration is
+// varied by level rather than firing the identical burst every time.
+const CELEBRATIONS = [
+  { count: 90, explosionSpeed: 300, fallSpeed: 3000, origin: { x: 0, y: 0 } },
+  {
+    count: 140,
+    explosionSpeed: 450,
+    fallSpeed: 2400,
+    origin: { x: 200, y: -10 },
+  },
+  {
+    count: 70,
+    explosionSpeed: 220,
+    fallSpeed: 3600,
+    origin: { x: -20, y: 40 },
+  },
+];
 
 /** Cards per level: 4, 6, 8, ... capped at 16. */
 const getCardsPerLevel = levelNum => Math.min(2 + levelNum * 2, 16);
@@ -61,7 +80,8 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
   // Level, board and score are saved progress and live in the context so they
   // survive a trip to the menu, a rotation, or the app being killed. Only
   // state that is meaningless outside the current turn stays local.
-  const { memory, updateMemory, resetMemory } = useGameProgress();
+  const { memory, updateMemory, resetMemory, markAnimalMet } =
+    useGameProgress();
   const { level, matchedPairs, moves, gameComplete } = memory;
 
   const [isProcessing, setIsProcessing] = useState(false);
@@ -192,12 +212,10 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
   // Cleanup audio players
   useEffect(() => {
     return () => {
-      try {
-        cardFlipPlayer.remove();
-        matchPlayer.remove();
-        gameWinPlayer.remove();
-        gameSuccessPlayer.remove();
-      } catch (e) {}
+      releasePlayer(cardFlipPlayer);
+      releasePlayer(matchPlayer);
+      releasePlayer(gameWinPlayer);
+      releasePlayer(gameSuccessPlayer);
     };
   }, [cardFlipPlayer, matchPlayer, gameWinPlayer, gameSuccessPlayer]);
 
@@ -236,10 +254,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
           updateMemory({ gameComplete: true });
           setShowLevelComplete(false);
           track(EVENTS.GAME_COMPLETED, { game: 'memory', level });
-          try {
-            gameWinPlayer.replace(gameWinSoundFile);
-            gameWinPlayer.play();
-          } catch (e) {}
+          playClip(gameWinPlayer, gameWinSoundFile);
         }, 2000);
       }
     }
@@ -258,22 +273,17 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
   const playCardFlipSound = useCallback(
     async animal => {
-      try {
-        cardFlipPlayer.replace(animal.sound);
-        cardFlipPlayer.play();
-      } catch (e) {}
+      playClip(cardFlipPlayer, animal.sound);
     },
     [cardFlipPlayer]
   );
 
   const playAnimalNameSound = useCallback(
     async animal => {
-      try {
-        const soundFile =
-          currentLanguage === 'en' ? animal.voice : animal.spanish_voice;
-        matchPlayer.replace(soundFile);
-        matchPlayer.play();
-      } catch (e) {}
+      playClip(
+        matchPlayer,
+        currentLanguage === 'en' ? animal.voice : animal.spanish_voice
+      );
     },
     [matchPlayer, currentLanguage]
   );
@@ -309,6 +319,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
         if (isMatch) {
           successFeedback();
+          markAnimalMet(firstCard.id);
           updateMemory(prev => ({
             matchedPairs: [...prev.matchedPairs, firstCard.id],
             cards: prev.cards.map(c =>
@@ -318,10 +329,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
           await playAnimalNameSound(firstCard);
 
-          try {
-            gameSuccessPlayer.replace(gameSuccessSoundFile);
-            gameSuccessPlayer.play();
-          } catch (e) {}
+          playClip(gameSuccessPlayer, gameSuccessSoundFile);
 
           try {
             [firstCard.position, secondCard.position].forEach(pos => {
@@ -356,6 +364,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       gameSuccessSoundFile,
       later,
       updateMemory,
+      markAnimalMet,
     ]
   );
 
@@ -518,11 +527,8 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
           </Text>
           <ConfettiCannon
             key={`level-${level}-complete`}
-            count={100}
             fadeOut={true}
-            explosionSpeed={300}
-            fallSpeed={3000}
-            origin={{ x: 0, y: 0 }}
+            {...CELEBRATIONS[level % CELEBRATIONS.length]}
           />
         </View>
       )}

@@ -44,9 +44,17 @@ const DEFAULT_GUESS = {
   targetId: null,
   optionIds: [],
   wrongCount: 0,
-  gameOver: false,
   showComplete: false,
 };
+
+/**
+ * Animals the child has met, by id.
+ *
+ * Kept as its own slice rather than derived from game state, because meeting
+ * an animal is permanent: it survives a reset, a finished game and a new
+ * playthrough. Nothing here is ever removed.
+ */
+const DEFAULT_MET = [];
 
 const GameProgressContext = createContext(null);
 
@@ -100,26 +108,16 @@ export const faceDownUnmatched = cards =>
  * Clear end-of-game states that should not greet a child on a fresh launch.
  *
  * Finishing every level is worth celebrating in the moment, but reopening the
- * app straight into a victory screen is not. A game that was finished starts
- * over; a game that was lost keeps its level and simply offers a new round, so
- * coming back is a second chance rather than a demotion.
+ * app straight into a victory screen is not, so a finished game starts over.
+ * Losing is not a state either game can be in any more - Guess the Animal no
+ * longer ends on a mistake - so completion is the only thing to clear.
  *
  * This runs only at hydration, so within a session leaving to the menu and
  * returning still shows the overlay the child left behind.
  */
 const clearTerminalStates = (memory, guess) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,
-  guess: guess.showComplete
-    ? DEFAULT_GUESS
-    : guess.gameOver
-      ? {
-          ...guess,
-          gameOver: false,
-          wrongCount: 0,
-          targetId: null,
-          optionIds: [],
-        }
-      : guess,
+  guess: guess.showComplete ? DEFAULT_GUESS : guess,
 });
 
 /**
@@ -141,6 +139,7 @@ export function GameProgressProvider({ children }) {
   const [hydrated, setHydrated] = useState(false);
   const [memory, setMemoryState] = useState(DEFAULT_MEMORY);
   const [guess, setGuessState] = useState(DEFAULT_GUESS);
+  const [met, setMet] = useState(DEFAULT_MET);
   const persistTimer = useRef(null);
   const latest = useRef({ memory, guess });
 
@@ -162,6 +161,9 @@ export function GameProgressProvider({ children }) {
         );
         setMemoryState(restored.memory);
         setGuessState(restored.guess);
+        if (Array.isArray(stored.met)) {
+          setMet(stored.met.filter(id => validIds.has(id)));
+        }
       }
       setHydrated(true);
     })();
@@ -172,29 +174,39 @@ export function GameProgressProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    latest.current = { memory, guess, hydrated };
+    latest.current = { memory, guess, met, hydrated };
     // Nothing is written until the stored value has been read, otherwise the
     // initial empty state would overwrite real progress during startup.
     if (!hydrated) return;
 
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      saveJSON(PROGRESS_KEY, { version: SCHEMA_VERSION, memory, guess });
+      saveJSON(PROGRESS_KEY, { version: SCHEMA_VERSION, memory, guess, met });
     }, PERSIST_DEBOUNCE_MS);
 
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
     };
-  }, [memory, guess, hydrated]);
+  }, [memory, guess, met, hydrated]);
 
   // Flush on teardown so a fast exit cannot outrun the debounce. Guarded on
   // `hydrated`: a teardown that happens while storage is still being read must
   // not write starting values over real saved progress.
   useEffect(() => {
     return () => {
-      const { memory: m, guess: g, hydrated: isHydrated } = latest.current;
+      const {
+        memory: m,
+        guess: g,
+        met: k,
+        hydrated: isHydrated,
+      } = latest.current;
       if (!isHydrated) return;
-      saveJSON(PROGRESS_KEY, { version: SCHEMA_VERSION, memory: m, guess: g });
+      saveJSON(PROGRESS_KEY, {
+        version: SCHEMA_VERSION,
+        memory: m,
+        guess: g,
+        met: k,
+      });
     };
   }, []);
 
@@ -212,6 +224,16 @@ export function GameProgressProvider({ children }) {
     }));
   }, []);
 
+  /**
+   * Record that a child has met an animal. Idempotent, and never undone -
+   * resetting a game must not take an animal back out of the album.
+   * @param {string} id - Animal id from `animalList`.
+   */
+  const markAnimalMet = useCallback(id => {
+    if (!id || !validIds.has(id)) return;
+    setMet(prev => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
   const resetMemory = useCallback(() => setMemoryState(DEFAULT_MEMORY), []);
   const resetGuess = useCallback(() => setGuessState(DEFAULT_GUESS), []);
 
@@ -220,6 +242,8 @@ export function GameProgressProvider({ children }) {
       hydrated,
       memory,
       guess,
+      met,
+      markAnimalMet,
       updateMemory,
       updateGuess,
       resetMemory,
@@ -229,6 +253,8 @@ export function GameProgressProvider({ children }) {
       hydrated,
       memory,
       guess,
+      met,
+      markAnimalMet,
       updateMemory,
       updateGuess,
       resetMemory,

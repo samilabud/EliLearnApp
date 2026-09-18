@@ -26,6 +26,7 @@ import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { playClip, releasePlayer, stopClip } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
@@ -41,6 +42,11 @@ const LANDSCAPE_COLUMNS = 6;
 const MIN_OPTION_SIZE = 104;
 
 const MAX_LEVEL = 8;
+
+// After this many wrong tries the right answer starts to glow. Children aged
+// three to six learn by trying the wrong thing, so the game never ends on a
+// mistake - it just gets more helpful.
+const HINT_AFTER_TRIES = 3;
 
 export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const insets = useSafeAreaInsets();
@@ -61,8 +67,8 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   // Level, the current round and lives are saved progress and live in the
   // context, so they survive a trip to the menu, a rotation, or the app being
   // killed. Only state meaningless outside the current round stays local.
-  const { guess, updateGuess, resetGuess } = useGameProgress();
-  const { level, wrongCount, gameOver, showComplete } = guess;
+  const { guess, updateGuess, resetGuess, markAnimalMet } = useGameProgress();
+  const { level, wrongCount, showComplete } = guess;
 
   const [isCorrect, setIsCorrect] = useState(false);
   const promptPlayer = useAudioPlayer(null);
@@ -70,7 +76,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const [promptPulse] = useState(new Animated.Value(0));
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
   const wrongPlayer = useAudioPlayer(null);
-  const gameOverPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
   const animalNamePlayer = useAudioPlayer(null);
@@ -80,7 +85,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
   const optionAnimRefs = useRef({});
   const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
-  const gameOverSoundFile = require('../../assets/sounds/game/game_over.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
@@ -139,10 +143,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   }, [level]);
 
   const stopAndUnload = useCallback(async () => {
-    try {
-      promptPlayer.pause();
-      await promptPlayer.seekTo(0);
-    } catch (e) {}
+    stopClip(promptPlayer);
   }, [promptPlayer]);
 
   useEffect(() => {
@@ -153,9 +154,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       } catch (e) {}
       try {
         wrongPlayer.remove();
-      } catch (e) {}
-      try {
-        gameOverPlayer.remove();
       } catch (e) {}
       try {
         gameWinPlayer.remove();
@@ -171,21 +169,10 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     stopAndUnload,
     promptPlayer,
     wrongPlayer,
-    gameOverPlayer,
     gameWinPlayer,
     gameSuccessPlayer,
     animalNamePlayer,
   ]);
-
-  // Play game over sound when gameOver becomes true
-  useEffect(() => {
-    if (gameOver) {
-      try {
-        gameOverPlayer.replace(gameOverSoundFile);
-        gameOverPlayer.play();
-      } catch (e) {}
-    }
-  }, [gameOver, gameOverPlayer]);
 
   // Continuous bubble effect on Play Sound button
   useEffect(() => {
@@ -212,10 +199,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   // Play win sound when the user completes all levels
   useEffect(() => {
     if (showComplete) {
-      try {
-        gameWinPlayer.replace(gameWinSoundFile);
-        gameWinPlayer.play();
-      } catch (e) {}
+      playClip(gameWinPlayer, gameWinSoundFile);
     }
   }, [showComplete, gameWinPlayer]);
 
@@ -236,7 +220,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     updateGuess({
       targetId: nextTarget.id,
       optionIds: nextOptions.map(a => a.id),
-      gameOver: false,
     });
     setIsCorrect(false);
     setShowWrongOverlay(false);
@@ -256,20 +239,15 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const playPrompt = useCallback(async () => {
     if (!targetAnimal) return;
     await stopAndUnload();
-    try {
-      promptPlayer.replace(targetAnimal.sound);
-      promptPlayer.play();
-    } catch (e) {}
+    playClip(promptPlayer, targetAnimal.sound);
   }, [targetAnimal, stopAndUnload, promptPlayer]);
 
   const playAnimalName = useCallback(
     async animal => {
-      try {
-        const soundFile =
-          currentLanguage === 'en' ? animal.voice : animal.spanish_voice;
-        animalNamePlayer.replace(soundFile);
-        animalNamePlayer.play();
-      } catch (e) {}
+      playClip(
+        animalNamePlayer,
+        currentLanguage === 'en' ? animal.voice : animal.spanish_voice
+      );
     },
     [animalNamePlayer, currentLanguage]
   );
@@ -282,12 +260,13 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
   const onSelect = useCallback(
     async selected => {
-      if (gameOver || showComplete || isCorrect) return;
+      if (showComplete || isCorrect) return;
       const correct = selected.id === targetAnimal.id;
       if (correct) {
         successFeedback();
         setIsCorrect(true);
         updateGuess({ wrongCount: 0 });
+        markAnimalMet(selected.id);
         track(EVENTS.LEVEL_COMPLETED, {
           game: 'guess',
           level,
@@ -299,12 +278,9 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
         // Play success sound after 1 second (non-final levels)
         later(() => {
-          try {
-            if (level < MAX_LEVEL) {
-              gameSuccessPlayer.replace(gameSuccessSoundFile);
-              gameSuccessPlayer.play();
-            }
-          } catch (e) {}
+          if (level < MAX_LEVEL) {
+            playClip(gameSuccessPlayer, gameSuccessSoundFile);
+          }
         }, 1000);
 
         try {
@@ -342,7 +318,9 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           });
         }, 2500);
       } else {
-        // wrong feedback
+        // A wrong pick is a normal part of learning, so nothing ends here.
+        // The child gets a gentle noise, the sound again to compare against,
+        // and after a few tries the right answer starts to glow.
         errorFeedback();
         setShowWrongOverlay(true);
         later(() => setShowWrongOverlay(false), 900);
@@ -350,17 +328,9 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           const wrongAnim = optionAnimRefs.current[selected.id];
           if (wrongAnim && wrongAnim.reset) wrongAnim.reset();
         } catch (e) {}
-        try {
-          wrongPlayer.replace(wrongSoundFile);
-          wrongPlayer.play();
-        } catch (e) {}
-        updateGuess(prev => {
-          const next = prev.wrongCount + 1;
-          if (next >= 2) {
-            track(EVENTS.GAME_OVER, { game: 'guess', level: prev.level });
-          }
-          return { wrongCount: next, gameOver: next >= 2 };
-        });
+        playClip(wrongPlayer, wrongSoundFile);
+        later(() => playPrompt(), 700);
+        updateGuess(prev => ({ wrongCount: prev.wrongCount + 1 }));
       }
     },
     [
@@ -369,7 +339,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       feedbackAnim,
       wrongSoundFile,
       showComplete,
-      gameOver,
       wrongPlayer,
       gameSuccessPlayer,
       gameSuccessSoundFile,
@@ -377,6 +346,8 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       isCorrect,
       later,
       updateGuess,
+      markAnimalMet,
+      playPrompt,
     ]
   );
 
@@ -494,30 +465,42 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
         {/* Options grid */}
         <View style={styles.optionsContainer}>
-          {options.map(opt => (
-            <TouchableOpacity
-              key={opt.id}
-              style={[styles.optionCard, { width: optionSize }]}
-              onPress={() => onSelect(opt)}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yAnswerOption', {
-                animal: currentLanguage === 'en' ? opt.name : opt.spanish_name,
-              })}
-            >
-              <View style={styles.optionInner}>
-                <View style={styles.animationBackground} />
-                <LottieView
-                  autoPlay={false}
-                  loop={false}
-                  ref={el => (optionAnimRefs.current[opt.id] = el)}
-                  resizeMode="contain"
-                  source={opt.animation_path}
-                  style={styles.animation}
-                />
-              </View>
-            </TouchableOpacity>
-          ))}
+          {options.map(opt => {
+            const isHinted =
+              wrongCount >= HINT_AFTER_TRIES &&
+              targetAnimal &&
+              opt.id === targetAnimal.id;
+
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[
+                  styles.optionCard,
+                  { width: optionSize },
+                  isHinted && styles.optionCardHinted,
+                ]}
+                onPress={() => onSelect(opt)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t(currentLanguage, 'a11yAnswerOption', {
+                  animal:
+                    currentLanguage === 'en' ? opt.name : opt.spanish_name,
+                })}
+              >
+                <View style={styles.optionInner}>
+                  <View style={styles.animationBackground} />
+                  <LottieView
+                    autoPlay={false}
+                    loop={false}
+                    ref={el => (optionAnimRefs.current[opt.id] = el)}
+                    resizeMode="contain"
+                    source={opt.animation_path}
+                    style={styles.animation}
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
 
@@ -543,10 +526,14 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         </Animated.View>
       )}
 
-      {/* Wrong feedback overlay */}
+      {/* Encouragement, not a failure mark */}
       {showWrongOverlay && (
         <View pointerEvents="none" style={styles.feedbackOverlay}>
-          <Text style={styles.wrongText}>✖️</Text>
+          <Text
+            style={[styles.tryAgainText, { fontFamily: 'Bangers_400Regular' }]}
+          >
+            {t(currentLanguage, 'tryOnceMore')}
+          </Text>
         </View>
       )}
 
@@ -583,49 +570,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
               >
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-            <TouchableOpacity
-              onPress={handleBackToMenu}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'mainMenuFull')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {/* Game Over overlay after two wrong attempts */}
-      {gameOver && !showComplete && (
-        <View style={styles.completionOverlay}>
-          <Text
-            style={[
-              styles.completionTitle,
-              { fontFamily: 'Bangers_400Regular', color: '#FF5252' },
-            ]}
-          >
-            ✖️
-          </Text>
-          <Text style={styles.completionSubtitle}>
-            {t(currentLanguage, 'gameOver')}
-          </Text>
-          <View style={styles.completionActions}>
-            <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-              <TouchableOpacity
-                onPress={handleReset}
-                style={styles.bigButton}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-              >
-                <Text style={styles.bigButtonText}>
-                  {t(currentLanguage, 'tryAgain')}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
@@ -768,6 +712,22 @@ const styles = StyleSheet.create({
     fontSize: 80,
     color: 'white',
     paddingBottom: 34,
+  },
+  tryAgainText: {
+    fontSize: 46,
+    color: '#FFD700',
+    textAlign: 'center',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 4 },
+  },
+  // Shown only after several tries, so it reads as help rather than a answer key.
+  optionCardHinted: {
+    borderWidth: 4,
+    borderColor: '#FFD700',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 215, 0, 0.22)',
   },
   wrongText: {
     fontSize: 120,
