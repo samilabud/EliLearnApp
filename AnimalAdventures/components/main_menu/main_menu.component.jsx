@@ -42,9 +42,22 @@ const MODES = [
     titleKey: 'modeMemoryTitle',
     descriptionKey: 'modeMemoryDescription',
   },
+  // The album ships no Lottie of its own, so it uses a glyph at the same size
+  // as the other icons rather than borrowing an animal's animation.
+  {
+    key: 'album',
+    glyph: 'collections-bookmark',
+    titleKey: 'albumTitle',
+    descriptionKey: 'albumDescription',
+  },
 ];
 
-function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
+function MainMenu({
+  onModeSelect,
+  currentLanguage,
+  setCurrentLanguage,
+  onOpenParents,
+}) {
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Stacked full-width cards give one card per screen on a landscape tablet,
@@ -73,87 +86,96 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
   };
 
   return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="auto" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="auto" />
 
-        {/* Header with Logo and Language Selector */}
-        <View style={styles.header}>
-          <Image
-            source={require('../../assets/logo/logoEliLearn.png')}
-            style={styles.logo}
-            accessible={false}
-            accessibilityRole="image"
-          />
-          <TouchableOpacity
-            style={styles.languageToggle}
-            onPress={onLanguageToggle}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yLanguageToggle')}
-          >
-            <MaterialIcons name="translate" size={28} color="white" />
-            <Text style={styles.languageText}>
-              {currentLanguage.toUpperCase()}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      {/* Header with Logo and Language Selector */}
+      <View style={styles.header}>
+        <Image
+          source={require('../../assets/logo/logoEliLearn.png')}
+          style={styles.logo}
+          accessible={false}
+          accessibilityRole="image"
+        />
+        <TouchableOpacity
+          style={styles.languageToggle}
+          onPress={onLanguageToggle}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={t(currentLanguage, 'a11yLanguageToggle')}
+        >
+          <MaterialIcons name="translate" size={28} color="white" />
+          <Text style={styles.languageText}>
+            {currentLanguage.toUpperCase()}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Main Content */}
-        <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
-          <ScrollView
-            contentContainerStyle={[
-              styles.content,
-              isLandscape && styles.contentLandscape,
+      {/* Main Content */}
+      <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            isLandscape && styles.contentLandscape,
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text
+            style={[
+              styles.title,
+              isLandscape && styles.titleLandscape,
+              fontsLoaded && { fontFamily: 'Bangers_400Regular' },
             ]}
-            showsVerticalScrollIndicator={false}
           >
-            <Text
-              style={[
-                styles.title,
-                isLandscape && styles.titleLandscape,
-                fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-              ]}
-            >
-              {t(currentLanguage, 'appTitle')}
-            </Text>
+            {t(currentLanguage, 'appTitle')}
+          </Text>
 
-            <Text style={[styles.subtitle, isLandscape && styles.subtitleLandscape]}>
-              {t(currentLanguage, 'chooseAdventure')}
-            </Text>
+          <Text
+            style={[styles.subtitle, isLandscape && styles.subtitleLandscape]}
+          >
+            {t(currentLanguage, 'chooseAdventure')}
+          </Text>
 
-            {/* Mode Selection Buttons */}
-            <View
-              style={[
-                styles.modeContainer,
-                isLandscape && styles.modeContainerLandscape,
-              ]}
-            >
-              <AmbientBackground />
-              {MODES.map(mode => {
-                const title = t(currentLanguage, mode.titleKey);
-                const description = t(currentLanguage, mode.descriptionKey);
+          {/* Mode Selection Buttons */}
+          <View
+            style={[
+              styles.modeContainer,
+              isLandscape && styles.modeContainerLandscape,
+            ]}
+          >
+            <AmbientBackground />
+            {MODES.map(mode => {
+              const title = t(currentLanguage, mode.titleKey);
+              const description = t(currentLanguage, mode.descriptionKey);
 
-                return (
-                  <TouchableOpacity
-                    key={mode.key}
+              return (
+                <TouchableOpacity
+                  key={mode.key}
+                  style={[
+                    styles.modeButton,
+                    isLandscape && styles.modeButtonLandscape,
+                  ]}
+                  onPress={() => handleModeSelect(mode.key)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
+                    title,
+                    description,
+                  })}
+                >
+                  <View
                     style={[
-                      styles.modeButton,
-                      isLandscape && styles.modeButtonLandscape,
+                      styles.modeIconContainer,
+                      isLandscape && styles.modeIconContainerLandscape,
                     ]}
-                    onPress={() => handleModeSelect(mode.key)}
-                    accessible={true}
-                    accessibilityRole="button"
-                    accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
-                      title,
-                      description,
-                    })}
                   >
-                    <View
-                      style={[
-                        styles.modeIconContainer,
-                        isLandscape && styles.modeIconContainerLandscape,
-                      ]}
-                    >
+                    {mode.glyph ? (
+                      <MaterialIcons
+                        name={mode.glyph}
+                        size={isLandscape ? 54 : 78}
+                        color="#BD0000"
+                      />
+                    ) : (
                       <LottieView
                         source={mode.icon}
                         autoPlay
@@ -162,24 +184,47 @@ function MainMenu({ onModeSelect, currentLanguage, setCurrentLanguage }) {
                         style={isLandscape ? ICON_SIZE_LANDSCAPE : ICON_SIZE}
                         autoSize={false}
                       />
-                    </View>
-                    <Text
-                      style={[
-                        styles.modeTitle,
-                        isLandscape && styles.modeTitleLandscape,
-                        fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                      ]}
-                    >
-                      {title}
-                    </Text>
-                    <Text style={styles.modeDescription}>{description}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-        </Animated.View>
-      </SafeAreaView>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.modeTitle,
+                      isLandscape && styles.modeTitleLandscape,
+                      fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                    ]}
+                  >
+                    {title}
+                  </Text>
+                  <Text style={styles.modeDescription}>{description}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Deliberately small, plain and at the bottom: this is the one
+                control on the screen that is not for the child. */}
+          <TouchableOpacity
+            style={styles.parentsButton}
+            onPress={() => {
+              tapFeedback();
+              onOpenParents();
+            }}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yForParents')}
+          >
+            <MaterialIcons
+              name="lock-outline"
+              size={16}
+              color="rgba(255,255,255,0.75)"
+            />
+            <Text style={styles.parentsText}>
+              {t(currentLanguage, 'forParents')}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
@@ -307,6 +352,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: 6,
   },
+  parentsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'center',
+    marginTop: 28,
+    minHeight: MIN_TOUCH_TARGET,
+    paddingHorizontal: 14,
+  },
+  parentsText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
   modeDescription: {
     fontSize: 18,
     color: '#5A5A5A',
@@ -316,5 +377,3 @@ const styles = StyleSheet.create({
 });
 
 export default MainMenu;
-
-

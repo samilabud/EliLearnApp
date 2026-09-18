@@ -37,6 +37,45 @@ export const STRINGS = {
     completedAllMemoryLevels: 'You completed all memory levels!',
     playAgain: 'Play Again',
 
+    // Animal album
+    albumTitle: 'Animal Album',
+    albumDescription: 'See every animal you have met!',
+    albumProgress: '{met} of {total} animals met',
+    albumHintEmpty: 'Play any game to start meeting animals!',
+    notMetYet: 'Not met yet',
+
+    // For parents
+    forParents: 'For Parents',
+    gateTitle: 'Ask a grown-up',
+    gateInstruction: 'Type these numbers',
+    gateWrong: 'Not quite. Try again.',
+    cancel: 'Cancel',
+    close: 'Close',
+    soundLabel: 'Sound',
+    on: 'On',
+    off: 'Off',
+    playLimitLabel: 'Daily play limit',
+    noLimit: 'No limit',
+    minutesShort: '{count} min',
+    aboutTitle: 'About this app',
+    promiseNoAds: 'No advertising',
+    promiseNoAccounts: 'No accounts or sign-in',
+    promiseNoPurchases: 'No purchases',
+    promiseNoLinks: 'No links out of the app',
+    promiseNoData: 'No personal information collected',
+    versionLabel: 'Version {version}',
+
+    // Play time
+    timeUpTitle: 'Play time is over',
+    timeUpSubtitle: 'The animals are going to sleep. See you next time!',
+    timeUpGrownUp: 'Grown-ups, tap here',
+    moreTime: 'More time',
+
+    // Guess the Animal encouragement (replaces the old game-over state)
+    tryOnceMore: 'Try again!',
+    listenAgain: 'Listen again',
+    hereItIs: 'Here it is!',
+
     // Accessibility labels
     a11yBackButton: 'Go back to the previous screen',
     a11yMainMenuButton: 'Go to the main menu',
@@ -51,6 +90,14 @@ export const STRINGS = {
     a11yMemoryCard: 'Hidden card {number}. Tap to turn it over',
     a11yMemoryCardRevealed: '{animal}. Already turned over',
     a11yModeCard: '{title}. {description}',
+    a11yOpenAlbum: 'Open the animal album',
+    a11yAlbumAnimal: '{animal}. You have met this animal',
+    a11yAlbumLocked: 'An animal you have not met yet',
+    a11yForParents: 'For parents. Opens a section for grown-ups',
+    a11yGateDigit: 'Type the number {number}',
+    a11yGateDelete: 'Delete the last number',
+    a11ySoundToggle: 'Turn the sound {state}',
+    a11yPlayLimit: 'Set the play time limit to {label}',
   },
 
   es: {
@@ -89,6 +136,45 @@ export const STRINGS = {
     completedAllMemoryLevels: '¡Completaste todos los niveles de memoria!',
     playAgain: 'Jugar de Nuevo',
 
+    // Álbum de animales
+    albumTitle: 'Álbum de Animales',
+    albumDescription: '¡Mira todos los animales que has conocido!',
+    albumProgress: '{met} de {total} animales conocidos',
+    albumHintEmpty: '¡Juega para empezar a conocer animales!',
+    notMetYet: 'Aún no lo conoces',
+
+    // Para padres
+    forParents: 'Para Padres',
+    gateTitle: 'Pide ayuda a un adulto',
+    gateInstruction: 'Escribe estos números',
+    gateWrong: 'Casi. Inténtalo otra vez.',
+    cancel: 'Cancelar',
+    close: 'Cerrar',
+    soundLabel: 'Sonido',
+    on: 'Activado',
+    off: 'Desactivado',
+    playLimitLabel: 'Límite diario',
+    noLimit: 'Sin límite',
+    minutesShort: '{count} min',
+    aboutTitle: 'Sobre esta app',
+    promiseNoAds: 'Sin publicidad',
+    promiseNoAccounts: 'Sin cuentas ni registro',
+    promiseNoPurchases: 'Sin compras',
+    promiseNoLinks: 'Sin enlaces que salgan de la app',
+    promiseNoData: 'No recopilamos información personal',
+    versionLabel: 'Versión {version}',
+
+    // Tiempo de juego
+    timeUpTitle: 'Se acabó el tiempo de juego',
+    timeUpSubtitle: 'Los animales se van a dormir. ¡Hasta la próxima!',
+    timeUpGrownUp: 'Adultos, toquen aquí',
+    moreTime: 'Más tiempo',
+
+    // Ánimo en Adivina el Animal (sustituye el antiguo fin de juego)
+    tryOnceMore: '¡Inténtalo otra vez!',
+    listenAgain: 'Escucha de nuevo',
+    hereItIs: '¡Aquí está!',
+
     // Etiquetas de accesibilidad
     a11yBackButton: 'Volver a la pantalla anterior',
     a11yMainMenuButton: 'Ir al menú principal',
@@ -103,7 +189,27 @@ export const STRINGS = {
     a11yMemoryCard: 'Carta oculta {number}. Toca para darle la vuelta',
     a11yMemoryCardRevealed: '{animal}. Ya está descubierta',
     a11yModeCard: '{title}. {description}',
+    a11yOpenAlbum: 'Abrir el álbum de animales',
+    a11yAlbumAnimal: '{animal}. Ya conoces este animal',
+    a11yAlbumLocked: 'Un animal que aún no conoces',
+    a11yForParents: 'Para padres. Abre una sección para adultos',
+    a11yGateDigit: 'Escribe el número {number}',
+    a11yGateDelete: 'Borrar el último número',
+    a11ySoundToggle: 'Poner el sonido en {state}',
+    a11yPlayLimit: 'Poner el límite de tiempo en {label}',
   },
+};
+
+/**
+ * Digits written as words, per language.
+ *
+ * The parental gate shows a number in words and asks for it back in digits.
+ * That is deliberately a reading task rather than an arithmetic one: a child
+ * too young for this app cannot read "four", while any adult can.
+ */
+export const NUMBER_WORDS = {
+  en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'],
+  es: ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'],
 };
 
 export const DEFAULT_LANGUAGE = 'en';
