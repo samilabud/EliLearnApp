@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -7,15 +7,21 @@ import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
+import {
+  GameProgressProvider,
+  useGameProgress,
+} from './contexts/game-progress.context';
+import { EVENTS, initAnalytics, track } from './utils/analytics';
 
 // Long enough for the logo animation and its jingle to finish.
 const SPLASH_DURATION_MS = 4000;
 
-export default function App() {
+function AppContent() {
   const [currentMode, setCurrentMode] = useState(null);
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [showSplash, setShowSplash] = useState(true);
   const fade = useRef(new Animated.Value(0)).current;
+  const { hydrated } = useGameProgress();
 
   // The intro belongs to app launch, not to any one screen. It used to be
   // mounted inside both the menu and the learn screen, so switching modes
@@ -26,13 +32,23 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    initAnalytics();
+  }, []);
+
   const handleModeSelect = mode => {
+    track(EVENTS.MODE_SELECTED, { mode });
     setCurrentMode(mode);
   };
 
   const handleBackToMenu = () => {
     setCurrentMode(null);
   };
+
+  const handleLanguageChange = useCallback(next => {
+    track(EVENTS.LANGUAGE_CHANGED, { to: next });
+    setCurrentLanguage(next);
+  }, []);
 
   useEffect(() => {
     if (showSplash) return;
@@ -44,14 +60,15 @@ export default function App() {
     }).start();
   }, [currentMode, fade, showSplash]);
 
-  if (showSplash) {
+  // Holding the splash until storage has been read keeps a game from mounting
+  // with a blank board and dealing a fresh one over the child's saved level.
+  // Reading finishes far inside the splash window, so this costs nothing.
+  if (showSplash || !hydrated) {
     return (
-      <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: '#BD0000' }}>
-          <MySplashScreen />
-          <StatusBar style="auto" />
-        </View>
-      </SafeAreaProvider>
+      <View style={{ flex: 1, backgroundColor: '#BD0000' }}>
+        <MySplashScreen />
+        <StatusBar style="auto" />
+      </View>
     );
   }
 
@@ -61,7 +78,7 @@ export default function App() {
       <MainMenu
         onModeSelect={handleModeSelect}
         currentLanguage={currentLanguage}
-        setCurrentLanguage={setCurrentLanguage}
+        setCurrentLanguage={handleLanguageChange}
       />
     );
   } else if (currentMode === 'learn') {
@@ -88,10 +105,16 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <Animated.View style={{ flex: 1, opacity: fade }}>{content}</Animated.View>
-    </SafeAreaProvider>
+    <Animated.View style={{ flex: 1, opacity: fade }}>{content}</Animated.View>
   );
 }
 
-
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <GameProgressProvider>
+        <AppContent />
+      </GameProgressProvider>
+    </SafeAreaProvider>
+  );
+}

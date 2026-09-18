@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ImageBackground,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
@@ -15,11 +16,32 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
+import { EVENTS, track } from '../../utils/analytics';
+
+const GRID_PADDING_H = 12;
+const CARD_MARGIN_TOP = 24;
+const PORTRAIT_COLUMNS = 3;
+const LANDSCAPE_COLUMNS = 6;
+// The artwork inside a card is a fixed 90dp square, so cards must never be
+// narrower than that plus breathing room.
+const MIN_CARD_WIDTH = 104;
 
 const AnimalScreen = ({ currentLanguage }) => {
   const soundPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
   const [currentAnimation, setCurrentAnimation] = useState();
+
+  // Cards used to be a flat 26% of the container width. With the portrait lock
+  // removed that became a ~620dp-wide white slab around 90dp of artwork in
+  // landscape, so the width is now derived from the window instead. The
+  // vertical design is deliberately untouched.
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const columns =
+    windowWidth > windowHeight ? LANDSCAPE_COLUMNS : PORTRAIT_COLUMNS;
+  const cardWidth = Math.max(
+    MIN_CARD_WIDTH,
+    Math.floor((windowWidth - GRID_PADDING_H * 2) / columns) - GRID_PADDING_H
+  );
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
@@ -28,8 +50,9 @@ const AnimalScreen = ({ currentLanguage }) => {
     Bangers_400Regular,
   });
 
-  const resetAndPlayAnim = (playCurrent, soundUrl, voiceUrl) => {
+  const resetAndPlayAnim = (playCurrent, soundUrl, voiceUrl, animalId) => {
     tapFeedback();
+    track(EVENTS.ANIMAL_VIEWED, { animal: animalId });
     if (currentAnimation && typeof currentAnimation.reset === 'function') {
       try {
         currentAnimation.reset();
@@ -95,14 +118,15 @@ const AnimalScreen = ({ currentLanguage }) => {
           {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
               <TouchableOpacity
-                style={styles.button}
+                style={[styles.button, { width: cardWidth }]}
                 onPress={() =>
                   resetAndPlayAnim(
                     animRef.current[animatedImage.name],
                     animatedImage.sound,
                     currentLanguage === 'en'
                       ? animatedImage.voice
-                      : animatedImage.spanish_voice
+                      : animatedImage.spanish_voice,
+                    animatedImage.id
                   )
                 }
                 accessible={true}
@@ -161,6 +185,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     flexDirection: 'row',
     paddingBottom: 60,
+    paddingHorizontal: GRID_PADDING_H,
   },
   backgroundImage: {
     width: '100%',
@@ -168,9 +193,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#BD0000',
   },
   button: {
-    width: '26%',
     height: 132,
-    marginTop: '7%',
+    marginTop: CARD_MARGIN_TOP,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },

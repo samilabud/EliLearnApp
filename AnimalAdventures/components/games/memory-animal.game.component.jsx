@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ImageBackground,
   ScrollView,
@@ -7,9 +13,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
-  Platform,
   Animated,
-  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
@@ -24,6 +28,8 @@ import {
   successFeedback,
   celebrationFeedback,
 } from '../../utils/haptics';
+import { useGameProgress } from '../../contexts/game-progress.context';
+import { EVENTS, track } from '../../utils/analytics';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -31,6 +37,9 @@ const GRID_PADDING_H = 16;
 const CARD_GAP = 8;
 const PORTRAIT_COLUMNS = 4;
 const LANDSCAPE_COLUMNS = 8;
+
+/** Cards per level: 4, 6, 8, ... capped at 16. */
+const getCardsPerLevel = levelNum => Math.min(2 + levelNum * 2, 16);
 
 export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
   const insets = useSafeAreaInsets();
@@ -44,72 +53,122 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     (windowWidth - GRID_PADDING_H * 2 - CARD_GAP * columns) / columns
   );
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
-  const [level, setLevel] = useState(1);
-  const [cards, setCards] = useState([]);
+
+  // Level, board and score are saved progress and live in the context so they
+  // survive a trip to the menu, a rotation, or the app being killed. Only
+  // state that is meaningless outside the current turn stays local.
+  const { memory, updateMemory, resetMemory } = useGameProgress();
+  const { level, matchedPairs, moves, gameComplete } = memory;
+
   const [flippedCards, setFlippedCards] = useState([]);
-  const [matchedPairs, setMatchedPairs] = useState([]);
-  const [gameComplete, setGameComplete] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [moves, setMoves] = useState(0);
-  const [currentTurn, setCurrentTurn] = useState(0); // 0 = first card, 1 = second card
   const [showLevelComplete, setShowLevelComplete] = useState(false);
-  
+  const [confettiKey, setConfettiKey] = useState(0);
+
   // Audio players
   const cardFlipPlayer = useAudioPlayer(null);
   const matchPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
-  
-  // Animation refs
-  const [confettiKey, setConfettiKey] = useState(0);
+
   const cardAnimRefs = useRef({});
-  
+  // Set on mount and on each deal rather than at render, so the value is a
+  // real level start time and render stays pure.
+  const levelStartedAt = useRef(0);
+
+  // Every delayed action is registered here so unmounting cancels it. Without
+  // this, leaving mid-turn leaves timers that later write to saved progress -
+  // flipping cards back down in a game the child has already left.
+  const timers = useRef([]);
+  const later = useCallback((fn, ms) => {
+    const id = setTimeout(fn, ms);
+    timers.current.push(id);
+    return id;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    };
+  }, []);
+
   // Sound files
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
-  
+
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
-  // Calculate number of cards per level
-  const getCardsPerLevel = useCallback((levelNum) => {
-    return Math.min(2 + (levelNum * 2), 16); // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
+  const animalsById = useMemo(() => {
+    const lookup = {};
+    animalList.forEach(animal => {
+      lookup[animal.id] = animal;
+    });
+    return lookup;
   }, []);
 
-  // Initialize game
-  const initializeGame = useCallback(() => {
-    const cardsPerLevel = getCardsPerLevel(level);
-    const pairsNeeded = cardsPerLevel / 2;
-    
-    // Select random animals for the current level
-    const shuffledAnimals = [...animalList].sort(() => Math.random() - 0.5);
-    const selectedAnimals = shuffledAnimals.slice(0, pairsNeeded);
-    
-    // Create pairs
-    const pairs = [...selectedAnimals, ...selectedAnimals];
-    
-    // Shuffle the pairs and add position info
-    const shuffledPairs = pairs
-      .sort(() => Math.random() - 0.5)
-      .map((animal, index) => ({
-        ...animal,
-        position: index,
-        isFlipped: false,
-        isMatched: false,
-      }));
-    
-    setCards(shuffledPairs);
-    setFlippedCards([]);
-    setMatchedPairs([]);
-    setGameComplete(false);
-    setIsProcessing(false);
-    setMoves(0);
-    setCurrentTurn(0);
-    setConfettiKey(prev => prev + 1);
-  }, [level, getCardsPerLevel]);
+  // Saved cards hold only an animal id plus flags. Artwork and audio are
+  // re-attached here at render time rather than persisted, because Metro
+  // module ids shift between builds and would otherwise restore a board
+  // pointing at the wrong animal after an update.
+  const cards = useMemo(
+    () =>
+      memory.cards
+        .filter(card => animalsById[card.id])
+        .map(card => ({ ...animalsById[card.id], ...card })),
+    [memory.cards, animalsById]
+  );
+
+  const dealBoard = useCallback(
+    levelNum => {
+      const pairsNeeded = getCardsPerLevel(levelNum) / 2;
+      const shuffledAnimals = [...animalList].sort(() => Math.random() - 0.5);
+      const selectedAnimals = shuffledAnimals.slice(0, pairsNeeded);
+      const pairs = [...selectedAnimals, ...selectedAnimals];
+
+      const dealt = pairs
+        .sort(() => Math.random() - 0.5)
+        .map((animal, index) => ({
+          id: animal.id,
+          position: index,
+          isFlipped: false,
+          isMatched: false,
+        }));
+
+      updateMemory({
+        cards: dealt,
+        matchedPairs: [],
+        moves: 0,
+        gameComplete: false,
+      });
+      setFlippedCards([]);
+      setIsProcessing(false);
+      setConfettiKey(prev => prev + 1);
+      levelStartedAt.current = Date.now();
+    },
+    [updateMemory]
+  );
+
+  // A board is dealt only when the saved one does not fit the current level,
+  // which covers a first run, a level change and a reset. A saved board that
+  // does fit is left exactly as the child left it.
+  const expectedCardCount = getCardsPerLevel(level);
+  useEffect(() => {
+    if (memory.cards.length !== expectedCardCount) {
+      dealBoard(level);
+    }
+  }, [memory.cards.length, expectedCardCount, level, dealBoard]);
 
   useEffect(() => {
-    initializeGame();
-  }, [initializeGame]);
+    levelStartedAt.current = Date.now();
+    const resumed = memory.cards.some(c => c.isMatched || c.isFlipped);
+    track(resumed ? EVENTS.GAME_RESUMED : EVENTS.GAME_STARTED, {
+      game: 'memory',
+      level,
+    });
+    // Intentionally fires once per visit to the game, not once per level.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cleanup audio players
   useEffect(() => {
@@ -125,29 +184,39 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
   // Check for level completion
   useEffect(() => {
-    const cardsPerLevel = getCardsPerLevel(level);
-    const pairsNeeded = cardsPerLevel / 2;
-    
-    if (matchedPairs.length === pairsNeeded && !gameComplete && !showLevelComplete) {
-      // Level completed
+    const pairsNeeded = expectedCardCount / 2;
+
+    if (
+      matchedPairs.length === pairsNeeded &&
+      !gameComplete &&
+      !showLevelComplete
+    ) {
       celebrationFeedback();
       setShowLevelComplete(true);
-      
+      track(EVENTS.LEVEL_COMPLETED, {
+        game: 'memory',
+        level,
+        moves,
+        duration_ms: Date.now() - levelStartedAt.current,
+      });
+
       if (level < MAX_LEVEL) {
-        // Move to next level after showing completion
-        setTimeout(() => {
-          setLevel(prevLevel => prevLevel + 1);
-          setMatchedPairs([]);
-          setMoves(0);
+        // Clearing the board is what triggers the next deal.
+        later(() => {
+          updateMemory(prev => ({
+            level: prev.level + 1,
+            cards: [],
+            matchedPairs: [],
+            moves: 0,
+          }));
           setShowLevelComplete(false);
           setConfettiKey(prev => prev + 1);
         }, 2000);
       } else {
-        // All levels completed
-        setTimeout(() => {
-          setGameComplete(true);
+        later(() => {
+          updateMemory({ gameComplete: true });
           setShowLevelComplete(false);
-          // Play win sound
+          track(EVENTS.GAME_COMPLETED, { game: 'memory', level });
           try {
             gameWinPlayer.replace(gameWinSoundFile);
             gameWinPlayer.play();
@@ -155,124 +224,149 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
         }, 2000);
       }
     }
-  }, [matchedPairs.length, gameComplete, level, getCardsPerLevel, gameWinPlayer]);
+  }, [
+    matchedPairs.length,
+    gameComplete,
+    showLevelComplete,
+    level,
+    moves,
+    expectedCardCount,
+    gameWinPlayer,
+    gameWinSoundFile,
+    later,
+    updateMemory,
+  ]);
 
-  const playCardFlipSound = useCallback(async (animal) => {
-    try {
-      cardFlipPlayer.replace(animal.sound);
-      cardFlipPlayer.play();
-    } catch (e) {}
-  }, [cardFlipPlayer]);
+  const playCardFlipSound = useCallback(
+    async animal => {
+      try {
+        cardFlipPlayer.replace(animal.sound);
+        cardFlipPlayer.play();
+      } catch (e) {}
+    },
+    [cardFlipPlayer]
+  );
 
-  const playAnimalNameSound = useCallback(async (animal) => {
-    try {
-      const soundFile = currentLanguage === 'en' ? animal.voice : animal.spanish_voice;
-      matchPlayer.replace(soundFile);
-      matchPlayer.play();
-    } catch (e) {}
-  }, [matchPlayer, currentLanguage]);
+  const playAnimalNameSound = useCallback(
+    async animal => {
+      try {
+        const soundFile =
+          currentLanguage === 'en' ? animal.voice : animal.spanish_voice;
+        matchPlayer.replace(soundFile);
+        matchPlayer.play();
+      } catch (e) {}
+    },
+    [matchPlayer, currentLanguage]
+  );
 
-  const handleCardPress = useCallback(async (card) => {
-    if (isProcessing || card.isFlipped || card.isMatched || flippedCards.length >= 2) {
-      return;
-    }
-
-    // Play card flip sound
-    tapFeedback();
-    await playCardFlipSound(card);
-
-    // Flip the card
-    setCards(prevCards =>
-      prevCards.map(c =>
-        c.position === card.position ? { ...c, isFlipped: true } : c
-      )
-    );
-
-    const newFlippedCards = [...flippedCards, card];
-
-    if (newFlippedCards.length === 1) {
-      // First card flipped
-      setFlippedCards(newFlippedCards);
-      setCurrentTurn(1);
-    } else if (newFlippedCards.length === 2) {
-      // Second card flipped - check for match
-      setFlippedCards(newFlippedCards);
-      setIsProcessing(true);
-      setMoves(prev => prev + 1);
-      setCurrentTurn(0);
-
-      const [firstCard, secondCard] = newFlippedCards;
-      const isMatch = firstCard.id === secondCard.id;
-
-      if (isMatch) {
-        // Cards match
-        successFeedback();
-        setMatchedPairs(prev => [...prev, firstCard.id]);
-        setCards(prevCards =>
-          prevCards.map(c =>
-            c.id === firstCard.id ? { ...c, isMatched: true } : c
-          )
-        );
-
-        // Play animal name sound for match
-        await playAnimalNameSound(firstCard);
-
-        // Play success sound
-        try {
-          gameSuccessPlayer.replace(gameSuccessSoundFile);
-          gameSuccessPlayer.play();
-        } catch (e) {}
-
-        // Trigger animation for matched cards
-        try {
-          if (cardAnimRefs.current[firstCard.position] && cardAnimRefs.current[firstCard.position].play) {
-            cardAnimRefs.current[firstCard.position].play();
-          }
-          if (cardAnimRefs.current[secondCard.position] && cardAnimRefs.current[secondCard.position].play) {
-            cardAnimRefs.current[secondCard.position].play();
-          }
-        } catch (e) {}
-
-        // Reset flipped cards and allow another turn
-        setTimeout(() => {
-          setFlippedCards([]);
-          setIsProcessing(false);
-        }, 500);
-      } else {
-        // Cards don't match - flip them back after delay
-        setTimeout(() => {
-          setCards(prevCards =>
-            prevCards.map(c =>
-              newFlippedCards.some(fc => fc.position === c.position)
-                ? { ...c, isFlipped: false }
-                : c
-            )
-          );
-          setFlippedCards([]);
-          setIsProcessing(false);
-        }, CARD_FLIP_DELAY);
+  const handleCardPress = useCallback(
+    async card => {
+      if (
+        isProcessing ||
+        card.isFlipped ||
+        card.isMatched ||
+        flippedCards.length >= 2
+      ) {
+        return;
       }
-    }
-  }, [isProcessing, flippedCards, playCardFlipSound, playAnimalNameSound, gameSuccessPlayer]);
 
-  const onReset = useCallback(() => {
-    setLevel(1);
-    setMatchedPairs([]);
-    setMoves(0);
-    setGameComplete(false);
-    setShowLevelComplete(false);
-    setConfettiKey(prev => prev + 1);
-  }, []);
+      tapFeedback();
+      await playCardFlipSound(card);
+
+      updateMemory(prev => ({
+        cards: prev.cards.map(c =>
+          c.position === card.position ? { ...c, isFlipped: true } : c
+        ),
+      }));
+
+      const newFlippedCards = [...flippedCards, card];
+
+      if (newFlippedCards.length === 1) {
+        setFlippedCards(newFlippedCards);
+      } else if (newFlippedCards.length === 2) {
+        setFlippedCards(newFlippedCards);
+        setIsProcessing(true);
+        updateMemory(prev => ({ moves: prev.moves + 1 }));
+
+        const [firstCard, secondCard] = newFlippedCards;
+        const isMatch = firstCard.id === secondCard.id;
+
+        if (isMatch) {
+          successFeedback();
+          updateMemory(prev => ({
+            matchedPairs: [...prev.matchedPairs, firstCard.id],
+            cards: prev.cards.map(c =>
+              c.id === firstCard.id ? { ...c, isMatched: true } : c
+            ),
+          }));
+
+          await playAnimalNameSound(firstCard);
+
+          try {
+            gameSuccessPlayer.replace(gameSuccessSoundFile);
+            gameSuccessPlayer.play();
+          } catch (e) {}
+
+          try {
+            [firstCard.position, secondCard.position].forEach(pos => {
+              const ref = cardAnimRefs.current[pos];
+              if (ref && ref.play) ref.play();
+            });
+          } catch (e) {}
+
+          later(() => {
+            setFlippedCards([]);
+            setIsProcessing(false);
+          }, 500);
+        } else {
+          later(() => {
+            updateMemory(prev => ({
+              cards: prev.cards.map(c =>
+                newFlippedCards.some(fc => fc.position === c.position)
+                  ? { ...c, isFlipped: false }
+                  : c
+              ),
+            }));
+            setFlippedCards([]);
+            setIsProcessing(false);
+          }, CARD_FLIP_DELAY);
+        }
+      }
+    },
+    [
+      isProcessing,
+      flippedCards,
+      playCardFlipSound,
+      playAnimalNameSound,
+      gameSuccessPlayer,
+      gameSuccessSoundFile,
+      later,
+      updateMemory,
+    ]
+  );
 
   const handleReset = useCallback(() => {
     tapFeedback();
-    onReset();
-  }, [onReset]);
+    track(EVENTS.GAME_RESET, { game: 'memory', level });
+    setFlippedCards([]);
+    setIsProcessing(false);
+    setShowLevelComplete(false);
+    setConfettiKey(prev => prev + 1);
+    resetMemory();
+  }, [resetMemory, level]);
 
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
+    if (!gameComplete) {
+      track(EVENTS.GAME_ABANDONED, {
+        game: 'memory',
+        level,
+        moves,
+        matched: matchedPairs.length,
+      });
+    }
     onBackToMenu();
-  }, [onBackToMenu]);
+  }, [onBackToMenu, gameComplete, level, moves, matchedPairs.length]);
 
   if (!fontsLoaded) return null;
 
@@ -294,7 +388,9 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
         {/* Top controls */}
         <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
           <View style={styles.gameInfo}>
-            <Text style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}>
+            <Text
+              style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}
+            >
               {t(currentLanguage, 'memoryGame')}
             </Text>
             <Text style={styles.levelText}>
@@ -312,7 +408,9 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
             >
-              <Text style={styles.actionText}>{t(currentLanguage, 'reset')}</Text>
+              <Text style={styles.actionText}>
+                {t(currentLanguage, 'reset')}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleBackToMenu}
@@ -330,19 +428,25 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
 
         {/* Game instructions */}
         <View style={styles.instructionsContainer}>
-          <Text style={[styles.instructionsText, { fontFamily: 'Bangers_400Regular' }]}>
-            {t(currentLanguage, 'findPairs', {
-              count: getCardsPerLevel(level),
-            })}
+          <Text
+            style={[
+              styles.instructionsText,
+              { fontFamily: 'Bangers_400Regular' },
+            ]}
+          >
+            {t(currentLanguage, 'findPairs', { count: expectedCardCount })}
           </Text>
         </View>
 
         {/* Cards grid */}
         <View style={styles.gridContainer}>
-          {cards.map((card) => (
+          {cards.map(card => (
             <TouchableOpacity
               key={card.position}
-              style={[styles.cardContainer, { width: cardSize, height: cardSize }]}
+              style={[
+                styles.cardContainer,
+                { width: cardSize, height: cardSize },
+              ]}
               onPress={() => handleCardPress(card)}
               disabled={isProcessing}
               accessible={true}
@@ -352,7 +456,9 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
                 card.isFlipped || card.isMatched
                   ? t(currentLanguage, 'a11yMemoryCardRevealed', {
                       animal:
-                        currentLanguage === 'en' ? card.name : card.spanish_name,
+                        currentLanguage === 'en'
+                          ? card.name
+                          : card.spanish_name,
                     })
                   : t(currentLanguage, 'a11yMemoryCard', {
                       number: card.position + 1,
