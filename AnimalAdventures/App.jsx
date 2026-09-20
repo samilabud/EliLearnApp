@@ -116,7 +116,11 @@ function AppContent() {
     );
   } else if (currentMode === 'learn') {
     content = (
-      <HomeScreen currentLanguage={language} onBackToMenu={handleBackToMenu} />
+      <HomeScreen
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+      />
     );
   } else if (currentMode === 'guess') {
     content = (

@@ -640,6 +640,9 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   instructionsContainer: {
     paddingTop: 16,
