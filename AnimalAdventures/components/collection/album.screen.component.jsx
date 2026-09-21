@@ -68,7 +68,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
         try {
           ref.reset();
           ref.play();
-        } catch (e) {
+        } catch {
           // Animation handle went away with a re-render.
         }
       }

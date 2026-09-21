@@ -17,7 +17,7 @@ import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 
 function HomeScreen({ currentLanguage, onBackToMenu }) {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = React.useState(() => new Animated.Value(0));
 
   const handleBack = () => {
     tapFeedback();

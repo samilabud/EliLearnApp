@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Animated, Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -28,7 +28,7 @@ function AppContent() {
   const [showSplash, setShowSplash] = useState(true);
   const [gateVisible, setGateVisible] = useState(false);
   const [parentAreaVisible, setParentAreaVisible] = useState(false);
-  const fade = useRef(new Animated.Value(0)).current;
+  const [fade] = useState(() => new Animated.Value(0));
 
   const { hydrated: progressReady } = useGameProgress();
   const {

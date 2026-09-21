@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
-  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
@@ -336,7 +335,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               const ref = cardAnimRefs.current[pos];
               if (ref && ref.play) ref.play();
             });
-          } catch (e) {}
+          } catch {}
 
           // Matching clears the pair from the derived turn on its own; this
           // only holds the board briefly so the celebration can play.

@@ -58,7 +58,7 @@ function MainMenu({
   setCurrentLanguage,
   onOpenParents,
 }) {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = React.useState(() => new Animated.Value(0));
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Stacked full-width cards give one card per screen on a landscape tablet,
   // which Android 16 can force regardless of the manifest. Side by side keeps
