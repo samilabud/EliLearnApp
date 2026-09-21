@@ -34,7 +34,7 @@ export const playClip = (player, source) => {
   try {
     if (source) player.replace(source);
     player.play();
-  } catch (e) {
+  } catch {
     // A missing or busy player is not worth interrupting play for.
   }
 };
@@ -48,7 +48,7 @@ export const stopClip = player => {
   try {
     player.pause();
     player.seekTo(0);
-  } catch (e) {
+  } catch {
     // Already stopped or removed.
   }
 };
@@ -60,7 +60,7 @@ export const stopClip = player => {
 export const releasePlayer = player => {
   try {
     player.remove();
-  } catch (e) {
+  } catch {
     // Already released.
   }
 };

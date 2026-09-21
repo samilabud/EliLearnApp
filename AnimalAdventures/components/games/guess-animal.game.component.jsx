@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
-  Platform,
   Animated,
   Easing,
 } from 'react-native';
@@ -26,7 +25,7 @@ import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
-import { playClip, releasePlayer, stopClip } from '../../utils/sound';
+import { playClip, stopClip } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
@@ -151,19 +150,19 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       stopAndUnload();
       try {
         promptPlayer.remove();
-      } catch (e) {}
+      } catch {}
       try {
         wrongPlayer.remove();
-      } catch (e) {}
+      } catch {}
       try {
         gameWinPlayer.remove();
-      } catch (e) {}
+      } catch {}
       try {
         gameSuccessPlayer.remove();
-      } catch (e) {}
+      } catch {}
       try {
         animalNamePlayer.remove();
-      } catch (e) {}
+      } catch {}
     };
   }, [
     stopAndUnload,
@@ -201,7 +200,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     if (showComplete) {
       playClip(gameWinPlayer, gameWinSoundFile);
     }
-  }, [showComplete, gameWinPlayer]);
+  }, [showComplete, gameWinPlayer, gameWinSoundFile]);
 
   const shuffle = useCallback(arr => {
     const copy = [...arr];
@@ -290,7 +289,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           ) {
             optionAnimRefs.current[selected.id].play();
           }
-        } catch (e) {}
+        } catch {}
 
         Animated.sequence([
           Animated.timing(feedbackAnim, {
@@ -327,7 +326,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         try {
           const wrongAnim = optionAnimRefs.current[selected.id];
           if (wrongAnim && wrongAnim.reset) wrongAnim.reset();
-        } catch (e) {}
+        } catch {}
         playClip(wrongPlayer, wrongSoundFile);
         later(() => playPrompt(), 700);
         updateGuess(prev => ({ wrongCount: prev.wrongCount + 1 }));

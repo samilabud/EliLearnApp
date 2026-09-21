@@ -111,7 +111,7 @@ export const initAnalytics = async () => {
     const stored = await loadJSON(PROFILE_KEY, null);
     profile = stored ? { ...EMPTY_PROFILE, ...stored } : { ...EMPTY_PROFILE };
     buffer = (await loadJSON(EVENTS_KEY, [])) || [];
-  } catch (e) {
+  } catch {
     profile = { ...EMPTY_PROFILE };
     buffer = [];
   }
@@ -186,7 +186,7 @@ export const track = (name, props = {}) => {
 
     if (sink) sink(name, event.props);
     if (__DEV__) console.log(`[analytics] ${name}`, props);
-  } catch (e) {
+  } catch {
     // Measurement is never worth an exception.
   }
 };

@@ -61,7 +61,7 @@ const AnimalScreen = ({ currentLanguage }) => {
     if (currentAnimation && typeof currentAnimation.reset === 'function') {
       try {
         currentAnimation.reset();
-      } catch (e) {
+      } catch {
         // no-op
       }
     }
@@ -71,7 +71,7 @@ const AnimalScreen = ({ currentLanguage }) => {
       if (playCurrent && typeof playCurrent.play === 'function') {
         try {
           playCurrent.play();
-        } catch (e) {
+        } catch {
           // no-op
         }
       }
