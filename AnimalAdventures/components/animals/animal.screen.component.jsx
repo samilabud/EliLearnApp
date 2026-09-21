@@ -5,7 +5,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
@@ -154,7 +153,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Bangers_400Regular',
     fontSize: 18,
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 91 : 116,
+    top: 116,
     zIndex: 3,
     textShadowColor: 'rgba(0, 34, 68, 0.55)',
     textShadowRadius: 8,
