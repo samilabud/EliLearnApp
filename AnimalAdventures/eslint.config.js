@@ -18,12 +18,12 @@ module.exports = [
     rules: {
       'react/prop-types': 'off',
 
-      // Pre-existing patterns surfaced by the React Compiler rules that ship
-      // with eslint-plugin-react-hooks v6. They are not upgrade regressions:
-      // the `useRef(new Animated.Value(0)).current` idiom is used throughout
-      // the animation code and works correctly at runtime. Demoted to warnings
-      // so CI stays green; worth cleaning up as a separate refactor.
-      'react-hooks/refs': 'warn',
+      // Pre-existing pattern surfaced by the React Compiler rules that ship
+      // with eslint-plugin-react-hooks v6. Not an upgrade regression: these
+      // effects intentionally sync state from persisted/hydrated data (e.g.
+      // resuming a saved round or board), which the rule can't distinguish
+      // from an accidental cascading render. Demoted to a warning so CI stays
+      // green; worth cleaning up as a separate refactor.
       'react-hooks/set-state-in-effect': 'warn',
     },
   },

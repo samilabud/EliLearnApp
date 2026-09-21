@@ -23,7 +23,7 @@ export const loadJSON = async (name, fallback = null) => {
     const raw = await AsyncStorage.getItem(namespaced(name));
     if (raw == null) return fallback;
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     return fallback;
   }
 };
@@ -38,7 +38,7 @@ export const saveJSON = async (name, value) => {
   try {
     await AsyncStorage.setItem(namespaced(name), JSON.stringify(value));
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -52,7 +52,7 @@ export const removeKey = async name => {
   try {
     await AsyncStorage.removeItem(namespaced(name));
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 };

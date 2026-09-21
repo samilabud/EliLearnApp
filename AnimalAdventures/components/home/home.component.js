@@ -18,7 +18,7 @@ import { tapFeedback } from '../../utils/haptics';
 const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
 function HomeScreen({ currentLanguage, setCurrentLanguage, onBackToMenu }) {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [fadeAnim] = React.useState(() => new Animated.Value(0));
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
