@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dig +short NS elilearnapps.com)",
+      "Bash(dig +short A elilearnapps.com)",
+      "Bash(dig +short A www.elilearnapps.com)",
+      "Bash(dig +short MX elilearnapps.com)",
+      "Bash(dig +short TXT elilearnapps.com)"
+    ]
+  }
+}

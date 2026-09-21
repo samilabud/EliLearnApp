@@ -5,23 +5,30 @@ import {
   TouchableOpacity,
   View,
   Text,
-  ScrollView,
-  Image,
+  ImageBackground,
   Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimalScreen from '../animals/animal.screen.component.jsx';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import SideMenu from '../side_menu/side_menu.component';
-import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { AmbientBackground } from '../utility/ambient-background.component';
+import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 
-function HomeScreen({ currentLanguage, onBackToMenu }) {
+const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
+
+function HomeScreen({ currentLanguage, setCurrentLanguage, onBackToMenu }) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
+  const insets = useSafeAreaInsets();
 
   const handleBack = () => {
     tapFeedback();
     onBackToMenu();
+  };
+
+  const onLanguageToggle = () => {
+    tapFeedback();
+    setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
   };
 
   // The launch splash now lives in App, so this screen just fades itself in.
@@ -34,88 +41,109 @@ function HomeScreen({ currentLanguage, onBackToMenu }) {
   }, [fadeAnim]);
 
   return (
-    <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yBackButton')}
-          >
-            <MaterialIcons name="arrow-back" size={28} color="white" />
-            <Text style={styles.backButtonText}>
-              {t(currentLanguage, 'back')}
-            </Text>
-          </TouchableOpacity>
+    <ImageBackground
+      source={backgroundImage}
+      resizeMode="cover"
+      style={styles.backgroundImage}
+    >
+      <AmbientBackground />
 
-          <Image
-            source={require('../../assets/logo/logoEliLearn.png')}
-            style={styles.logo}
-            accessible={false}
-            accessibilityRole="image"
-          />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              style={styles.languageToggle}
+              onPress={onLanguageToggle}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yLanguageToggle')}
+            >
+              <MaterialIcons name="translate" size={20} color="white" />
+              <Text style={styles.languageText}>
+                {currentLanguage.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
 
-          <SideMenu
-            onBackToMenu={onBackToMenu}
-            currentLanguage={currentLanguage}
-          />
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={handleBack}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+            >
+              <Text style={styles.actionText}>
+                {t(currentLanguage, 'mainMenu')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Scrollable Content */}
-        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-          <ScrollView style={styles.content}>
-            <AnimalScreen currentLanguage={currentLanguage} />
-          </ScrollView>
-        </Animated.View>
-    <StatusBar style="auto" />
-    </SafeAreaView>
+        <AnimalScreen currentLanguage={currentLanguage} />
+      </Animated.View>
+      <StatusBar style="auto" />
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#BD0000',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     width: '100%',
-    borderBottomWidth: 2,
-    borderBottomColor: '#FFD700',
-    zIndex: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  backButton: {
+  topActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: MIN_TOUCH_TARGET,
+    gap: 10,
+  },
+  actionButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 28,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
-  backButtonText: {
-    marginLeft: 8,
-    fontSize: 20,
+  actionText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
+  },
+  languageToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: LARGE_TOUCH_TARGET,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  languageText: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-  },
-  logo: {
-    width: 120,
-    height: 48,
-    resizeMode: 'contain',
-  },
-  content: {
-    flex: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
 });
 
 export default HomeScreen;
-
-

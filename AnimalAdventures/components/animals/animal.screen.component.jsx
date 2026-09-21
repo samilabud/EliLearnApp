@@ -5,15 +5,12 @@ import {
   Text,
   View,
   TouchableOpacity,
-  ImageBackground,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { animalList } from './animal.list';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { EVENTS, track } from '../../utils/analytics';
@@ -46,7 +43,6 @@ const AnimalScreen = ({ currentLanguage }) => {
     Math.floor((windowWidth - GRID_PADDING_H * 2) / columns) - GRID_PADDING_H
   );
 
-  const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const animRef = useRef([]);
 
   const [fontsLoaded] = useFonts({
@@ -97,18 +93,12 @@ const AnimalScreen = ({ currentLanguage }) => {
   }
 
   return (
-    <ImageBackground
-      source={backgroundImage}
-      resizeMode="cover"
-      style={styles.backgroundImage}
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={{ paddingTop: 10 }}
     >
-      <AmbientBackground />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={{ paddingTop: 10 }}
-      >
-        <View style={styles.animationContainer}>
-          {animalList.map(animatedImage => (
+      <View style={styles.animationContainer}>
+        {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
               <TouchableOpacity
                 style={[styles.button, { width: cardWidth }]}
@@ -131,27 +121,27 @@ const AnimalScreen = ({ currentLanguage }) => {
                       : animatedImage.spanish_name,
                 })}
               >
-                <LottieView
-                  autoPlay={false}
-                  autoSize={false}
-                  ref={el => (animRef.current[animatedImage.name] = el)}
-                  resizeMode="contain"
-                  loop={false}
-                  source={animatedImage.animation_path}
-                  style={styles.animation}
-                />
-                <View style={styles.animationBackground} />
+                <View style={styles.animationBackground}>
+                  <LottieView
+                    autoPlay={false}
+                    autoSize={false}
+                    ref={el => (animRef.current[animatedImage.name] = el)}
+                    resizeMode="contain"
+                    loop={false}
+                    source={animatedImage.animation_path}
+                    style={styles.animation}
+                  />
+                </View>
                 <Text style={styles.animationName} accessible={false}>
                   {currentLanguage === 'en'
                     ? animatedImage.name
                     : animatedImage.spanish_name}
                 </Text>
               </TouchableOpacity>
-            </Fragment>
-          ))}
-        </View>
-      </ScrollView>
-    </ImageBackground>
+          </Fragment>
+        ))}
+      </View>
+    </ScrollView>
   );
 };
 
@@ -163,7 +153,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Bangers_400Regular',
     fontSize: 18,
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 91 : 116,
+    top: 116,
     zIndex: 3,
     textShadowColor: 'rgba(0, 34, 68, 0.55)',
     textShadowRadius: 8,
@@ -180,11 +170,6 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
     paddingHorizontal: GRID_PADDING_H,
   },
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
   button: {
     height: 132,
     marginTop: CARD_MARGIN_TOP,
@@ -196,13 +181,17 @@ const styles = StyleSheet.create({
     height: 85,
     width: '100%',
     borderRadius: 18,
-    zIndex: 1,
-    position: 'absolute',
     borderWidth: 3,
     borderColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Some source animations (esp. raster ones) don't leave much margin
+    // around the character. Clipping here, like the album screen does,
+    // keeps any future poorly-padded asset contained to the card instead
+    // of spilling past its border.
+    overflow: 'hidden',
   },
   animation: {
-    zIndex: 2,
     width: 90,
     height: 90,
   },

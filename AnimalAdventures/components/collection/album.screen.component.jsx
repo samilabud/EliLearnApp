@@ -8,8 +8,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
@@ -41,6 +40,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
   const animPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
   const animRefs = useRef({});
+  const insets = useSafeAreaInsets();
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const columns =
@@ -84,39 +84,41 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            tapFeedback();
-            onBackToMenu();
-          }}
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={t(currentLanguage, 'a11yBackButton')}
-        >
-          <MaterialIcons name="arrow-back" size={28} color="white" />
-          <Text style={styles.backButtonText}>
-            {t(currentLanguage, 'back')}
-          </Text>
-        </TouchableOpacity>
+    <ImageBackground
+      source={require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg')}
+      resizeMode="cover"
+      style={styles.backgroundImage}
+    >
+      <AmbientBackground />
 
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.headerCount}>
           {t(currentLanguage, 'albumProgress', {
             met: metSet.size,
             total: animalList.length,
           })}
         </Text>
+
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            tapFeedback();
+            onBackToMenu();
+          }}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+        >
+          <Text style={styles.actionText}>
+            {t(currentLanguage, 'mainMenu')}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <ImageBackground
-        source={require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg')}
-        resizeMode="cover"
-        style={styles.backgroundImage}
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
       >
-        <AmbientBackground />
-        <ScrollView contentContainerStyle={styles.scrollContent}>
           {metSet.size === 0 && (
             <Text style={[styles.hint, { fontFamily: 'Bangers_400Regular' }]}>
               {t(currentLanguage, 'albumHintEmpty')}
@@ -178,50 +180,52 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
             })}
           </View>
         </ScrollView>
-      </ImageBackground>
-    </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#BD0000',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: '#FFD700',
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: MIN_TOUCH_TARGET,
+  actionButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     paddingHorizontal: 18,
     paddingVertical: 10,
-    borderRadius: 28,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
-  backButtonText: {
-    marginLeft: 8,
-    fontSize: 20,
-    fontWeight: 'bold',
+  actionText: {
     color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   headerCount: {
     color: '#FFD700',
     fontSize: 18,
     fontWeight: 'bold',
     flexShrink: 1,
-    textAlign: 'right',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   backgroundImage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#BD0000',
+  },
+  scrollArea: {
     flex: 1,
   },
   scrollContent: {
