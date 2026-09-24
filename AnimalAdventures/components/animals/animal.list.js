@@ -190,7 +190,7 @@ export const animalList = [
     name: 'Duck',
     spanish_name: 'Pato',
     animation_path: require(`${animation_path}duck.json`),
-    sound: require(`${sound_path}/Duck quack.mp3`),
+    sound: require(`${sound_path}/Duck-quack.mp3`),
     voice: require(`${english_folder}/Duck.mp3`),
     spanish_voice: require(`${spanish_folder}/Pato.mp3`),
   },
