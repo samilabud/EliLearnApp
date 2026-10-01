@@ -1,7 +1,7 @@
 /**
  * Durable game progress.
  *
- * Both games used to keep level, board and score in component `useState`.
+ * The games used to keep level, board and score in component `useState`.
  * That state died whenever the component unmounted, which happened on every
  * trip back to the main menu and again on rotation - a child who had reached
  * level 6 was silently dropped back to level 1.
@@ -47,6 +47,14 @@ const DEFAULT_GUESS = {
   showComplete: false,
 };
 
+const DEFAULT_LETTER = {
+  level: 1,
+  targetId: null,
+  optionLetters: [],
+  wrongCount: 0,
+  showComplete: false,
+};
+
 /**
  * Animals the child has met, by id.
  *
@@ -82,6 +90,12 @@ const guessIsUsable = guess => {
   return (guess.optionIds || []).every(id => validIds.has(id));
 };
 
+const letterIsUsable = letter => {
+  if (!letter) return false;
+  if (letter.targetId && !validIds.has(letter.targetId)) return false;
+  return Array.isArray(letter.optionLetters);
+};
+
 /**
  * Cards left face up by a comparison that never resolved.
  *
@@ -109,15 +123,16 @@ export const faceDownUnmatched = cards =>
  *
  * Finishing every level is worth celebrating in the moment, but reopening the
  * app straight into a victory screen is not, so a finished game starts over.
- * Losing is not a state either game can be in any more - Guess the Animal no
- * longer ends on a mistake - so completion is the only thing to clear.
+ * Losing is not a state any game can be in any more - none of them end on a
+ * mistake - so completion is the only thing to clear.
  *
  * This runs only at hydration, so within a session leaving to the menu and
  * returning still shows the overlay the child left behind.
  */
-const clearTerminalStates = (memory, guess) => ({
+const clearTerminalStates = (memory, guess, letter) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,
   guess: guess.showComplete ? DEFAULT_GUESS : guess,
+  letter: letter.showComplete ? DEFAULT_LETTER : letter,
 });
 
 /**
@@ -139,9 +154,10 @@ export function GameProgressProvider({ children }) {
   const [hydrated, setHydrated] = useState(false);
   const [memory, setMemoryState] = useState(DEFAULT_MEMORY);
   const [guess, setGuessState] = useState(DEFAULT_GUESS);
+  const [letter, setLetterState] = useState(DEFAULT_LETTER);
   const [met, setMet] = useState(DEFAULT_MET);
   const persistTimer = useRef(null);
-  const latest = useRef({ memory, guess });
+  const latest = useRef({ memory, guess, letter });
 
   useEffect(() => {
     let cancelled = false;
@@ -157,10 +173,14 @@ export function GameProgressProvider({ children }) {
             : DEFAULT_MEMORY,
           guessIsUsable(stored.guess)
             ? { ...DEFAULT_GUESS, ...stored.guess }
-            : DEFAULT_GUESS
+            : DEFAULT_GUESS,
+          letterIsUsable(stored.letter)
+            ? { ...DEFAULT_LETTER, ...stored.letter }
+            : DEFAULT_LETTER
         );
         setMemoryState(restored.memory);
         setGuessState(restored.guess);
+        setLetterState(restored.letter);
         if (Array.isArray(stored.met)) {
           setMet(stored.met.filter(id => validIds.has(id)));
         }
@@ -174,20 +194,26 @@ export function GameProgressProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    latest.current = { memory, guess, met, hydrated };
+    latest.current = { memory, guess, letter, met, hydrated };
     // Nothing is written until the stored value has been read, otherwise the
     // initial empty state would overwrite real progress during startup.
     if (!hydrated) return;
 
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      saveJSON(PROGRESS_KEY, { version: SCHEMA_VERSION, memory, guess, met });
+      saveJSON(PROGRESS_KEY, {
+        version: SCHEMA_VERSION,
+        memory,
+        guess,
+        letter,
+        met,
+      });
     }, PERSIST_DEBOUNCE_MS);
 
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
     };
-  }, [memory, guess, met, hydrated]);
+  }, [memory, guess, letter, met, hydrated]);
 
   // Flush on teardown so a fast exit cannot outrun the debounce. Guarded on
   // `hydrated`: a teardown that happens while storage is still being read must
@@ -197,6 +223,7 @@ export function GameProgressProvider({ children }) {
       const {
         memory: m,
         guess: g,
+        letter: l,
         met: k,
         hydrated: isHydrated,
       } = latest.current;
@@ -205,6 +232,7 @@ export function GameProgressProvider({ children }) {
         version: SCHEMA_VERSION,
         memory: m,
         guess: g,
+        letter: l,
         met: k,
       });
     };
@@ -224,6 +252,13 @@ export function GameProgressProvider({ children }) {
     }));
   }, []);
 
+  const updateLetter = useCallback(patch => {
+    setLetterState(prev => ({
+      ...prev,
+      ...(typeof patch === 'function' ? patch(prev) : patch),
+    }));
+  }, []);
+
   /**
    * Record that a child has met an animal. Idempotent, and never undone -
    * resetting a game must not take an animal back out of the album.
@@ -236,29 +271,36 @@ export function GameProgressProvider({ children }) {
 
   const resetMemory = useCallback(() => setMemoryState(DEFAULT_MEMORY), []);
   const resetGuess = useCallback(() => setGuessState(DEFAULT_GUESS), []);
+  const resetLetter = useCallback(() => setLetterState(DEFAULT_LETTER), []);
 
   const value = useMemo(
     () => ({
       hydrated,
       memory,
       guess,
+      letter,
       met,
       markAnimalMet,
       updateMemory,
       updateGuess,
+      updateLetter,
       resetMemory,
       resetGuess,
+      resetLetter,
     }),
     [
       hydrated,
       memory,
       guess,
+      letter,
       met,
       markAnimalMet,
       updateMemory,
       updateGuess,
+      updateLetter,
       resetMemory,
       resetGuess,
+      resetLetter,
     ]
   );
 
@@ -270,10 +312,10 @@ export function GameProgressProvider({ children }) {
 }
 
 /**
- * Access saved progress for both games.
- * @returns {{hydrated: boolean, memory: object, guess: object,
- *   updateMemory: Function, updateGuess: Function,
- *   resetMemory: Function, resetGuess: Function}}
+ * Access saved progress for all games.
+ * @returns {{hydrated: boolean, memory: object, guess: object, letter: object,
+ *   updateMemory: Function, updateGuess: Function, updateLetter: Function,
+ *   resetMemory: Function, resetGuess: Function, resetLetter: Function}}
  */
 export function useGameProgress() {
   const ctx = useContext(GameProgressContext);
@@ -283,4 +325,4 @@ export function useGameProgress() {
   return ctx;
 }
 
-export { DEFAULT_MEMORY, DEFAULT_GUESS };
+export { DEFAULT_MEMORY, DEFAULT_GUESS, DEFAULT_LETTER };

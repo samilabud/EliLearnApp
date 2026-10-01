@@ -6,6 +6,7 @@ import { MySplashScreen } from './components/utility/my-splash-screen.component'
 import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
+import FirstLetterGame from './components/games/first-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
@@ -125,6 +126,13 @@ function AppContent() {
   } else if (currentMode === 'guess') {
     content = (
       <GuessAnimalGame
+        currentLanguage={language}
+        onBackToMenu={handleBackToMenu}
+      />
+    );
+  } else if (currentMode === 'letter') {
+    content = (
+      <FirstLetterGame
         currentLanguage={language}
         onBackToMenu={handleBackToMenu}
       />

@@ -33,6 +33,7 @@ import {
   useGameProgress,
 } from '../../contexts/game-progress.context';
 import { EVENTS, track } from '../../utils/analytics';
+import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
@@ -388,6 +389,8 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     }
     onBackToMenu();
   }, [onBackToMenu, gameComplete, level, moves, matchedPairs.length]);
+
+  useBackToMenu(handleBackToMenu);
 
   if (!fontsLoaded) return null;
 

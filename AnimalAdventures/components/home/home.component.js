@@ -14,6 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
+import { useBackToMenu } from '../../utils/navigation';
 
 const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
@@ -25,6 +26,8 @@ function HomeScreen({ currentLanguage, setCurrentLanguage, onBackToMenu }) {
     tapFeedback();
     onBackToMenu();
   };
+
+  useBackToMenu(handleBack);
 
   const onLanguageToggle = () => {
     tapFeedback();

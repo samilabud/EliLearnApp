@@ -34,41 +34,56 @@ import {
   errorFeedback,
 } from '../../utils/haptics';
 
-const GRID_PADDING_H = 16;
-const OPTION_GAP = 12;
-const PORTRAIT_COLUMNS = 3;
-const LANDSCAPE_COLUMNS = 6;
-// The answer artwork is a fixed 100dp square, so cards must never shrink past it.
-const MIN_OPTION_SIZE = 104;
+const MAX_LEVEL = 6;
 
-const MAX_LEVEL = 8;
+// Levels at or below this teach vowels in isolation: both the animal shown
+// and the two wrong letters come only from {A, E, I, O, U}. Levels above it
+// draw from the whole alphabet, consonants included.
+const VOWEL_LEVELS = 2;
 
-// After this many wrong tries the right answer starts to glow. Children aged
+const VOWELS = ['A', 'E', 'I', 'O', 'U'];
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+// After this many wrong taps the right letter starts to glow. Children aged
 // three to six learn by trying the wrong thing, so the game never ends on a
-// mistake - it just gets more helpful.
+// mistake - it just gets more helpful. Matches Guess the Animal's threshold.
 const HINT_AFTER_TRIES = 3;
 
-export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
+const OPTION_GAP = 20;
+const MIN_OPTION_SIZE = 96;
+const MAX_OPTION_SIZE = 140;
+
+const stripAccents = str => str.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/**
+ * The letter a child should answer with, in the language currently shown.
+ * Accents are stripped first so "Águila" counts as starting with A, the
+ * same vowel a child hears regardless of the written accent mark.
+ */
+const firstLetterOf = (animal, lang) => {
+  const name = lang === 'en' ? animal.name : animal.spanish_name;
+  return stripAccents(name).trim().charAt(0).toUpperCase();
+};
+
+const isVowel = letter => VOWELS.includes(letter);
+
+export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
   const insets = useSafeAreaInsets();
-  // Android 16 ignores the portrait lock on large screens, so the answer grid
-  // has to lay out sensibly at any aspect ratio. A wide screen gets one row of
-  // six instead of two rows of stretched cards.
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const optionColumns =
-    windowWidth > windowHeight ? LANDSCAPE_COLUMNS : PORTRAIT_COLUMNS;
-  const optionSize = Math.max(
-    MIN_OPTION_SIZE,
-    Math.floor(
-      (windowWidth - GRID_PADDING_H * 2 - OPTION_GAP * optionColumns) /
-        optionColumns
+  const { width: windowWidth } = useWindowDimensions();
+  const optionSize = Math.min(
+    MAX_OPTION_SIZE,
+    Math.max(
+      MIN_OPTION_SIZE,
+      Math.floor((windowWidth - OPTION_GAP * 4) / 3)
     )
   );
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
-  // Level, the current round and lives are saved progress and live in the
-  // context, so they survive a trip to the menu, a rotation, or the app being
-  // killed. Only state meaningless outside the current round stays local.
-  const { guess, updateGuess, resetGuess, markAnimalMet } = useGameProgress();
-  const { level, wrongCount, showComplete } = guess;
+  // Level and the current round are saved progress and live in the context,
+  // so they survive a trip to the menu, a rotation, or the app being killed.
+  // Only state meaningless outside the current round stays local.
+  const { letter, updateLetter, resetLetter, markAnimalMet } =
+    useGameProgress();
+  const { level, wrongCount, showComplete } = letter;
 
   const [isCorrect, setIsCorrect] = useState(false);
   const promptPlayer = useAudioPlayer(null);
@@ -78,12 +93,11 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
-  const animalNamePlayer = useAudioPlayer(null);
   const [confettiKey, setConfettiKey] = useState(0);
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
-  const optionAnimRefs = useRef({});
+  const targetAnimRef = useRef(null);
   const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
@@ -96,16 +110,27 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     return lookup;
   }, []);
 
-  // The saved round stores animal ids only. Artwork and audio are re-attached
-  // here rather than persisted, because Metro module ids shift between builds
-  // and would otherwise restore a round pointing at the wrong animal.
-  const targetAnimal = useMemo(
-    () => animalsById[guess.targetId] || null,
-    [animalsById, guess.targetId]
+  // Animals whose name starts with a vowel in the language currently shown.
+  // Recomputed on language toggle, since "Owl" and "Buho" do not agree.
+  const vowelAnimals = useMemo(
+    () =>
+      animalList.filter(animal =>
+        isVowel(firstLetterOf(animal, currentLanguage))
+      ),
+    [currentLanguage]
   );
-  const options = useMemo(
-    () => guess.optionIds.map(id => animalsById[id]).filter(Boolean),
-    [animalsById, guess.optionIds]
+
+  // The saved round stores the animal id only. Artwork and audio are
+  // re-attached here rather than persisted, because Metro module ids shift
+  // between builds and would otherwise restore a round pointing at the wrong
+  // animal.
+  const targetAnimal = useMemo(
+    () => animalsById[letter.targetId] || null,
+    [animalsById, letter.targetId]
+  );
+  const correctLetter = useMemo(
+    () => (targetAnimal ? firstLetterOf(targetAnimal, currentLanguage) : null),
+    [targetAnimal, currentLanguage]
   );
 
   // Every delayed action is registered here so unmounting cancels it. Without
@@ -129,18 +154,13 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
   useEffect(() => {
     roundStartedAt.current = Date.now();
-    track(guess.targetId ? EVENTS.GAME_RESUMED : EVENTS.GAME_STARTED, {
-      game: 'guess',
+    track(letter.targetId ? EVENTS.GAME_RESUMED : EVENTS.GAME_STARTED, {
+      game: 'letter',
       level,
     });
     // Fires once per visit to the game, not once per round.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const optionsCount = useMemo(() => {
-    // Level 1 -> 2 options, Level 2 -> 3, ... Level 5 -> 6
-    return Math.min(6, level + 1);
-  }, [level]);
 
   const stopAndUnload = useCallback(async () => {
     stopClip(promptPlayer);
@@ -161,20 +181,10 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       try {
         gameSuccessPlayer.remove();
       } catch {}
-      try {
-        animalNamePlayer.remove();
-      } catch {}
     };
-  }, [
-    stopAndUnload,
-    promptPlayer,
-    wrongPlayer,
-    gameWinPlayer,
-    gameSuccessPlayer,
-    animalNamePlayer,
-  ]);
+  }, [stopAndUnload, promptPlayer, wrongPlayer, gameWinPlayer, gameSuccessPlayer]);
 
-  // Continuous bubble effect on Play Sound button
+  // Continuous bubble effect on the Play button, matching the other games.
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
@@ -196,7 +206,6 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
     return () => pulse.stop();
   }, [promptPulse]);
 
-  // Play win sound when the user completes all levels
   useEffect(() => {
     if (showComplete) {
       playClip(gameWinPlayer, gameWinSoundFile);
@@ -213,70 +222,76 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   }, []);
 
   const pickRound = useCallback(() => {
-    const all = shuffle(animalList);
-    const nextTarget = all[0];
-    const distractors = shuffle(all.slice(1)).slice(0, optionsCount - 1);
-    const nextOptions = shuffle([nextTarget, ...distractors]);
-    updateGuess({
+    const isVowelLevel = level <= VOWEL_LEVELS;
+    const pool =
+      isVowelLevel && vowelAnimals.length > 0 ? vowelAnimals : animalList;
+    const nextTarget = pool[Math.floor(Math.random() * pool.length)];
+    const correct = firstLetterOf(nextTarget, currentLanguage);
+    const distractorAlphabet = isVowelLevel ? VOWELS : ALPHABET;
+    const distractors = shuffle(
+      distractorAlphabet.filter(letterOption => letterOption !== correct)
+    ).slice(0, 2);
+    updateLetter({
       targetId: nextTarget.id,
-      optionIds: nextOptions.map(a => a.id),
+      optionLetters: shuffle([correct, ...distractors]),
+      wrongCount: 0,
     });
     setIsCorrect(false);
     setShowWrongOverlay(false);
     roundStartedAt.current = Date.now();
-  }, [optionsCount, shuffle, updateGuess]);
+  }, [level, vowelAnimals, currentLanguage, shuffle, updateLetter]);
 
-  // A round is dealt only when the saved one does not fit the current level,
-  // which covers a first run, a level change and a reset. A saved round that
-  // does fit is restored untouched, so returning from the menu or rotating the
-  // device resumes the same question rather than silently replacing it.
+  // A round is dealt only when the saved one is missing, which covers a
+  // first run, a level change and a reset. A saved round that already has
+  // its three letters is restored untouched, so returning from the menu or
+  // rotating the device resumes the same question rather than silently
+  // replacing it.
   useEffect(() => {
-    if (guess.optionIds.length !== optionsCount) {
+    if (letter.optionLetters.length !== 3) {
       pickRound();
     }
-  }, [guess.optionIds.length, optionsCount, pickRound]);
+  }, [letter.optionLetters.length, pickRound]);
+
+  // Toggling the language can change which letter is correct for the
+  // animal already on screen (e.g. "Owl" -> "Buho"). When the saved letters
+  // no longer include the right answer, deal a fresh round rather than show
+  // a question with no correct option.
+  useEffect(() => {
+    if (!targetAnimal) return;
+    if (!letter.optionLetters.includes(correctLetter)) {
+      pickRound();
+    }
+  }, [targetAnimal, correctLetter, letter.optionLetters, pickRound]);
 
   const playPrompt = useCallback(async () => {
     if (!targetAnimal) return;
     await stopAndUnload();
-    playClip(promptPlayer, targetAnimal.sound);
-  }, [targetAnimal, stopAndUnload, promptPlayer]);
-
-  const playAnimalName = useCallback(
-    async animal => {
-      playClip(
-        animalNamePlayer,
-        currentLanguage === 'en' ? animal.voice : animal.spanish_voice
-      );
-    },
-    [animalNamePlayer, currentLanguage]
-  );
+    const voice =
+      currentLanguage === 'en' ? targetAnimal.voice : targetAnimal.spanish_voice;
+    playClip(promptPlayer, voice);
+  }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
   useEffect(() => {
     if (targetAnimal) {
       playPrompt();
     }
-  }, [targetAnimal, playPrompt]);
+  }, [targetAnimal, currentLanguage, playPrompt]);
 
   const onSelect = useCallback(
-    async selected => {
-      if (showComplete || isCorrect) return;
-      const correct = selected.id === targetAnimal.id;
+    async selectedLetter => {
+      if (showComplete || isCorrect || !targetAnimal) return;
+      const correct = selectedLetter === correctLetter;
       if (correct) {
         successFeedback();
         setIsCorrect(true);
-        updateGuess({ wrongCount: 0 });
-        markAnimalMet(selected.id);
+        updateLetter({ wrongCount: 0 });
+        markAnimalMet(targetAnimal.id);
         track(EVENTS.LEVEL_COMPLETED, {
-          game: 'guess',
+          game: 'letter',
           level,
           duration_ms: Date.now() - roundStartedAt.current,
         });
 
-        // Play animal name sound first
-        playAnimalName(selected);
-
-        // Play success sound after 1 second (non-final levels)
         later(() => {
           if (level < MAX_LEVEL) {
             playClip(gameSuccessPlayer, gameSuccessSoundFile);
@@ -284,11 +299,8 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         }, 1000);
 
         try {
-          if (
-            optionAnimRefs.current[selected.id] &&
-            optionAnimRefs.current[selected.id].play
-          ) {
-            optionAnimRefs.current[selected.id].play();
+          if (targetAnimRef.current && targetAnimRef.current.play) {
+            targetAnimRef.current.play();
           }
         } catch {}
 
@@ -309,32 +321,29 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
         // Clearing the round is what triggers the next one to be dealt.
         later(() => {
-          updateGuess(prev => {
+          updateLetter(prev => {
             if (prev.level < MAX_LEVEL) {
-              return { level: prev.level + 1, targetId: null, optionIds: [] };
+              return { level: prev.level + 1, targetId: null, optionLetters: [] };
             }
-            track(EVENTS.GAME_COMPLETED, { game: 'guess', level: prev.level });
+            track(EVENTS.GAME_COMPLETED, { game: 'letter', level: prev.level });
             return { showComplete: true };
           });
         }, 2500);
       } else {
         // A wrong pick is a normal part of learning, so nothing ends here.
-        // The child gets a gentle noise, the sound again to compare against,
-        // and after a few tries the right answer starts to glow.
+        // The child gets a gentle noise, the name again to compare against,
+        // and after a few tries the right letter starts to glow.
         errorFeedback();
         setShowWrongOverlay(true);
         later(() => setShowWrongOverlay(false), 900);
-        try {
-          const wrongAnim = optionAnimRefs.current[selected.id];
-          if (wrongAnim && wrongAnim.reset) wrongAnim.reset();
-        } catch {}
         playClip(wrongPlayer, wrongSoundFile);
         later(() => playPrompt(), 700);
-        updateGuess(prev => ({ wrongCount: prev.wrongCount + 1 }));
+        updateLetter(prev => ({ wrongCount: prev.wrongCount + 1 }));
       }
     },
     [
       targetAnimal,
+      correctLetter,
       level,
       feedbackAnim,
       wrongSoundFile,
@@ -342,22 +351,21 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       wrongPlayer,
       gameSuccessPlayer,
       gameSuccessSoundFile,
-      playAnimalName,
       isCorrect,
       later,
-      updateGuess,
+      updateLetter,
       markAnimalMet,
       playPrompt,
     ]
   );
 
   const onReset = useCallback(() => {
-    track(EVENTS.GAME_RESET, { game: 'guess', level });
+    track(EVENTS.GAME_RESET, { game: 'letter', level });
     setIsCorrect(false);
     setShowWrongOverlay(false);
     // Clearing progress empties the round, which re-deals via the effect above.
-    resetGuess();
-  }, [resetGuess, level]);
+    resetLetter();
+  }, [resetLetter, level]);
 
   const handleReset = useCallback(() => {
     tapFeedback();
@@ -367,7 +375,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
     if (!showComplete) {
-      track(EVENTS.GAME_ABANDONED, { game: 'guess', level, wrongCount });
+      track(EVENTS.GAME_ABANDONED, { game: 'letter', level, wrongCount });
     }
     onBackToMenu();
   }, [onBackToMenu, showComplete, level, wrongCount]);
@@ -438,15 +446,27 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           </View>
         </View>
 
-        {/* Prompt */}
-        <View style={styles.promptContainer}>
+        {/* The animal, shown and named */}
+        <View style={styles.animalContainer}>
+          <View style={styles.animalCard}>
+            {!!targetAnimal && (
+              <LottieView
+                autoPlay={false}
+                loop={false}
+                ref={el => (targetAnimRef.current = el)}
+                resizeMode="contain"
+                source={targetAnimal.animation_path}
+                style={styles.animalAnimation}
+              />
+            )}
+          </View>
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
             <TouchableOpacity
               onPress={handlePlayPrompt}
               style={styles.promptButton}
               accessible={true}
               accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
+              accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
             >
               <Text
                 style={[
@@ -454,52 +474,48 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
                   { fontFamily: 'Bangers_400Regular' },
                 ]}
               >
-                {t(currentLanguage, 'playSound')}
+                {t(currentLanguage, 'playName')}
               </Text>
             </TouchableOpacity>
           </Animated.View>
           {!!targetAnimal && (
             <Text style={styles.helperText}>
-              {t(currentLanguage, 'whichAnimal')}
+              {t(currentLanguage, 'whichLetter')}
             </Text>
           )}
         </View>
 
-        {/* Options grid */}
+        {/* Letter options */}
         <View style={styles.optionsContainer}>
-          {options.map(opt => {
+          {letter.optionLetters.map(letterOption => {
             const isHinted =
               wrongCount >= HINT_AFTER_TRIES &&
               targetAnimal &&
-              opt.id === targetAnimal.id;
+              letterOption === correctLetter;
 
             return (
               <TouchableOpacity
-                key={opt.id}
+                key={letterOption}
                 style={[
-                  styles.optionCard,
-                  { width: optionSize },
-                  isHinted && styles.optionCardHinted,
+                  styles.letterCard,
+                  { width: optionSize, height: optionSize },
+                  isHinted && styles.letterCardHinted,
                 ]}
-                onPress={() => onSelect(opt)}
+                onPress={() => onSelect(letterOption)}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yAnswerOption', {
-                  animal:
-                    currentLanguage === 'en' ? opt.name : opt.spanish_name,
+                accessibilityLabel={t(currentLanguage, 'a11yLetterOption', {
+                  letter: letterOption,
                 })}
               >
-                <View style={styles.optionInner}>
-                  <View style={styles.animationBackground} />
-                  <LottieView
-                    autoPlay={false}
-                    loop={false}
-                    ref={el => (optionAnimRefs.current[opt.id] = el)}
-                    resizeMode="contain"
-                    source={opt.animation_path}
-                    style={styles.animation}
-                  />
-                </View>
+                <Text
+                  style={[
+                    styles.letterText,
+                    { fontFamily: 'Bangers_400Regular' },
+                  ]}
+                >
+                  {letterOption}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -637,10 +653,31 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 2 },
   },
-  promptContainer: {
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  animalContainer: {
     paddingTop: 8,
     paddingHorizontal: 16,
     alignItems: 'center',
+  },
+  animalCard: {
+    width: 170,
+    height: 170,
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  animalAnimation: {
+    width: 150,
+    height: 150,
   },
   promptButton: {
     backgroundColor: '#FFD700',
@@ -658,51 +695,40 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 6,
+    marginTop: 14,
     color: 'white',
     fontSize: 20,
-  },
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    textAlign: 'center',
+    paddingHorizontal: 12,
   },
   optionsContainer: {
     flexGrow: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-evenly',
-    alignContent: 'space-around',
-    paddingTop: 6,
-    paddingHorizontal: GRID_PADDING_H,
-  },
-  optionCard: {
-    height: 130,
-    marginTop: 20,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: OPTION_GAP,
+    paddingTop: 28,
+    paddingHorizontal: 16,
   },
-  optionInner: {
-    width: '100%',
-    height: '100%',
+  letterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  animationBackground: {
-    backgroundColor: '#ffffff',
-    height: 100,
-    width: '100%',
-    borderRadius: 18,
-    zIndex: 1,
-    position: 'absolute',
-    borderWidth: 3,
-    borderColor: '#FFD700',
+  letterText: {
+    fontSize: 56,
+    color: '#0A3D62',
   },
-  animation: {
-    zIndex: 2,
-    width: 100,
-    height: 100,
+  // Shown only after several tries, so it reads as help rather than an
+  // answer key.
+  letterCardHinted: {
+    borderWidth: 4,
+    borderColor: '#FFD700',
+    backgroundColor: 'rgba(255, 215, 0, 0.22)',
   },
   feedbackOverlay: {
     position: 'absolute',
@@ -726,21 +752,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.55)',
     textShadowRadius: 10,
     textShadowOffset: { width: 0, height: 4 },
-  },
-  // Shown only after several tries, so it reads as help rather than a answer key.
-  optionCardHinted: {
-    borderWidth: 4,
-    borderColor: '#FFD700',
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 215, 0, 0.22)',
-  },
-  wrongText: {
-    fontSize: 120,
-    color: '#FF5252',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
-    paddingBottom: 34,
   },
   completionOverlay: {
     position: 'absolute',

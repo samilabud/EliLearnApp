@@ -11,6 +11,8 @@ export const STRINGS = {
     modeGuessDescription: 'Test your knowledge!',
     modeMemoryTitle: 'Train Your Memory',
     modeMemoryDescription: 'Find matching animal pairs!',
+    modeLetterTitle: 'Guess the First Letter',
+    modeLetterDescription: 'Match animals to their first letter!',
 
     // Shared navigation
     back: 'Back',
@@ -36,6 +38,10 @@ export const STRINGS = {
     movingToLevel: 'Moving to level {level}...',
     completedAllMemoryLevels: 'You completed all memory levels!',
     playAgain: 'Play Again',
+
+    // Guess the First Letter
+    playName: 'Hear the Name',
+    whichLetter: "What letter does this animal's name start with?",
 
     // Animal album
     albumTitle: 'Animal Album',
@@ -83,10 +89,12 @@ export const STRINGS = {
     a11yLanguageToggle: 'Switch language to Spanish',
     a11yOpenMenu: 'Open the menu',
     a11yPlaySound: 'Play the animal sound',
+    a11yPlayName: "Play the animal's name",
     a11yLevelStatus: 'Level {level} of {max}',
     a11yMovesStatus: '{moves} moves so far',
     a11yAnimalCard: '{animal}. Tap to hear its sound',
     a11yAnswerOption: '{animal}. Tap if this animal makes the sound',
+    a11yLetterOption: 'Letter {letter}. Tap if this is the first letter',
     a11yMemoryCard: 'Hidden card {number}. Tap to turn it over',
     a11yMemoryCardRevealed: '{animal}. Already turned over',
     a11yModeCard: '{title}. {description}',
@@ -110,6 +118,8 @@ export const STRINGS = {
     modeGuessDescription: '¡Pon a prueba tu conocimiento!',
     modeMemoryTitle: 'Entrena tu Memoria',
     modeMemoryDescription: '¡Encuentra parejas de animales!',
+    modeLetterTitle: 'Adivina la Primera Letra',
+    modeLetterDescription: '¡Relaciona animales con su primera letra!',
 
     // Navegación común
     back: 'Atrás',
@@ -135,6 +145,10 @@ export const STRINGS = {
     movingToLevel: 'Pasando al nivel {level}...',
     completedAllMemoryLevels: '¡Completaste todos los niveles de memoria!',
     playAgain: 'Jugar de Nuevo',
+
+    // Adivina la Primera Letra
+    playName: 'Escuchar el Nombre',
+    whichLetter: '¿Con qué letra empieza el nombre de este animal?',
 
     // Álbum de animales
     albumTitle: 'Álbum de Animales',
@@ -182,10 +196,12 @@ export const STRINGS = {
     a11yLanguageToggle: 'Cambiar el idioma a inglés',
     a11yOpenMenu: 'Abrir el menú',
     a11yPlaySound: 'Reproducir el sonido del animal',
+    a11yPlayName: 'Reproducir el nombre del animal',
     a11yLevelStatus: 'Nivel {level} de {max}',
     a11yMovesStatus: '{moves} movimientos hasta ahora',
     a11yAnimalCard: '{animal}. Toca para escuchar su sonido',
     a11yAnswerOption: '{animal}. Toca si este animal hace el sonido',
+    a11yLetterOption: 'Letra {letter}. Toca si es la primera letra',
     a11yMemoryCard: 'Carta oculta {number}. Toca para darle la vuelta',
     a11yMemoryCardRevealed: '{animal}. Ya está descubierta',
     a11yModeCard: '{title}. {description}',

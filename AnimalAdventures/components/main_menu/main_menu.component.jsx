@@ -36,6 +36,13 @@ const MODES = [
     titleKey: 'modeGuessTitle',
     descriptionKey: 'modeGuessDescription',
   },
+  // No Lottie icon of its own yet, so it uses a glyph like the album card.
+  {
+    key: 'letter',
+    glyph: 'sort-by-alpha',
+    titleKey: 'modeLetterTitle',
+    descriptionKey: 'modeLetterDescription',
+  },
   {
     key: 'memory',
     icon: require('../../assets/animations/icons/memory_icon.json'),

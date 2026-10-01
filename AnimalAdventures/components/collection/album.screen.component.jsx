@@ -16,6 +16,7 @@ import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
+import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
 
@@ -51,6 +52,13 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
   );
 
   const metSet = useMemo(() => new Set(met), [met]);
+
+  const handleBackToMenu = useCallback(() => {
+    tapFeedback();
+    onBackToMenu();
+  }, [onBackToMenu]);
+
+  useBackToMenu(handleBackToMenu);
 
   React.useEffect(() => {
     return () => {
@@ -101,10 +109,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
 
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => {
-            tapFeedback();
-            onBackToMenu();
-          }}
+          onPress={handleBackToMenu}
           accessible
           accessibilityRole="button"
           accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
