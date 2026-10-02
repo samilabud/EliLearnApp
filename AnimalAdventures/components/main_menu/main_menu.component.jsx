@@ -294,6 +294,10 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 42,
+    // Bangers clips on Android without both of these - see
+    // first-letter.game.component.jsx for the full explanation.
+    lineHeight: 54,
+    includeFontPadding: false,
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
@@ -352,6 +356,8 @@ const styles = StyleSheet.create({
   },
   modeTitle: {
     fontSize: 24,
+    lineHeight: 32,
+    includeFontPadding: false,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',

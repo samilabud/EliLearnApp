@@ -619,6 +619,9 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 22,
+    // Bangers clips on Android without both of these - see promptText below.
+    lineHeight: 30,
+    includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
@@ -664,6 +667,12 @@ const styles = StyleSheet.create({
   },
   promptText: {
     fontSize: 24,
+    // Bangers clips on Android without both of these: a generous lineHeight
+    // alone is not enough, because Android's own font-padding guess for
+    // this font is also wrong. includeFontPadding:false hands sizing fully
+    // to our own lineHeight instead of fighting it.
+    lineHeight: 32,
+    includeFontPadding: false,
     color: '#0A3D62',
     letterSpacing: 1,
   },
@@ -730,6 +739,8 @@ const styles = StyleSheet.create({
   },
   tryAgainText: {
     fontSize: 46,
+    lineHeight: 58,
+    includeFontPadding: false,
     color: '#FFD700',
     textAlign: 'center',
     letterSpacing: 1,
@@ -765,6 +776,8 @@ const styles = StyleSheet.create({
   },
   completionTitle: {
     fontSize: 48,
+    lineHeight: 60,
+    includeFontPadding: false,
     color: 'white',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowRadius: 8,

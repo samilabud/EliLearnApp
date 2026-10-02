@@ -153,6 +153,10 @@ const styles = StyleSheet.create({
   animationName: {
     fontFamily: 'Bangers_400Regular',
     fontSize: 18,
+    // Bangers clips on Android without this - see
+    // first-letter.game.component.jsx for the full explanation. Kept close
+    // to fontSize here since this label is pinned with an absolute `top`.
+    includeFontPadding: false,
     position: 'absolute',
     top: 116,
     zIndex: 3,

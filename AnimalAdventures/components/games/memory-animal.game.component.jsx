@@ -615,6 +615,10 @@ const styles = StyleSheet.create({
   infoText: {
     color: 'white',
     fontSize: 20,
+    // Bangers clips on Android without both of these - see
+    // first-letter.game.component.jsx for the full explanation.
+    lineHeight: 26,
+    includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
@@ -623,6 +627,8 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 18,
+    lineHeight: 24,
+    includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 2 },
@@ -767,6 +773,8 @@ const styles = StyleSheet.create({
   },
   completionTitle: {
     fontSize: 48,
+    lineHeight: 60,
+    includeFontPadding: false,
     color: 'white',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowRadius: 8,
