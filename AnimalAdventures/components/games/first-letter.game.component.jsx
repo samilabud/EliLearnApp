@@ -423,6 +423,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
           <View style={styles.topActions}>
             <TouchableOpacity
               onPress={handleReset}
+              activeOpacity={1}
               style={styles.actionButton}
               accessible={true}
               accessibilityRole="button"
@@ -434,6 +435,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleBackToMenu}
+              activeOpacity={1}
               style={styles.actionButton}
               accessible={true}
               accessibilityRole="button"
@@ -463,6 +465,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
             <TouchableOpacity
               onPress={handlePlayPrompt}
+              activeOpacity={1}
               style={styles.promptButton}
               accessible={true}
               accessibilityRole="button"
@@ -502,6 +505,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
                   isHinted && styles.letterCardHinted,
                 ]}
                 onPress={() => onSelect(letterOption)}
+                activeOpacity={1}
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yLetterOption', {
@@ -581,6 +585,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
             <Animated.View style={{ transform: [{ scale: promptScale }] }}>
               <TouchableOpacity
                 onPress={handleReset}
+                activeOpacity={1}
                 style={styles.bigButton}
                 accessible={true}
                 accessibilityRole="button"
@@ -593,6 +598,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
             </Animated.View>
             <TouchableOpacity
               onPress={handleBackToMenu}
+              activeOpacity={1}
               style={styles.secondaryButton}
               accessible={true}
               accessibilityRole="button"
@@ -721,7 +727,11 @@ const styles = StyleSheet.create({
   },
   letterText: {
     fontSize: 56,
+    // Bangers' reported line metrics run short for its own cap-height, so
+    // without an explicit lineHeight Android clips the top of the glyph.
+    lineHeight: 68,
     color: '#0A3D62',
+    textAlign: 'center',
   },
   // Shown only after several tries, so it reads as help rather than an
   // answer key.
