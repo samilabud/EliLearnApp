@@ -60,6 +60,8 @@ export const STRINGS = {
     soundLabel: 'Sound',
     on: 'On',
     off: 'Off',
+    ambientEffectsLabel: 'Floating bubbles',
+    ambientEffectsHint: 'Turn off if the app feels slow on this device',
     playLimitLabel: 'Daily play limit',
     noLimit: 'No limit',
     minutesShort: '{count} min',
@@ -105,6 +107,7 @@ export const STRINGS = {
     a11yGateDigit: 'Type the number {number}',
     a11yGateDelete: 'Delete the last number',
     a11ySoundToggle: 'Turn the sound {state}',
+    a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
   },
 
@@ -167,6 +170,8 @@ export const STRINGS = {
     soundLabel: 'Sonido',
     on: 'Activado',
     off: 'Desactivado',
+    ambientEffectsLabel: 'Burbujas flotantes',
+    ambientEffectsHint: 'Desactívalas si la app va lenta en este dispositivo',
     playLimitLabel: 'Límite diario',
     noLimit: 'Sin límite',
     minutesShort: '{count} min',
@@ -212,6 +217,7 @@ export const STRINGS = {
     a11yGateDigit: 'Escribe el número {number}',
     a11yGateDelete: 'Borrar el último número',
     a11ySoundToggle: 'Poner el sonido en {state}',
+    a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
   },
 };

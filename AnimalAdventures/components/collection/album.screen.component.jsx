@@ -35,7 +35,11 @@ const BOX_HEIGHT = 96;
  * fills up. That is the whole mechanic: a set a child can complete, using
  * artwork the app already ships rather than new assets.
  */
-export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
+export default function AlbumScreen({
+  currentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   const { met } = useGameProgress();
   const animPlayer = useAudioPlayer(null);
@@ -97,7 +101,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.headerCount}>
@@ -108,6 +112,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
         </Text>
 
         <TouchableOpacity
+          activeOpacity={1}
           style={styles.actionButton}
           onPress={handleBackToMenu}
           accessible
@@ -138,6 +143,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
 
               return (
                 <TouchableOpacity
+                  activeOpacity={1}
                   key={animal.id}
                   style={[styles.card, { width: cardWidth }]}
                   onPress={() => handlePress(animal)}

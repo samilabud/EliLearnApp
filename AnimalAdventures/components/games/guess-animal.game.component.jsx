@@ -48,7 +48,11 @@ const MAX_LEVEL = 8;
 // mistake - it just gets more helpful.
 const HINT_AFTER_TRIES = 3;
 
-export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
+export default function GuessAnimalGame({
+  currentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const insets = useSafeAreaInsets();
   // Android 16 ignores the portrait lock on large screens, so the answer grid
   // has to lay out sensibly at any aspect ratio. A wide screen gets one row of
@@ -391,7 +395,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <ScrollView
         style={styles.scrollArea}
@@ -414,6 +418,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           </Text>
           <View style={styles.topActions}>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleReset}
               style={styles.actionButton}
               accessible={true}
@@ -425,6 +430,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleBackToMenu}
               style={styles.actionButton}
               accessible={true}
@@ -442,6 +448,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
         <View style={styles.promptContainer}>
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handlePlayPrompt}
               style={styles.promptButton}
               accessible={true}
@@ -475,6 +482,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
 
             return (
               <TouchableOpacity
+                activeOpacity={1}
                 key={opt.id}
                 style={[
                   styles.optionCard,
@@ -564,6 +572,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
           <View style={styles.completionActions}>
             <Animated.View style={{ transform: [{ scale: promptScale }] }}>
               <TouchableOpacity
+                activeOpacity={1}
                 onPress={handleReset}
                 style={styles.bigButton}
                 accessible={true}
@@ -576,6 +585,7 @@ export default function GuessAnimalGame({ currentLanguage, onBackToMenu }) {
               </TouchableOpacity>
             </Animated.View>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
               accessible={true}

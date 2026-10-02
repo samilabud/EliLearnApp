@@ -64,6 +64,7 @@ function MainMenu({
   currentLanguage,
   setCurrentLanguage,
   onOpenParents,
+  ambientEnabled,
 }) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
@@ -105,6 +106,7 @@ function MainMenu({
           accessibilityRole="image"
         />
         <TouchableOpacity
+          activeOpacity={1}
           style={styles.languageToggle}
           onPress={onLanguageToggle}
           accessible={true}
@@ -150,13 +152,14 @@ function MainMenu({
               isLandscape && styles.modeContainerLandscape,
             ]}
           >
-            <AmbientBackground />
+            {ambientEnabled && <AmbientBackground />}
             {MODES.map(mode => {
               const title = t(currentLanguage, mode.titleKey);
               const description = t(currentLanguage, mode.descriptionKey);
 
               return (
                 <TouchableOpacity
+                  activeOpacity={1}
                   key={mode.key}
                   style={[
                     styles.modeButton,
@@ -211,6 +214,7 @@ function MainMenu({
           {/* Deliberately small, plain and at the bottom: this is the one
                 control on the screen that is not for the child. */}
           <TouchableOpacity
+            activeOpacity={1}
             style={styles.parentsButton}
             onPress={() => {
               tapFeedback();

@@ -18,7 +18,12 @@ import { useBackToMenu } from '../../utils/navigation';
 
 const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
-function HomeScreen({ currentLanguage, setCurrentLanguage, onBackToMenu }) {
+function HomeScreen({
+  currentLanguage,
+  setCurrentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
   const insets = useSafeAreaInsets();
 
@@ -49,12 +54,13 @@ function HomeScreen({ currentLanguage, setCurrentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={styles.topActions}>
             <TouchableOpacity
+              activeOpacity={1}
               style={styles.languageToggle}
               onPress={onLanguageToggle}
               accessible={true}
@@ -68,6 +74,7 @@ function HomeScreen({ currentLanguage, setCurrentLanguage, onBackToMenu }) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              activeOpacity={1}
               style={styles.actionButton}
               onPress={handleBack}
               accessible={true}

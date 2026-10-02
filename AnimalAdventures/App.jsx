@@ -38,6 +38,7 @@ function AppContent() {
     setLanguage,
     timeUp,
     grantMoreTime,
+    ambientEffectsEnabled,
   } = useSettings();
 
   useEffect(() => {
@@ -113,6 +114,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onOpenParents={() => setGateVisible(true)}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'learn') {
@@ -121,6 +123,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'guess') {
@@ -128,6 +131,7 @@ function AppContent() {
       <GuessAnimalGame
         currentLanguage={language}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'letter') {
@@ -135,6 +139,7 @@ function AppContent() {
       <FirstLetterGame
         currentLanguage={language}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'memory') {
@@ -142,11 +147,16 @@ function AppContent() {
       <MemoryAnimalGame
         currentLanguage={language}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'album') {
     content = (
-      <AlbumScreen currentLanguage={language} onBackToMenu={handleBackToMenu} />
+      <AlbumScreen
+        currentLanguage={language}
+        onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
+      />
     );
   }
 

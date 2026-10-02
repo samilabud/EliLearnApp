@@ -64,7 +64,11 @@ const CELEBRATIONS = [
 /** Cards per level: 4, 6, 8, ... capped at 16. */
 const getCardsPerLevel = levelNum => Math.min(2 + levelNum * 2, 16);
 
-export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
+export default function MemoryAnimalGame({
+  currentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const insets = useSafeAreaInsets();
   // Android 16 ignores the portrait lock on large screens, so the grid has to
   // lay out sensibly at any aspect ratio. Sizing cards from the window keeps
@@ -400,7 +404,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <ScrollView
         style={styles.scrollArea}
@@ -426,6 +430,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
           </View>
           <View style={styles.topActions}>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleReset}
               style={styles.actionButton}
               accessible={true}
@@ -437,6 +442,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleBackToMenu}
               style={styles.actionButton}
               accessible={true}
@@ -466,6 +472,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
         <View style={styles.gridContainer}>
           {cards.map(card => (
             <TouchableOpacity
+              activeOpacity={1}
               key={card.position}
               style={[
                 styles.cardContainer,
@@ -559,6 +566,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
           />
           <View style={styles.completionActions}>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleReset}
               style={styles.bigButton}
               accessible={true}
@@ -570,6 +578,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
+              activeOpacity={1}
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
               accessible={true}

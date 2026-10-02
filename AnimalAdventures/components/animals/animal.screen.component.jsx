@@ -101,6 +101,7 @@ const AnimalScreen = ({ currentLanguage }) => {
         {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
               <TouchableOpacity
+                activeOpacity={1}
                 style={[styles.button, { width: cardWidth }]}
                 onPress={() =>
                   resetAndPlayAnim(

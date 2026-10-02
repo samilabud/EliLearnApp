@@ -44,6 +44,7 @@ export default function PlayTimeUp({ currentLanguage, onMoreTime }) {
       </Text>
 
       <TouchableOpacity
+        activeOpacity={1}
         style={styles.grownUpButton}
         onPress={() => {
           tapFeedback();

@@ -116,6 +116,7 @@ export default function ParentalGate({
           <View style={styles.keypad}>
             {KEYS.map(key => (
               <TouchableOpacity
+                activeOpacity={1}
                 key={key}
                 style={styles.key}
                 onPress={() => handleDigit(key)}
@@ -130,6 +131,7 @@ export default function ParentalGate({
             ))}
 
             <TouchableOpacity
+              activeOpacity={1}
               style={[styles.key, styles.keyMuted]}
               onPress={handleDelete}
               accessible
@@ -140,6 +142,7 @@ export default function ParentalGate({
             </TouchableOpacity>
 
             <TouchableOpacity
+              activeOpacity={1}
               style={styles.key}
               onPress={() => handleDigit('0')}
               accessible
@@ -152,6 +155,7 @@ export default function ParentalGate({
             </TouchableOpacity>
 
             <TouchableOpacity
+              activeOpacity={1}
               style={[styles.key, styles.keyMuted]}
               onPress={handleCancel}
               accessible

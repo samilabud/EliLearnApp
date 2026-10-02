@@ -67,7 +67,11 @@ const firstLetterOf = (animal, lang) => {
 
 const isVowel = letter => VOWELS.includes(letter);
 
-export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
+export default function FirstLetterGame({
+  currentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const optionSize = Math.min(
@@ -399,7 +403,7 @@ export default function FirstLetterGame({ currentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <ScrollView
         style={styles.scrollArea}
