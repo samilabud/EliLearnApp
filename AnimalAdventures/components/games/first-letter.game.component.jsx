@@ -727,14 +727,21 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
+    // Defensive: Android can clip children to a rounded corner's outline:
+    // make sure the big letter is never cropped by its own card.
+    overflow: 'visible',
   },
   letterText: {
     fontSize: 56,
-    // Bangers clips on Android without both of these: a generous lineHeight
-    // alone was not enough, because Android's own font-padding guess for
-    // this font is also wrong. includeFontPadding:false hands sizing fully
-    // to our own lineHeight instead of fighting it.
-    lineHeight: 72,
+    // lineHeight + includeFontPadding:false (the fix that worked for every
+    // other Bangers label in this app) was still not enough at this size -
+    // the glyph itself renders taller than Android computes from the font's
+    // own metrics, so centering by line-box math still clips it. Giving the
+    // node an explicit height and centering with Android's native gravity
+    // (textAlignVertical) sidesteps that math instead of fighting it.
+    height: 76,
+    lineHeight: 76,
+    textAlignVertical: 'center',
     includeFontPadding: false,
     color: '#0A3D62',
     textAlign: 'center',
