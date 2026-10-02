@@ -76,10 +76,7 @@ export default function FirstLetterGame({
   const { width: windowWidth } = useWindowDimensions();
   const optionSize = Math.min(
     MAX_OPTION_SIZE,
-    Math.max(
-      MIN_OPTION_SIZE,
-      Math.floor((windowWidth - OPTION_GAP * 4) / 3)
-    )
+    Math.max(MIN_OPTION_SIZE, Math.floor((windowWidth - OPTION_GAP * 4) / 3))
   );
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Level and the current round are saved progress and live in the context,
@@ -186,7 +183,13 @@ export default function FirstLetterGame({
         gameSuccessPlayer.remove();
       } catch {}
     };
-  }, [stopAndUnload, promptPlayer, wrongPlayer, gameWinPlayer, gameSuccessPlayer]);
+  }, [
+    stopAndUnload,
+    promptPlayer,
+    wrongPlayer,
+    gameWinPlayer,
+    gameSuccessPlayer,
+  ]);
 
   // Continuous bubble effect on the Play button, matching the other games.
   useEffect(() => {
@@ -271,7 +274,9 @@ export default function FirstLetterGame({
     if (!targetAnimal) return;
     await stopAndUnload();
     const voice =
-      currentLanguage === 'en' ? targetAnimal.voice : targetAnimal.spanish_voice;
+      currentLanguage === 'en'
+        ? targetAnimal.voice
+        : targetAnimal.spanish_voice;
     playClip(promptPlayer, voice);
   }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
@@ -327,7 +332,11 @@ export default function FirstLetterGame({
         later(() => {
           updateLetter(prev => {
             if (prev.level < MAX_LEVEL) {
-              return { level: prev.level + 1, targetId: null, optionLetters: [] };
+              return {
+                level: prev.level + 1,
+                targetId: null,
+                optionLetters: [],
+              };
             }
             track(EVENTS.GAME_COMPLETED, { game: 'letter', level: prev.level });
             return { showComplete: true };
@@ -503,7 +512,6 @@ export default function FirstLetterGame({
                 style={[
                   styles.letterCard,
                   { width: optionSize, height: optionSize },
-                  isHinted && styles.letterCardHinted,
                 ]}
                 onPress={() => onSelect(letterOption)}
                 accessible={true}
@@ -512,6 +520,17 @@ export default function FirstLetterGame({
                   letter: letterOption,
                 })}
               >
+                {/* A rounded View with a background clips its children on
+                    Android regardless of `overflow`, which was cropping the
+                    big letter. Keeping the rounded card as an absolutely
+                    positioned sibling behind the Text (same trick as the
+                    animal option cards in guess-animal) avoids that. */}
+                <View
+                  style={[
+                    styles.letterCardBackground,
+                    isHinted && styles.letterCardHinted,
+                  ]}
+                />
                 <Text
                   style={[
                     styles.letterText,
@@ -721,27 +740,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   letterCard: {
+    // Plain on purpose: the rounded, filled look lives in
+    // letterCardBackground instead, so this container never combines
+    // borderRadius + backgroundColor with the Text as a child - see the
+    // comment at its usage above for why.
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  letterCardBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#ffffff',
     borderRadius: 20,
     borderWidth: 3,
     borderColor: '#FFD700',
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Defensive: Android can clip children to a rounded corner's outline:
-    // make sure the big letter is never cropped by its own card.
-    overflow: 'visible',
   },
   letterText: {
     fontSize: 56,
-    // lineHeight + includeFontPadding:false (the fix that worked for every
-    // other Bangers label in this app) was still not enough at this size -
-    // the glyph itself renders taller than Android computes from the font's
-    // own metrics, so centering by line-box math still clips it. Giving the
-    // node an explicit height and centering with Android's native gravity
-    // (textAlignVertical) sidesteps that math instead of fighting it.
-    height: 76,
-    lineHeight: 76,
-    textAlignVertical: 'center',
+    // Bangers clips on Android without both of these - see
+    // guess-animal.game.component.jsx's promptText for the full
+    // explanation. Safe to rely on here now that the Text is no longer a
+    // child of the rounded, filled card.
+    lineHeight: 72,
     includeFontPadding: false,
     color: '#0A3D62',
     textAlign: 'center',
