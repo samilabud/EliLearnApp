@@ -230,23 +230,39 @@ export default function FirstLetterGame({
 
   const pickRound = useCallback(() => {
     const isVowelLevel = level <= VOWEL_LEVELS;
-    const pool =
+    const basePool =
       isVowelLevel && vowelAnimals.length > 0 ? vowelAnimals : animalList;
+    // Every eligible animal gets a turn as the target before any repeats,
+    // so a child never gets asked about the same one twice in one match.
+    // Falls back to the full base pool once everything in it has had a
+    // turn, rather than running out of animals mid-match.
+    const unused = basePool.filter(
+      a => !letter.usedTargetIds.includes(a.id)
+    );
+    const pool = unused.length > 0 ? unused : basePool;
     const nextTarget = pool[Math.floor(Math.random() * pool.length)];
     const correct = firstLetterOf(nextTarget, currentLanguage);
     const distractorAlphabet = isVowelLevel ? VOWELS : ALPHABET;
     const distractors = shuffle(
       distractorAlphabet.filter(letterOption => letterOption !== correct)
     ).slice(0, 2);
-    updateLetter({
+    updateLetter(prev => ({
       targetId: nextTarget.id,
       optionLetters: shuffle([correct, ...distractors]),
       wrongCount: 0,
-    });
+      usedTargetIds: [...prev.usedTargetIds, nextTarget.id],
+    }));
     setIsCorrect(false);
     setShowWrongOverlay(false);
     roundStartedAt.current = Date.now();
-  }, [level, vowelAnimals, currentLanguage, shuffle, updateLetter]);
+  }, [
+    level,
+    vowelAnimals,
+    currentLanguage,
+    shuffle,
+    updateLetter,
+    letter.usedTargetIds,
+  ]);
 
   // A round is dealt only when the saved one is missing, which covers a
   // first run, a level change and a reset. A saved round that already has

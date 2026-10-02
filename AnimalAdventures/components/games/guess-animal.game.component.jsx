@@ -217,18 +217,28 @@ export default function GuessAnimalGame({
   }, []);
 
   const pickRound = useCallback(() => {
-    const all = shuffle(animalList);
-    const nextTarget = all[0];
-    const distractors = shuffle(all.slice(1)).slice(0, optionsCount - 1);
+    // Every animal gets a turn as the target before any repeats, so a
+    // child never gets asked about the same one twice in one match while
+    // others go untouched. Falls back to the full list once everything
+    // has had a turn, rather than running out of animals mid-match.
+    const unused = animalList.filter(
+      a => !guess.usedTargetIds.includes(a.id)
+    );
+    const targetPool = unused.length > 0 ? unused : animalList;
+    const nextTarget = shuffle(targetPool)[0];
+    const distractors = shuffle(
+      animalList.filter(a => a.id !== nextTarget.id)
+    ).slice(0, optionsCount - 1);
     const nextOptions = shuffle([nextTarget, ...distractors]);
-    updateGuess({
+    updateGuess(prev => ({
       targetId: nextTarget.id,
       optionIds: nextOptions.map(a => a.id),
-    });
+      usedTargetIds: [...prev.usedTargetIds, nextTarget.id],
+    }));
     setIsCorrect(false);
     setShowWrongOverlay(false);
     roundStartedAt.current = Date.now();
-  }, [optionsCount, shuffle, updateGuess]);
+  }, [optionsCount, shuffle, updateGuess, guess.usedTargetIds]);
 
   // A round is dealt only when the saved one does not fit the current level,
   // which covers a first run, a level change and a reset. A saved round that

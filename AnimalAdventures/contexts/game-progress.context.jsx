@@ -45,6 +45,9 @@ const DEFAULT_GUESS = {
   optionIds: [],
   wrongCount: 0,
   showComplete: false,
+  // Animal ids already asked as the target this match, so the same animal
+  // is not asked about twice before every animal has had a turn.
+  usedTargetIds: [],
 };
 
 const DEFAULT_LETTER = {
@@ -53,6 +56,9 @@ const DEFAULT_LETTER = {
   optionLetters: [],
   wrongCount: 0,
   showComplete: false,
+  // Animal ids already asked as the target this match, so the same animal
+  // is not asked about twice before every eligible animal has had a turn.
+  usedTargetIds: [],
 };
 
 /**
