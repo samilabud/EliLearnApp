@@ -532,6 +532,7 @@ export default function FirstLetterGame({
                   ]}
                 />
                 <Text
+                  allowFontScaling={false}
                   style={[
                     styles.letterText,
                     { fontFamily: 'Bangers_400Regular' },
