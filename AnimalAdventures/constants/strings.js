@@ -11,6 +11,8 @@ export const STRINGS = {
     modeGuessDescription: 'Test your knowledge!',
     modeMemoryTitle: 'Train Your Memory',
     modeMemoryDescription: 'Find matching animal pairs!',
+    modeLetterTitle: 'Guess the First Letter',
+    modeLetterDescription: 'Match animals to their first letter!',
 
     // Shared navigation
     back: 'Back',
@@ -37,6 +39,10 @@ export const STRINGS = {
     completedAllMemoryLevels: 'You completed all memory levels!',
     playAgain: 'Play Again',
 
+    // Guess the First Letter
+    playName: 'Hear the Name',
+    whichLetter: "What letter does this animal's name start with?",
+
     // Animal album
     albumTitle: 'Animal Album',
     albumDescription: 'See every animal you have met!',
@@ -54,6 +60,8 @@ export const STRINGS = {
     soundLabel: 'Sound',
     on: 'On',
     off: 'Off',
+    ambientEffectsLabel: 'Floating bubbles',
+    ambientEffectsHint: 'Turn off if the app feels slow on this device',
     playLimitLabel: 'Daily play limit',
     noLimit: 'No limit',
     minutesShort: '{count} min',
@@ -83,10 +91,12 @@ export const STRINGS = {
     a11yLanguageToggle: 'Switch language to Spanish',
     a11yOpenMenu: 'Open the menu',
     a11yPlaySound: 'Play the animal sound',
+    a11yPlayName: "Play the animal's name",
     a11yLevelStatus: 'Level {level} of {max}',
     a11yMovesStatus: '{moves} moves so far',
     a11yAnimalCard: '{animal}. Tap to hear its sound',
     a11yAnswerOption: '{animal}. Tap if this animal makes the sound',
+    a11yLetterOption: 'Letter {letter}. Tap if this is the first letter',
     a11yMemoryCard: 'Hidden card {number}. Tap to turn it over',
     a11yMemoryCardRevealed: '{animal}. Already turned over',
     a11yModeCard: '{title}. {description}',
@@ -97,6 +107,7 @@ export const STRINGS = {
     a11yGateDigit: 'Type the number {number}',
     a11yGateDelete: 'Delete the last number',
     a11ySoundToggle: 'Turn the sound {state}',
+    a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
   },
 
@@ -110,6 +121,8 @@ export const STRINGS = {
     modeGuessDescription: '¡Pon a prueba tu conocimiento!',
     modeMemoryTitle: 'Entrena tu Memoria',
     modeMemoryDescription: '¡Encuentra parejas de animales!',
+    modeLetterTitle: 'Adivina la Primera Letra',
+    modeLetterDescription: '¡Relaciona animales con su primera letra!',
 
     // Navegación común
     back: 'Atrás',
@@ -136,6 +149,10 @@ export const STRINGS = {
     completedAllMemoryLevels: '¡Completaste todos los niveles de memoria!',
     playAgain: 'Jugar de Nuevo',
 
+    // Adivina la Primera Letra
+    playName: 'Escuchar el Nombre',
+    whichLetter: '¿Con qué letra empieza el nombre de este animal?',
+
     // Álbum de animales
     albumTitle: 'Álbum de Animales',
     albumDescription: '¡Mira todos los animales que has conocido!',
@@ -153,6 +170,8 @@ export const STRINGS = {
     soundLabel: 'Sonido',
     on: 'Activado',
     off: 'Desactivado',
+    ambientEffectsLabel: 'Burbujas flotantes',
+    ambientEffectsHint: 'Desactívalas si la app va lenta en este dispositivo',
     playLimitLabel: 'Límite diario',
     noLimit: 'Sin límite',
     minutesShort: '{count} min',
@@ -182,10 +201,12 @@ export const STRINGS = {
     a11yLanguageToggle: 'Cambiar el idioma a inglés',
     a11yOpenMenu: 'Abrir el menú',
     a11yPlaySound: 'Reproducir el sonido del animal',
+    a11yPlayName: 'Reproducir el nombre del animal',
     a11yLevelStatus: 'Nivel {level} de {max}',
     a11yMovesStatus: '{moves} movimientos hasta ahora',
     a11yAnimalCard: '{animal}. Toca para escuchar su sonido',
     a11yAnswerOption: '{animal}. Toca si este animal hace el sonido',
+    a11yLetterOption: 'Letra {letter}. Toca si es la primera letra',
     a11yMemoryCard: 'Carta oculta {number}. Toca para darle la vuelta',
     a11yMemoryCardRevealed: '{animal}. Ya está descubierta',
     a11yModeCard: '{title}. {description}',
@@ -196,6 +217,7 @@ export const STRINGS = {
     a11yGateDigit: 'Escribe el número {number}',
     a11yGateDelete: 'Borrar el último número',
     a11ySoundToggle: 'Poner el sonido en {state}',
+    a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
   },
 };

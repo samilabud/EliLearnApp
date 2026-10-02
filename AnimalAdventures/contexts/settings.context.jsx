@@ -35,6 +35,7 @@ const DEFAULT_SETTINGS = {
   language: 'en',
   soundEnabled: true,
   playLimitMinutes: 0,
+  ambientEffectsEnabled: true,
 };
 
 const SettingsContext = createContext(null);
@@ -135,9 +136,12 @@ export function SettingsProvider({ children }) {
       language: settings.language,
       soundEnabled: settings.soundEnabled,
       playLimitMinutes: settings.playLimitMinutes,
+      ambientEffectsEnabled: settings.ambientEffectsEnabled,
       setLanguage: language => update({ language }),
       setSoundEnabled: soundEnabled => update({ soundEnabled }),
       setPlayLimitMinutes: playLimitMinutes => update({ playLimitMinutes }),
+      setAmbientEffectsEnabled: ambientEffectsEnabled =>
+        update({ ambientEffectsEnabled }),
       timeUp,
       minutesRemaining:
         limitSeconds > 0

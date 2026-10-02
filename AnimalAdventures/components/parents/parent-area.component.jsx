@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import {
   PLAY_LIMIT_OPTIONS,
   useSettings,
 } from '../../contexts/settings.context';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 /**
  * The five things this app does not do.
@@ -41,11 +41,18 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     setSoundEnabled,
     playLimitMinutes,
     setPlayLimitMinutes,
+    ambientEffectsEnabled,
+    setAmbientEffectsEnabled,
   } = useSettings();
 
   const handleSound = value => {
     tapFeedback();
     setSoundEnabled(value);
+  };
+
+  const handleAmbientEffects = value => {
+    tapFeedback();
+    setAmbientEffectsEnabled(value);
   };
 
   const handleLimit = minutes => {
@@ -69,7 +76,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>{t(currentLanguage, 'forParents')}</Text>
-            <TouchableOpacity
+            <BouncyButton
               onPress={() => {
                 tapFeedback();
                 onClose();
@@ -80,7 +87,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               accessibilityLabel={t(currentLanguage, 'close')}
             >
               <MaterialIcons name="close" size={26} color="#0A3D62" />
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
 
           <ScrollView contentContainerStyle={styles.body}>
@@ -102,6 +109,34 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               />
             </View>
 
+            {/* Ambient bubbles - the one purely decorative effect, and the
+                one most worth switching off on an older phone. */}
+            <View style={styles.row}>
+              <View style={styles.rowTextGroup}>
+                <Text style={styles.rowLabel}>
+                  {t(currentLanguage, 'ambientEffectsLabel')}
+                </Text>
+                <Text style={styles.rowHint}>
+                  {t(currentLanguage, 'ambientEffectsHint')}
+                </Text>
+              </View>
+              <Switch
+                value={ambientEffectsEnabled}
+                onValueChange={handleAmbientEffects}
+                trackColor={{ false: '#C8D6DE', true: '#BD0000' }}
+                thumbColor="#ffffff"
+                accessibilityLabel={t(
+                  currentLanguage,
+                  'a11yAmbientEffectsToggle',
+                  {
+                    state: ambientEffectsEnabled
+                      ? t(currentLanguage, 'off')
+                      : t(currentLanguage, 'on'),
+                  }
+                )}
+              />
+            </View>
+
             {/* Daily play limit */}
             <Text style={styles.sectionLabel}>
               {t(currentLanguage, 'playLimitLabel')}
@@ -110,7 +145,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               {PLAY_LIMIT_OPTIONS.map(minutes => {
                 const active = playLimitMinutes === minutes;
                 return (
-                  <TouchableOpacity
+                  <BouncyButton
                     key={minutes}
                     style={[styles.chip, active && styles.chipActive]}
                     onPress={() => handleLimit(minutes)}
@@ -126,7 +161,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
                     >
                       {limitLabel(minutes)}
                     </Text>
-                  </TouchableOpacity>
+                  </BouncyButton>
                 );
               })}
             </View>
@@ -212,6 +247,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#0A3D62',
     fontWeight: '600',
+  },
+  rowTextGroup: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  rowHint: {
+    marginTop: 2,
+    fontSize: 14,
+    color: '#8A9BA6',
   },
   sectionLabel: {
     fontSize: 18,

@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -33,7 +32,9 @@ import {
   useGameProgress,
 } from '../../contexts/game-progress.context';
 import { EVENTS, track } from '../../utils/analytics';
+import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -63,7 +64,11 @@ const CELEBRATIONS = [
 /** Cards per level: 4, 6, 8, ... capped at 16. */
 const getCardsPerLevel = levelNum => Math.min(2 + levelNum * 2, 16);
 
-export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
+export default function MemoryAnimalGame({
+  currentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const insets = useSafeAreaInsets();
   // Android 16 ignores the portrait lock on large screens, so the grid has to
   // lay out sensibly at any aspect ratio. Sizing cards from the window keeps
@@ -389,6 +394,8 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
     onBackToMenu();
   }, [onBackToMenu, gameComplete, level, moves, matchedPairs.length]);
 
+  useBackToMenu(handleBackToMenu);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -397,7 +404,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <ScrollView
         style={styles.scrollArea}
@@ -422,7 +429,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
             </Text>
           </View>
           <View style={styles.topActions}>
-            <TouchableOpacity
+            <BouncyButton
               onPress={handleReset}
               style={styles.actionButton}
               accessible={true}
@@ -432,8 +439,8 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'reset')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </BouncyButton>
+            <BouncyButton
               onPress={handleBackToMenu}
               style={styles.actionButton}
               accessible={true}
@@ -443,7 +450,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'mainMenu')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
 
@@ -462,7 +469,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
         {/* Cards grid */}
         <View style={styles.gridContainer}>
           {cards.map(card => (
-            <TouchableOpacity
+            <BouncyButton
               key={card.position}
               style={[
                 styles.cardContainer,
@@ -505,7 +512,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
                   </View>
                 )}
               </View>
-            </TouchableOpacity>
+            </BouncyButton>
           ))}
         </View>
       </ScrollView>
@@ -555,7 +562,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
             origin={{ x: 0, y: 0 }}
           />
           <View style={styles.completionActions}>
-            <TouchableOpacity
+            <BouncyButton
               onPress={handleReset}
               style={styles.bigButton}
               accessible={true}
@@ -565,8 +572,8 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               <Text style={styles.bigButtonText}>
                 {t(currentLanguage, 'playAgain')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </BouncyButton>
+            <BouncyButton
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
               accessible={true}
@@ -576,7 +583,7 @@ export default function MemoryAnimalGame({ currentLanguage, onBackToMenu }) {
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
       )}
@@ -603,6 +610,10 @@ const styles = StyleSheet.create({
   infoText: {
     color: 'white',
     fontSize: 20,
+    // Bangers clips on Android without both of these - see
+    // first-letter.game.component.jsx for the full explanation.
+    lineHeight: 26,
+    includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
@@ -611,6 +622,8 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 18,
+    lineHeight: 24,
+    includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 2 },
@@ -755,6 +768,8 @@ const styles = StyleSheet.create({
   },
   completionTitle: {
     fontSize: 48,
+    lineHeight: 60,
+    includeFontPadding: false,
     color: 'white',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowRadius: 8,

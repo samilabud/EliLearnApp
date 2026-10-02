@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import {
   t,
@@ -8,6 +8,7 @@ import {
   MIN_TOUCH_TARGET,
 } from '../../constants';
 import { tapFeedback, errorFeedback } from '../../utils/haptics';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 /** Digits the adult has to reproduce. Three is enough to stop a toddler. */
 const CODE_LENGTH = 3;
@@ -115,7 +116,7 @@ export default function ParentalGate({
 
           <View style={styles.keypad}>
             {KEYS.map(key => (
-              <TouchableOpacity
+              <BouncyButton
                 key={key}
                 style={styles.key}
                 onPress={() => handleDigit(key)}
@@ -126,10 +127,10 @@ export default function ParentalGate({
                 })}
               >
                 <Text style={styles.keyText}>{key}</Text>
-              </TouchableOpacity>
+              </BouncyButton>
             ))}
 
-            <TouchableOpacity
+            <BouncyButton
               style={[styles.key, styles.keyMuted]}
               onPress={handleDelete}
               accessible
@@ -137,9 +138,9 @@ export default function ParentalGate({
               accessibilityLabel={t(currentLanguage, 'a11yGateDelete')}
             >
               <MaterialIcons name="backspace" size={24} color="#0A3D62" />
-            </TouchableOpacity>
+            </BouncyButton>
 
-            <TouchableOpacity
+            <BouncyButton
               style={styles.key}
               onPress={() => handleDigit('0')}
               accessible
@@ -149,9 +150,9 @@ export default function ParentalGate({
               })}
             >
               <Text style={styles.keyText}>0</Text>
-            </TouchableOpacity>
+            </BouncyButton>
 
-            <TouchableOpacity
+            <BouncyButton
               style={[styles.key, styles.keyMuted]}
               onPress={handleCancel}
               accessible
@@ -159,7 +160,7 @@ export default function ParentalGate({
               accessibilityLabel={t(currentLanguage, 'cancel')}
             >
               <MaterialIcons name="close" size={24} color="#0A3D62" />
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
       </View>

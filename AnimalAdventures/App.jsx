@@ -6,6 +6,7 @@ import { MySplashScreen } from './components/utility/my-splash-screen.component'
 import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
+import FirstLetterGame from './components/games/first-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
@@ -37,6 +38,7 @@ function AppContent() {
     setLanguage,
     timeUp,
     grantMoreTime,
+    ambientEffectsEnabled,
   } = useSettings();
 
   useEffect(() => {
@@ -112,6 +114,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onOpenParents={() => setGateVisible(true)}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'learn') {
@@ -120,6 +123,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'guess') {
@@ -127,6 +131,15 @@ function AppContent() {
       <GuessAnimalGame
         currentLanguage={language}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
+      />
+    );
+  } else if (currentMode === 'letter') {
+    content = (
+      <FirstLetterGame
+        currentLanguage={language}
+        onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'memory') {
@@ -134,11 +147,16 @@ function AppContent() {
       <MemoryAnimalGame
         currentLanguage={language}
         onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'album') {
     content = (
-      <AlbumScreen currentLanguage={language} onBackToMenu={handleBackToMenu} />
+      <AlbumScreen
+        currentLanguage={language}
+        onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
+      />
     );
   }
 

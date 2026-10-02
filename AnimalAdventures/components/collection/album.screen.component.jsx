@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -16,8 +15,10 @@ import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
+import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const GRID_PADDING_H = 12;
 const CARD_MARGIN_TOP = 20;
@@ -34,7 +35,11 @@ const BOX_HEIGHT = 96;
  * fills up. That is the whole mechanic: a set a child can complete, using
  * artwork the app already ships rather than new assets.
  */
-export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
+export default function AlbumScreen({
+  currentLanguage,
+  onBackToMenu,
+  ambientEnabled,
+}) {
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   const { met } = useGameProgress();
   const animPlayer = useAudioPlayer(null);
@@ -51,6 +56,13 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
   );
 
   const metSet = useMemo(() => new Set(met), [met]);
+
+  const handleBackToMenu = useCallback(() => {
+    tapFeedback();
+    onBackToMenu();
+  }, [onBackToMenu]);
+
+  useBackToMenu(handleBackToMenu);
 
   React.useEffect(() => {
     return () => {
@@ -89,7 +101,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
       resizeMode="cover"
       style={styles.backgroundImage}
     >
-      <AmbientBackground />
+      {ambientEnabled && <AmbientBackground />}
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.headerCount}>
@@ -99,12 +111,9 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
           })}
         </Text>
 
-        <TouchableOpacity
+        <BouncyButton
           style={styles.actionButton}
-          onPress={() => {
-            tapFeedback();
-            onBackToMenu();
-          }}
+          onPress={handleBackToMenu}
           accessible
           accessibilityRole="button"
           accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
@@ -112,7 +121,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
           <Text style={styles.actionText}>
             {t(currentLanguage, 'mainMenu')}
           </Text>
-        </TouchableOpacity>
+        </BouncyButton>
       </View>
 
       <ScrollView
@@ -132,7 +141,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
                 currentLanguage === 'en' ? animal.name : animal.spanish_name;
 
               return (
-                <TouchableOpacity
+                <BouncyButton
                   key={animal.id}
                   style={[styles.card, { width: cardWidth }]}
                   onPress={() => handlePress(animal)}
@@ -175,7 +184,7 @@ export default function AlbumScreen({ currentLanguage, onBackToMenu }) {
                   >
                     {isMet ? name : t(currentLanguage, 'notMetYet')}
                   </Text>
-                </TouchableOpacity>
+                </BouncyButton>
               );
             })}
           </View>
@@ -236,6 +245,10 @@ const styles = StyleSheet.create({
   hint: {
     color: 'white',
     fontSize: 20,
+    // Bangers clips on Android without both of these - see
+    // first-letter.game.component.jsx for the full explanation.
+    lineHeight: 26,
+    includeFontPadding: false,
     textAlign: 'center',
     marginTop: 16,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',

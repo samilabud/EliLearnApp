@@ -121,7 +121,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 100,
+    // No zIndex here on purpose: every screen renders this first, before its
+    // real content, so default paint order already keeps it behind buttons
+    // and cards. A high zIndex previously overrode that and floated bubbles
+    // on top of taps and answer choices instead of behind them.
   },
   bubble: {
     position: 'absolute',
