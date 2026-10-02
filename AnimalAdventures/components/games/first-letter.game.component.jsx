@@ -531,13 +531,7 @@ export default function FirstLetterGame({
                     isHinted && styles.letterCardHinted,
                   ]}
                 />
-                <Text
-                  allowFontScaling={false}
-                  style={[
-                    styles.letterText,
-                    { fontFamily: 'Bangers_400Regular' },
-                  ]}
-                >
+                <Text allowFontScaling={false} style={styles.letterText}>
                   {letterOption}
                 </Text>
               </BouncyButton>
@@ -761,12 +755,14 @@ const styles = StyleSheet.create({
   },
   letterText: {
     fontSize: 56,
-    // Bangers clips on Android without both of these - see
-    // guess-animal.game.component.jsx's promptText for the full
-    // explanation. Safe to rely on here now that the Text is no longer a
-    // child of the rounded, filled card.
     lineHeight: 72,
     includeFontPadding: false,
+    // Deliberately the plain system font, not Bangers, and deliberately
+    // not italic/decorative: a child learning to recognize a letter needs
+    // the clean, standard letterform they will see in books, not the
+    // rough comic-marker style Bangers draws for a bare capital O/E/I -
+    // which reads as "broken" in isolation even though it renders fine.
+    fontWeight: '800',
     color: '#0A3D62',
     textAlign: 'center',
   },
