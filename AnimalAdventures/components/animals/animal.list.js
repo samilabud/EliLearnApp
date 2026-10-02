@@ -194,4 +194,34 @@ export const animalList = [
     voice: require(`${english_folder}/Duck.mp3`),
     spanish_voice: require(`${spanish_folder}/Pato.mp3`),
   },
+  // Vowel-starting in both languages - added to grow the pool the
+  // first-letter game's early (vowels-only) levels draw from. See
+  // TODO_VOWEL_ANIMALS.md.
+  {
+    id: 'eagle',
+    name: 'Eagle',
+    spanish_name: 'Águila',
+    animation_path: require(`${animation_path}eagle.json`),
+    sound: require(`${sound_path}/Eagle.mp3`),
+    voice: require(`${english_folder}/Eagle.mp3`),
+    spanish_voice: require(`${spanish_folder}/Aguila.mp3`),
+  },
+  {
+    id: 'elephant',
+    name: 'Elephant',
+    spanish_name: 'Elefante',
+    animation_path: require(`${animation_path}elephant.json`),
+    sound: require(`${sound_path}/Elephant.mp3`),
+    voice: require(`${english_folder}/Elephant.mp3`),
+    spanish_voice: require(`${spanish_folder}/Elefante.mp3`),
+  },
+  {
+    id: 'iguana',
+    name: 'Iguana',
+    spanish_name: 'Iguana',
+    animation_path: require(`${animation_path}Iguana.json`),
+    sound: require(`${sound_path}/Iguana.mp3`),
+    voice: require(`${english_folder}/Iguana.mp3`),
+    spanish_voice: require(`${spanish_folder}/Iguana.mp3`),
+  },
 ];
