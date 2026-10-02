@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -35,6 +34,7 @@ import {
 import { EVENTS, track } from '../../utils/analytics';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -429,8 +429,7 @@ export default function MemoryAnimalGame({
             </Text>
           </View>
           <View style={styles.topActions}>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               onPress={handleReset}
               style={styles.actionButton}
               accessible={true}
@@ -440,9 +439,8 @@ export default function MemoryAnimalGame({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'reset')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={1}
+            </BouncyButton>
+            <BouncyButton
               onPress={handleBackToMenu}
               style={styles.actionButton}
               accessible={true}
@@ -452,7 +450,7 @@ export default function MemoryAnimalGame({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'mainMenu')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
 
@@ -471,8 +469,7 @@ export default function MemoryAnimalGame({
         {/* Cards grid */}
         <View style={styles.gridContainer}>
           {cards.map(card => (
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               key={card.position}
               style={[
                 styles.cardContainer,
@@ -515,7 +512,7 @@ export default function MemoryAnimalGame({
                   </View>
                 )}
               </View>
-            </TouchableOpacity>
+            </BouncyButton>
           ))}
         </View>
       </ScrollView>
@@ -565,8 +562,7 @@ export default function MemoryAnimalGame({
             origin={{ x: 0, y: 0 }}
           />
           <View style={styles.completionActions}>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               onPress={handleReset}
               style={styles.bigButton}
               accessible={true}
@@ -576,9 +572,8 @@ export default function MemoryAnimalGame({
               <Text style={styles.bigButtonText}>
                 {t(currentLanguage, 'playAgain')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={1}
+            </BouncyButton>
+            <BouncyButton
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
               accessible={true}
@@ -588,7 +583,7 @@ export default function MemoryAnimalGame({
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
       )}

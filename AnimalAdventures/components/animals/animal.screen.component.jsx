@@ -4,7 +4,6 @@ import {
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
@@ -16,6 +15,7 @@ import { tapFeedback } from '../../utils/haptics';
 import { EVENTS, track } from '../../utils/analytics';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const GRID_PADDING_H = 12;
 const CARD_MARGIN_TOP = 24;
@@ -100,8 +100,7 @@ const AnimalScreen = ({ currentLanguage }) => {
       <View style={styles.animationContainer}>
         {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
-              <TouchableOpacity
-                activeOpacity={1}
+              <BouncyButton
                 style={[styles.button, { width: cardWidth }]}
                 onPress={() =>
                   resetAndPlayAnim(
@@ -138,7 +137,7 @@ const AnimalScreen = ({ currentLanguage }) => {
                     ? animatedImage.name
                     : animatedImage.spanish_name}
                 </Text>
-              </TouchableOpacity>
+              </BouncyButton>
           </Fragment>
         ))}
       </View>

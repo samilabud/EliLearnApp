@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
   Animated,
@@ -33,6 +32,7 @@ import {
   successFeedback,
   errorFeedback,
 } from '../../utils/haptics';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const MAX_LEVEL = 6;
 
@@ -425,9 +425,8 @@ export default function FirstLetterGame({
             {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
           </Text>
           <View style={styles.topActions}>
-            <TouchableOpacity
+            <BouncyButton
               onPress={handleReset}
-              activeOpacity={1}
               style={styles.actionButton}
               accessible={true}
               accessibilityRole="button"
@@ -436,10 +435,9 @@ export default function FirstLetterGame({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'reset')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </BouncyButton>
+            <BouncyButton
               onPress={handleBackToMenu}
-              activeOpacity={1}
               style={styles.actionButton}
               accessible={true}
               accessibilityRole="button"
@@ -448,7 +446,7 @@ export default function FirstLetterGame({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'mainMenu')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
 
@@ -467,9 +465,8 @@ export default function FirstLetterGame({
             )}
           </View>
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-            <TouchableOpacity
+            <BouncyButton
               onPress={handlePlayPrompt}
-              activeOpacity={1}
               style={styles.promptButton}
               accessible={true}
               accessibilityRole="button"
@@ -483,7 +480,7 @@ export default function FirstLetterGame({
               >
                 {t(currentLanguage, 'playName')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
             <Text style={styles.helperText}>
@@ -501,7 +498,7 @@ export default function FirstLetterGame({
               letterOption === correctLetter;
 
             return (
-              <TouchableOpacity
+              <BouncyButton
                 key={letterOption}
                 style={[
                   styles.letterCard,
@@ -509,7 +506,6 @@ export default function FirstLetterGame({
                   isHinted && styles.letterCardHinted,
                 ]}
                 onPress={() => onSelect(letterOption)}
-                activeOpacity={1}
                 accessible={true}
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yLetterOption', {
@@ -524,7 +520,7 @@ export default function FirstLetterGame({
                 >
                   {letterOption}
                 </Text>
-              </TouchableOpacity>
+              </BouncyButton>
             );
           })}
         </View>
@@ -587,9 +583,8 @@ export default function FirstLetterGame({
           />
           <View style={styles.completionActions}>
             <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-              <TouchableOpacity
+              <BouncyButton
                 onPress={handleReset}
-                activeOpacity={1}
                 style={styles.bigButton}
                 accessible={true}
                 accessibilityRole="button"
@@ -598,11 +593,10 @@ export default function FirstLetterGame({
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
                 </Text>
-              </TouchableOpacity>
+              </BouncyButton>
             </Animated.View>
-            <TouchableOpacity
+            <BouncyButton
               onPress={handleBackToMenu}
-              activeOpacity={1}
               style={styles.secondaryButton}
               accessible={true}
               accessibilityRole="button"
@@ -611,7 +605,7 @@ export default function FirstLetterGame({
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
       )}

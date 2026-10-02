@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
   Animated,
@@ -33,6 +32,7 @@ import {
   successFeedback,
   errorFeedback,
 } from '../../utils/haptics';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const GRID_PADDING_H = 16;
 const OPTION_GAP = 12;
@@ -417,8 +417,7 @@ export default function GuessAnimalGame({
             {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
           </Text>
           <View style={styles.topActions}>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               onPress={handleReset}
               style={styles.actionButton}
               accessible={true}
@@ -428,9 +427,8 @@ export default function GuessAnimalGame({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'reset')}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={1}
+            </BouncyButton>
+            <BouncyButton
               onPress={handleBackToMenu}
               style={styles.actionButton}
               accessible={true}
@@ -440,15 +438,14 @@ export default function GuessAnimalGame({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'mainMenu')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
 
         {/* Prompt */}
         <View style={styles.promptContainer}>
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               onPress={handlePlayPrompt}
               style={styles.promptButton}
               accessible={true}
@@ -463,7 +460,7 @@ export default function GuessAnimalGame({
               >
                 {t(currentLanguage, 'playSound')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
             <Text style={styles.helperText}>
@@ -481,8 +478,7 @@ export default function GuessAnimalGame({
               opt.id === targetAnimal.id;
 
             return (
-              <TouchableOpacity
-                activeOpacity={1}
+              <BouncyButton
                 key={opt.id}
                 style={[
                   styles.optionCard,
@@ -508,7 +504,7 @@ export default function GuessAnimalGame({
                     style={styles.animation}
                   />
                 </View>
-              </TouchableOpacity>
+              </BouncyButton>
             );
           })}
         </View>
@@ -571,8 +567,7 @@ export default function GuessAnimalGame({
           />
           <View style={styles.completionActions}>
             <Animated.View style={{ transform: [{ scale: promptScale }] }}>
-              <TouchableOpacity
-                activeOpacity={1}
+              <BouncyButton
                 onPress={handleReset}
                 style={styles.bigButton}
                 accessible={true}
@@ -582,10 +577,9 @@ export default function GuessAnimalGame({
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
                 </Text>
-              </TouchableOpacity>
+              </BouncyButton>
             </Animated.View>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
               accessible={true}
@@ -595,7 +589,7 @@ export default function GuessAnimalGame({
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
       )}

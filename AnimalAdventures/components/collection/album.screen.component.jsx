@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -19,6 +18,7 @@ import { tapFeedback } from '../../utils/haptics';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const GRID_PADDING_H = 12;
 const CARD_MARGIN_TOP = 20;
@@ -111,8 +111,7 @@ export default function AlbumScreen({
           })}
         </Text>
 
-        <TouchableOpacity
-          activeOpacity={1}
+        <BouncyButton
           style={styles.actionButton}
           onPress={handleBackToMenu}
           accessible
@@ -122,7 +121,7 @@ export default function AlbumScreen({
           <Text style={styles.actionText}>
             {t(currentLanguage, 'mainMenu')}
           </Text>
-        </TouchableOpacity>
+        </BouncyButton>
       </View>
 
       <ScrollView
@@ -142,8 +141,7 @@ export default function AlbumScreen({
                 currentLanguage === 'en' ? animal.name : animal.spanish_name;
 
               return (
-                <TouchableOpacity
-                  activeOpacity={1}
+                <BouncyButton
                   key={animal.id}
                   style={[styles.card, { width: cardWidth }]}
                   onPress={() => handlePress(animal)}
@@ -186,7 +184,7 @@ export default function AlbumScreen({
                   >
                     {isMet ? name : t(currentLanguage, 'notMetYet')}
                   </Text>
-                </TouchableOpacity>
+                </BouncyButton>
               );
             })}
           </View>

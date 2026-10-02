@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import ParentalGate from '../parents/parental-gate.component';
+import { BouncyButton } from './bouncy-button.component';
 
 /** Minutes handed back when a grown-up allows more play. */
 const EXTENSION_MINUTES = 10;
@@ -43,8 +44,7 @@ export default function PlayTimeUp({ currentLanguage, onMoreTime }) {
         {t(currentLanguage, 'timeUpSubtitle')}
       </Text>
 
-      <TouchableOpacity
-        activeOpacity={1}
+      <BouncyButton
         style={styles.grownUpButton}
         onPress={() => {
           tapFeedback();
@@ -57,7 +57,7 @@ export default function PlayTimeUp({ currentLanguage, onMoreTime }) {
         <Text style={styles.grownUpText}>
           {t(currentLanguage, 'timeUpGrownUp')}
         </Text>
-      </TouchableOpacity>
+      </BouncyButton>
 
       <ParentalGate
         visible={gateVisible}

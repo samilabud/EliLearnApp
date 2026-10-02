@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
-  TouchableOpacity,
   View,
   Text,
   Image,
@@ -17,6 +16,7 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const ICON_SIZE = { width: 90, height: 90 };
 const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
@@ -105,8 +105,7 @@ function MainMenu({
           accessible={false}
           accessibilityRole="image"
         />
-        <TouchableOpacity
-          activeOpacity={1}
+        <BouncyButton
           style={styles.languageToggle}
           onPress={onLanguageToggle}
           accessible={true}
@@ -117,7 +116,7 @@ function MainMenu({
           <Text style={styles.languageText}>
             {currentLanguage.toUpperCase()}
           </Text>
-        </TouchableOpacity>
+        </BouncyButton>
       </View>
 
       {/* Main Content */}
@@ -158,8 +157,7 @@ function MainMenu({
               const description = t(currentLanguage, mode.descriptionKey);
 
               return (
-                <TouchableOpacity
-                  activeOpacity={1}
+                <BouncyButton
                   key={mode.key}
                   style={[
                     styles.modeButton,
@@ -206,15 +204,14 @@ function MainMenu({
                     {title}
                   </Text>
                   <Text style={styles.modeDescription}>{description}</Text>
-                </TouchableOpacity>
+                </BouncyButton>
               );
             })}
           </View>
 
           {/* Deliberately small, plain and at the bottom: this is the one
                 control on the screen that is not for the child. */}
-          <TouchableOpacity
-            activeOpacity={1}
+          <BouncyButton
             style={styles.parentsButton}
             onPress={() => {
               tapFeedback();
@@ -232,7 +229,7 @@ function MainMenu({
             <Text style={styles.parentsText}>
               {t(currentLanguage, 'forParents')}
             </Text>
-          </TouchableOpacity>
+          </BouncyButton>
         </ScrollView>
       </Animated.View>
     </SafeAreaView>

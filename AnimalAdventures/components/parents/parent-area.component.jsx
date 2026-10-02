@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import {
   PLAY_LIMIT_OPTIONS,
   useSettings,
 } from '../../contexts/settings.context';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 /**
  * The five things this app does not do.
@@ -76,8 +76,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
         <View style={styles.sheet}>
           <View style={styles.header}>
             <Text style={styles.title}>{t(currentLanguage, 'forParents')}</Text>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               onPress={() => {
                 tapFeedback();
                 onClose();
@@ -88,7 +87,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               accessibilityLabel={t(currentLanguage, 'close')}
             >
               <MaterialIcons name="close" size={26} color="#0A3D62" />
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
 
           <ScrollView contentContainerStyle={styles.body}>
@@ -146,8 +145,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               {PLAY_LIMIT_OPTIONS.map(minutes => {
                 const active = playLimitMinutes === minutes;
                 return (
-                  <TouchableOpacity
-                    activeOpacity={1}
+                  <BouncyButton
                     key={minutes}
                     style={[styles.chip, active && styles.chipActive]}
                     onPress={() => handleLimit(minutes)}
@@ -163,7 +161,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
                     >
                       {limitLabel(minutes)}
                     </Text>
-                  </TouchableOpacity>
+                  </BouncyButton>
                 );
               })}
             </View>

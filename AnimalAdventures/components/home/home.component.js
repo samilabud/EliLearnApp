@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
-  TouchableOpacity,
   View,
   Text,
   ImageBackground,
@@ -15,6 +14,7 @@ import { AmbientBackground } from '../utility/ambient-background.component';
 import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { useBackToMenu } from '../../utils/navigation';
+import { BouncyButton } from '../utility/bouncy-button.component';
 
 const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
@@ -59,8 +59,7 @@ function HomeScreen({
       <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={styles.topActions}>
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               style={styles.languageToggle}
               onPress={onLanguageToggle}
               accessible={true}
@@ -71,10 +70,9 @@ function HomeScreen({
               <Text style={styles.languageText}>
                 {currentLanguage.toUpperCase()}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
 
-            <TouchableOpacity
-              activeOpacity={1}
+            <BouncyButton
               style={styles.actionButton}
               onPress={handleBack}
               accessible={true}
@@ -84,7 +82,7 @@ function HomeScreen({
               <Text style={styles.actionText}>
                 {t(currentLanguage, 'mainMenu')}
               </Text>
-            </TouchableOpacity>
+            </BouncyButton>
           </View>
         </View>
 
