@@ -13,12 +13,17 @@ import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
-import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import {
+  BackToMenuButton,
+  BACK_TO_MENU_CLEARANCE,
+} from '../utility/back-to-menu-button.component';
 
 const GRID_PADDING_H = 12;
 const CARD_MARGIN_TOP = 20;
@@ -37,6 +42,7 @@ const BOX_HEIGHT = 96;
  */
 export default function AlbumScreen({
   currentLanguage,
+  setCurrentLanguage,
   onBackToMenu,
   ambientEnabled,
 }) {
@@ -111,22 +117,18 @@ export default function AlbumScreen({
           })}
         </Text>
 
-        <BouncyButton
-          style={styles.actionButton}
-          onPress={handleBackToMenu}
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-        >
-          <Text style={styles.actionText}>
-            {t(currentLanguage, 'mainMenu')}
-          </Text>
-        </BouncyButton>
+        <LanguageToggleButton
+          currentLanguage={currentLanguage}
+          onToggle={setCurrentLanguage}
+        />
       </View>
 
       <ScrollView
         style={styles.scrollArea}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
+        ]}
       >
           {metSet.size === 0 && (
             <Text style={[styles.hint, { fontFamily: 'Bangers_400Regular' }]}>
@@ -189,6 +191,11 @@ export default function AlbumScreen({
             })}
           </View>
         </ScrollView>
+
+        <BackToMenuButton
+          currentLanguage={currentLanguage}
+          onPress={handleBackToMenu}
+        />
     </ImageBackground>
   );
 }
@@ -201,24 +208,6 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 16,
     paddingBottom: 12,
-  },
-  actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    minHeight: MIN_TOUCH_TARGET,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  actionText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   headerCount: {
     color: '#FFD700',
@@ -239,7 +228,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 10,
-    paddingBottom: 60,
     paddingHorizontal: GRID_PADDING_H,
   },
   hint: {

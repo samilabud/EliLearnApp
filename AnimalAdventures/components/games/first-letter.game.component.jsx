@@ -22,8 +22,9 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
+import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
@@ -33,6 +34,12 @@ import {
   errorFeedback,
 } from '../../utils/haptics';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import {
+  BackToMenuButton,
+  BACK_TO_MENU_CLEARANCE,
+} from '../utility/back-to-menu-button.component';
+import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
 
 const MAX_LEVEL = 6;
 
@@ -69,6 +76,7 @@ const isVowel = letter => VOWELS.includes(letter);
 
 export default function FirstLetterGame({
   currentLanguage,
+  setCurrentLanguage,
   onBackToMenu,
   ambientEnabled,
 }) {
@@ -85,6 +93,7 @@ export default function FirstLetterGame({
   const { letter, updateLetter, resetLetter, markAnimalMet } =
     useGameProgress();
   const { level, wrongCount, showComplete } = letter;
+  const { childAgeBand } = useSettings();
 
   const [isCorrect, setIsCorrect] = useState(false);
   const promptPlayer = useAudioPlayer(null);
@@ -229,7 +238,9 @@ export default function FirstLetterGame({
   }, []);
 
   const pickRound = useCallback(() => {
-    const isVowelLevel = level <= VOWEL_LEVELS;
+    // A parent who has marked their child as under 4 keeps every level
+    // vowels-only, rather than switching to consonants after level 2.
+    const isVowelLevel = childAgeBand === 'under4' || level <= VOWEL_LEVELS;
     const basePool =
       isVowelLevel && vowelAnimals.length > 0 ? vowelAnimals : animalList;
     // Every eligible animal gets a turn as the target before any repeats,
@@ -257,6 +268,7 @@ export default function FirstLetterGame({
     roundStartedAt.current = Date.now();
   }, [
     level,
+    childAgeBand,
     vowelAnimals,
     currentLanguage,
     shuffle,
@@ -434,7 +446,7 @@ export default function FirstLetterGame({
         style={styles.scrollArea}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: Math.max(60, insets.bottom + 24) },
+          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
         ]}
       >
         {/* Top controls */}
@@ -450,28 +462,14 @@ export default function FirstLetterGame({
             {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
           </Text>
           <View style={styles.topActions}>
-            <BouncyButton
-              onPress={handleReset}
-              style={styles.actionButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-            >
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'reset')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.actionButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'mainMenu')}
-              </Text>
-            </BouncyButton>
+            <ConfirmResetButton
+              currentLanguage={currentLanguage}
+              onConfirm={onReset}
+            />
+            <LanguageToggleButton
+              currentLanguage={currentLanguage}
+              onToggle={setCurrentLanguage}
+            />
           </View>
         </View>
 
@@ -555,6 +553,13 @@ export default function FirstLetterGame({
           })}
         </View>
       </ScrollView>
+
+      {!showComplete && (
+        <BackToMenuButton
+          currentLanguage={currentLanguage}
+          onPress={handleBackToMenu}
+        />
+      )}
 
       {/* Correct feedback + confetti */}
       {isCorrect && (
@@ -671,24 +676,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingBottom: 34,
-  },
-  actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    minHeight: MIN_TOUCH_TARGET,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  actionText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   scrollArea: {
     flex: 1,

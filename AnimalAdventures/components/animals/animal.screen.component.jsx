@@ -6,6 +6,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { animalList } from './animal.list';
@@ -16,6 +17,7 @@ import { EVENTS, track } from '../../utils/analytics';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import { BACK_TO_MENU_CLEARANCE } from '../utility/back-to-menu-button.component';
 
 const GRID_PADDING_H = 12;
 const CARD_MARGIN_TOP = 24;
@@ -26,6 +28,7 @@ const LANDSCAPE_COLUMNS = 6;
 const MIN_CARD_WIDTH = 104;
 
 const AnimalScreen = ({ currentLanguage }) => {
+  const insets = useSafeAreaInsets();
   const soundPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
   const { markAnimalMet } = useGameProgress();
@@ -97,7 +100,12 @@ const AnimalScreen = ({ currentLanguage }) => {
       style={styles.scrollView}
       contentContainerStyle={{ paddingTop: 10 }}
     >
-      <View style={styles.animationContainer}>
+      <View
+        style={[
+          styles.animationContainer,
+          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
+        ]}
+      >
         {animalList.map(animatedImage => (
             <Fragment key={`${animatedImage.name}-animatedImage`}>
               <BouncyButton
@@ -171,7 +179,6 @@ const styles = StyleSheet.create({
     alignContent: 'space-around',
     flexWrap: 'wrap',
     flexDirection: 'row',
-    paddingBottom: 60,
     paddingHorizontal: GRID_PADDING_H,
   },
   button: {

@@ -31,11 +31,21 @@ const TICK_MS = 10000;
 /** Options offered in the parent area, in minutes. 0 means no limit. */
 export const PLAY_LIMIT_OPTIONS = [0, 10, 15, 20, 30, 45];
 
+/**
+ * Age bands offered in the parent area. 'under4' locks Guess the First
+ * Letter to vowels-only at every level, since many children that age have
+ * not learned consonant sounds yet. '4to6' matches the game's existing
+ * default progression (vowels first, consonants from level 3), so it is
+ * the default here too - existing installs see no behavior change.
+ */
+export const CHILD_AGE_OPTIONS = ['under4', '4to6', '7plus'];
+
 const DEFAULT_SETTINGS = {
   language: 'en',
   soundEnabled: true,
   playLimitMinutes: 0,
   ambientEffectsEnabled: true,
+  childAgeBand: '4to6',
 };
 
 const SettingsContext = createContext(null);
@@ -137,11 +147,13 @@ export function SettingsProvider({ children }) {
       soundEnabled: settings.soundEnabled,
       playLimitMinutes: settings.playLimitMinutes,
       ambientEffectsEnabled: settings.ambientEffectsEnabled,
+      childAgeBand: settings.childAgeBand,
       setLanguage: language => update({ language }),
       setSoundEnabled: soundEnabled => update({ soundEnabled }),
       setPlayLimitMinutes: playLimitMinutes => update({ playLimitMinutes }),
       setAmbientEffectsEnabled: ambientEffectsEnabled =>
         update({ ambientEffectsEnabled }),
+      setChildAgeBand: childAgeBand => update({ childAgeBand }),
       timeUp,
       minutesRemaining:
         limitSeconds > 0

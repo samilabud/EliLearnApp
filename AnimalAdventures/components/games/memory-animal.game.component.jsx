@@ -20,7 +20,7 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { t } from '../../constants';
 import {
   tapFeedback,
   successFeedback,
@@ -35,6 +35,12 @@ import { EVENTS, track } from '../../utils/analytics';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import {
+  BackToMenuButton,
+  BACK_TO_MENU_CLEARANCE,
+} from '../utility/back-to-menu-button.component';
+import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -66,6 +72,7 @@ const getCardsPerLevel = levelNum => Math.min(2 + levelNum * 2, 16);
 
 export default function MemoryAnimalGame({
   currentLanguage,
+  setCurrentLanguage,
   onBackToMenu,
   ambientEnabled,
 }) {
@@ -372,14 +379,18 @@ export default function MemoryAnimalGame({
     ]
   );
 
-  const handleReset = useCallback(() => {
-    tapFeedback();
+  const onReset = useCallback(() => {
     track(EVENTS.GAME_RESET, { game: 'memory', level });
     setIsProcessing(false);
     setShowLevelComplete(false);
     setConfettiKey(prev => prev + 1);
     resetMemory();
   }, [resetMemory, level]);
+
+  const handleReset = useCallback(() => {
+    tapFeedback();
+    onReset();
+  }, [onReset]);
 
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
@@ -410,7 +421,7 @@ export default function MemoryAnimalGame({
         style={styles.scrollArea}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: Math.max(60, insets.bottom + 24) },
+          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
         ]}
       >
         {/* Top controls */}
@@ -429,28 +440,14 @@ export default function MemoryAnimalGame({
             </Text>
           </View>
           <View style={styles.topActions}>
-            <BouncyButton
-              onPress={handleReset}
-              style={styles.actionButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-            >
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'reset')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.actionButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'mainMenu')}
-              </Text>
-            </BouncyButton>
+            <ConfirmResetButton
+              currentLanguage={currentLanguage}
+              onConfirm={onReset}
+            />
+            <LanguageToggleButton
+              currentLanguage={currentLanguage}
+              onToggle={setCurrentLanguage}
+            />
           </View>
         </View>
 
@@ -516,6 +513,13 @@ export default function MemoryAnimalGame({
           ))}
         </View>
       </ScrollView>
+
+      {!showLevelComplete && !gameComplete && (
+        <BackToMenuButton
+          currentLanguage={currentLanguage}
+          onPress={handleBackToMenu}
+        />
+      )}
 
       {/* Level completion overlay */}
       {showLevelComplete && (
@@ -637,24 +641,6 @@ const styles = StyleSheet.create({
   topActions: {
     flexDirection: 'row',
     gap: 10,
-  },
-  actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    minHeight: MIN_TOUCH_TARGET,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  actionText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   instructionsContainer: {
     paddingTop: 16,

@@ -22,7 +22,7 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
+import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
@@ -33,6 +33,12 @@ import {
   errorFeedback,
 } from '../../utils/haptics';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import {
+  BackToMenuButton,
+  BACK_TO_MENU_CLEARANCE,
+} from '../utility/back-to-menu-button.component';
+import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
 
 const GRID_PADDING_H = 16;
 const OPTION_GAP = 12;
@@ -50,6 +56,7 @@ const HINT_AFTER_TRIES = 3;
 
 export default function GuessAnimalGame({
   currentLanguage,
+  setCurrentLanguage,
   onBackToMenu,
   ambientEnabled,
 }) {
@@ -411,7 +418,7 @@ export default function GuessAnimalGame({
         style={styles.scrollArea}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: Math.max(60, insets.bottom + 24) },
+          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
         ]}
       >
         {/* Top controls */}
@@ -427,28 +434,14 @@ export default function GuessAnimalGame({
             {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
           </Text>
           <View style={styles.topActions}>
-            <BouncyButton
-              onPress={handleReset}
-              style={styles.actionButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-            >
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'reset')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.actionButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'mainMenu')}
-              </Text>
-            </BouncyButton>
+            <ConfirmResetButton
+              currentLanguage={currentLanguage}
+              onConfirm={onReset}
+            />
+            <LanguageToggleButton
+              currentLanguage={currentLanguage}
+              onToggle={setCurrentLanguage}
+            />
           </View>
         </View>
 
@@ -519,6 +512,13 @@ export default function GuessAnimalGame({
           })}
         </View>
       </ScrollView>
+
+      {!showComplete && (
+        <BackToMenuButton
+          currentLanguage={currentLanguage}
+          onPress={handleBackToMenu}
+        />
+      )}
 
       {/* Correct feedback + confetti */}
       {isCorrect && (
@@ -635,24 +635,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingBottom: 34,
-  },
-  actionButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    minHeight: MIN_TOUCH_TARGET,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  actionText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   promptContainer: {
     paddingTop: 8,
