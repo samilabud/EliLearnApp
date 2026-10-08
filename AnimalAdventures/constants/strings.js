@@ -19,6 +19,7 @@ export const STRINGS = {
     mainMenu: 'Menu',
     mainMenuFull: 'Main Menu',
     reset: 'Reset',
+    resetConfirm: 'Tap again?',
     level: 'Level',
 
     // Guess the Animal
@@ -65,6 +66,10 @@ export const STRINGS = {
     playLimitLabel: 'Daily play limit',
     noLimit: 'No limit',
     minutesShort: '{count} min',
+    childAgeLabel: "Child's age",
+    ageUnder4: 'Under 4',
+    age4to6: '4-6',
+    age7plus: '7+',
     aboutTitle: 'About this app',
     promiseNoAds: 'No advertising',
     promiseNoAccounts: 'No accounts or sign-in',
@@ -72,6 +77,7 @@ export const STRINGS = {
     promiseNoLinks: 'No links out of the app',
     promiseNoData: 'No personal information collected',
     versionLabel: 'Version {version}',
+    brandCredit: 'EliLearn Apps',
 
     // Play time
     timeUpTitle: 'Play time is over',
@@ -88,6 +94,7 @@ export const STRINGS = {
     a11yBackButton: 'Go back to the previous screen',
     a11yMainMenuButton: 'Go to the main menu',
     a11yResetButton: 'Start this level again',
+    a11yResetConfirm: 'Tap again to start this level over',
     a11yLanguageToggle: 'Switch language to Spanish',
     a11yOpenMenu: 'Open the menu',
     a11yPlaySound: 'Play the animal sound',
@@ -109,6 +116,7 @@ export const STRINGS = {
     a11ySoundToggle: 'Turn the sound {state}',
     a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
+    a11yChildAge: "Set the child's age to {label}",
   },
 
   es: {
@@ -129,6 +137,7 @@ export const STRINGS = {
     mainMenu: 'Menú',
     mainMenuFull: 'Menú Principal',
     reset: 'Reiniciar',
+    resetConfirm: '¿Otra vez?',
     level: 'Nivel',
 
     // Adivina el Animal
@@ -175,6 +184,10 @@ export const STRINGS = {
     playLimitLabel: 'Límite diario',
     noLimit: 'Sin límite',
     minutesShort: '{count} min',
+    childAgeLabel: 'Edad del niño/a',
+    ageUnder4: 'Menos de 4',
+    age4to6: '4-6',
+    age7plus: '7+',
     aboutTitle: 'Sobre esta app',
     promiseNoAds: 'Sin publicidad',
     promiseNoAccounts: 'Sin cuentas ni registro',
@@ -182,6 +195,7 @@ export const STRINGS = {
     promiseNoLinks: 'Sin enlaces que salgan de la app',
     promiseNoData: 'No recopilamos información personal',
     versionLabel: 'Versión {version}',
+    brandCredit: 'EliLearn Apps',
 
     // Tiempo de juego
     timeUpTitle: 'Se acabó el tiempo de juego',
@@ -198,6 +212,7 @@ export const STRINGS = {
     a11yBackButton: 'Volver a la pantalla anterior',
     a11yMainMenuButton: 'Ir al menú principal',
     a11yResetButton: 'Comenzar este nivel de nuevo',
+    a11yResetConfirm: 'Toca otra vez para comenzar este nivel de nuevo',
     a11yLanguageToggle: 'Cambiar el idioma a inglés',
     a11yOpenMenu: 'Abrir el menú',
     a11yPlaySound: 'Reproducir el sonido del animal',
@@ -219,6 +234,7 @@ export const STRINGS = {
     a11ySoundToggle: 'Poner el sonido en {state}',
     a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
+    a11yChildAge: 'Poner la edad del niño/a en {label}',
   },
 };
 

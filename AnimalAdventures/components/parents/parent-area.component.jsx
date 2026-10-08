@@ -12,6 +12,7 @@ import Constants from 'expo-constants';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import {
+  CHILD_AGE_OPTIONS,
   PLAY_LIMIT_OPTIONS,
   useSettings,
 } from '../../contexts/settings.context';
@@ -35,6 +36,13 @@ const PROMISE_KEYS = [
 const appVersion =
   Constants?.expoConfig?.version || Constants?.manifest?.version || '';
 
+/** String key for each age band, matching CHILD_AGE_OPTIONS from settings. */
+const AGE_LABEL_KEYS = {
+  under4: 'ageUnder4',
+  '4to6': 'age4to6',
+  '7plus': 'age7plus',
+};
+
 export default function ParentArea({ visible, currentLanguage, onClose }) {
   const {
     soundEnabled,
@@ -43,6 +51,8 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     setPlayLimitMinutes,
     ambientEffectsEnabled,
     setAmbientEffectsEnabled,
+    childAgeBand,
+    setChildAgeBand,
   } = useSettings();
 
   const handleSound = value => {
@@ -60,10 +70,17 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     setPlayLimitMinutes(minutes);
   };
 
+  const handleChildAge = band => {
+    tapFeedback();
+    setChildAgeBand(band);
+  };
+
   const limitLabel = minutes =>
     minutes === 0
       ? t(currentLanguage, 'noLimit')
       : t(currentLanguage, 'minutesShort', { count: minutes });
+
+  const ageLabel = band => t(currentLanguage, AGE_LABEL_KEYS[band]);
 
   return (
     <Modal
@@ -166,6 +183,35 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               })}
             </View>
 
+            {/* Child's age - under 4 keeps Guess the First Letter vowels-only */}
+            <Text style={styles.sectionLabel}>
+              {t(currentLanguage, 'childAgeLabel')}
+            </Text>
+            <View style={styles.chips}>
+              {CHILD_AGE_OPTIONS.map(band => {
+                const active = childAgeBand === band;
+                return (
+                  <BouncyButton
+                    key={band}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() => handleChildAge(band)}
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={t(currentLanguage, 'a11yChildAge', {
+                      label: ageLabel(band),
+                    })}
+                  >
+                    <Text
+                      style={[styles.chipText, active && styles.chipTextActive]}
+                    >
+                      {ageLabel(band)}
+                    </Text>
+                  </BouncyButton>
+                );
+              })}
+            </View>
+
             {/* What this app does not do */}
             <Text style={styles.sectionLabel}>
               {t(currentLanguage, 'aboutTitle')}
@@ -185,11 +231,11 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               ))}
             </View>
 
-            {!!appVersion && (
-              <Text style={styles.version}>
-                {t(currentLanguage, 'versionLabel', { version: appVersion })}
-              </Text>
-            )}
+            <Text style={styles.version}>
+              {t(currentLanguage, 'brandCredit')}
+              {!!appVersion &&
+                ` · ${t(currentLanguage, 'versionLabel', { version: appVersion })}`}
+            </Text>
           </ScrollView>
         </View>
       </View>

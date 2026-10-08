@@ -130,6 +130,7 @@ function AppContent() {
     content = (
       <GuessAnimalGame
         currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         ambientEnabled={ambientEffectsEnabled}
       />
@@ -138,6 +139,7 @@ function AppContent() {
     content = (
       <FirstLetterGame
         currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         ambientEnabled={ambientEffectsEnabled}
       />
@@ -146,6 +148,7 @@ function AppContent() {
     content = (
       <MemoryAnimalGame
         currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         ambientEnabled={ambientEffectsEnabled}
       />
@@ -154,6 +157,7 @@ function AppContent() {
     content = (
       <AlbumScreen
         currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         ambientEnabled={ambientEffectsEnabled}
       />

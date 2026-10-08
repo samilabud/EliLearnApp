@@ -4,8 +4,8 @@ import {
   StyleSheet,
   View,
   Text,
-  Image,
   Animated,
+  Easing,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -14,9 +14,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
+import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import { LanguageToggleButton } from '../utility/language-toggle-button.component';
 
 const ICON_SIZE = { width: 90, height: 90 };
 const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
@@ -67,6 +68,17 @@ function MainMenu({
   ambientEnabled,
 }) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
+  // Entrance scale for the title (bounces in) and the idle "breathe" loop
+  // that keeps it feeling alive once settled - same pulse pattern used for
+  // the prompt button in the games (see promptPulse in first-letter.game).
+  const [titleScale] = React.useState(() => new Animated.Value(0.6));
+  const [titleBreathe] = React.useState(() => new Animated.Value(0));
+  const [subtitleSlide] = React.useState(() => new Animated.Value(20));
+  // 'Guess the First Letter' and the album both fall back to a plain
+  // MaterialIcons glyph (no Lottie of their own yet - see MODES above), so
+  // without their own animation they'd sit dead next to the two cards that
+  // already loop. A gentle rock gives them the same liveliness.
+  const [glyphWiggle] = React.useState(() => new Animated.Value(0));
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Stacked full-width cards give one card per screen on a landscape tablet,
   // which Android 16 can force regardless of the manifest. Side by side keeps
@@ -74,49 +86,98 @@ function MainMenu({
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
 
-  // The launch splash now lives in App, so this screen just fades itself in.
+  // The launch splash now lives in App, so this screen just fades itself in,
+  // while the title bounces in and the subtitle slides up under it - a
+  // livelier arrival for a screen a preschooler sees every launch.
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 400,
       useNativeDriver: true,
     }).start();
-  }, [fadeAnim]);
 
-  const onLanguageToggle = () => {
-    tapFeedback();
-    setCurrentLanguage(currentLanguage === 'en' ? 'es' : 'en');
-  };
+    Animated.timing(subtitleSlide, {
+      toValue: 0,
+      duration: 350,
+      delay: 150,
+      useNativeDriver: true,
+    }).start();
+
+    Animated.spring(titleScale, {
+      toValue: 1,
+      friction: 5,
+      tension: 140,
+      useNativeDriver: true,
+    }).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(titleBreathe, {
+            toValue: 1,
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(titleBreathe, {
+            toValue: 0,
+            duration: 900,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    });
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glyphWiggle, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glyphWiggle, {
+          toValue: -1,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glyphWiggle, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [fadeAnim, titleScale, titleBreathe, subtitleSlide, glyphWiggle]);
 
   const handleModeSelect = mode => {
     selectFeedback();
     onModeSelect(mode);
   };
 
+  const titleBreatheScale = titleBreathe.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.03],
+  });
+
+  const glyphRotate = glyphWiggle.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-8deg', '0deg', '8deg'],
+  });
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="auto" />
 
-      {/* Header with Logo and Language Selector */}
+      {/* Header: just the language selector now - the title below already
+          carries the branding, and a small logo read as a plain sticker on
+          the matching red header. */}
       <View style={styles.header}>
-        <Image
-          source={require('../../assets/logo/logoEliLearn.png')}
-          style={styles.logo}
-          accessible={false}
-          accessibilityRole="image"
+        <LanguageToggleButton
+          currentLanguage={currentLanguage}
+          onToggle={setCurrentLanguage}
         />
-        <BouncyButton
-          style={styles.languageToggle}
-          onPress={onLanguageToggle}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={t(currentLanguage, 'a11yLanguageToggle')}
-        >
-          <MaterialIcons name="translate" size={28} color="white" />
-          <Text style={styles.languageText}>
-            {currentLanguage.toUpperCase()}
-          </Text>
-        </BouncyButton>
       </View>
 
       {/* Main Content */}
@@ -128,21 +189,36 @@ function MainMenu({
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <Text
-            style={[
-              styles.title,
-              isLandscape && styles.titleLandscape,
-              fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-            ]}
+          <Animated.View
+            style={{
+              transform: [
+                { scale: Animated.multiply(titleScale, titleBreatheScale) },
+              ],
+            }}
           >
-            {t(currentLanguage, 'appTitle')}
-          </Text>
+            <Text
+              style={[
+                styles.title,
+                isLandscape && styles.titleLandscape,
+                fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+              ]}
+            >
+              {t(currentLanguage, 'appTitle')}
+            </Text>
+          </Animated.View>
 
-          <Text
-            style={[styles.subtitle, isLandscape && styles.subtitleLandscape]}
+          <Animated.View
+            style={{ transform: [{ translateY: subtitleSlide }] }}
           >
-            {t(currentLanguage, 'chooseAdventure')}
-          </Text>
+            <Text
+              style={[
+                styles.subtitle,
+                isLandscape && styles.subtitleLandscape,
+              ]}
+            >
+              {t(currentLanguage, 'chooseAdventure')}
+            </Text>
+          </Animated.View>
 
           {/* Mode Selection Buttons */}
           <View
@@ -178,11 +254,15 @@ function MainMenu({
                     ]}
                   >
                     {mode.glyph ? (
-                      <MaterialIcons
-                        name={mode.glyph}
-                        size={isLandscape ? 54 : 78}
-                        color="#BD0000"
-                      />
+                      <Animated.View
+                        style={{ transform: [{ rotate: glyphRotate }] }}
+                      >
+                        <MaterialIcons
+                          name={mode.glyph}
+                          size={isLandscape ? 54 : 78}
+                          color="#BD0000"
+                        />
+                      </Animated.View>
                     ) : (
                       <LottieView
                         source={mode.icon}
@@ -243,37 +323,13 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 2,
     borderBottomColor: '#FFD700',
-  },
-  logo: {
-    width: 120,
-    height: 50,
-    resizeMode: 'contain',
-  },
-  languageToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH_TARGET,
-    minWidth: LARGE_TOUCH_TARGET,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  languageText: {
-    marginLeft: 8,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
   },
   content: {
     flexGrow: 1,
