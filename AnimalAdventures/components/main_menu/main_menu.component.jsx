@@ -9,7 +9,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
@@ -93,6 +93,7 @@ function MainMenu({
   // all three adventures reachable without scrolling.
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
+  const insets = useSafeAreaInsets();
 
   // The launch splash now lives in App, so this screen just fades itself in,
   // while the title bounces in and the subtitle slides up under it - a
@@ -175,18 +176,17 @@ function MainMenu({
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar style="auto" />
 
-      {/* Header: just the language selector now - the title below already
-          carries the branding, and a small logo read as a plain sticker on
-          the matching red header. */}
-      <View style={styles.header}>
-        <LanguageToggleButton
-          currentLanguage={currentLanguage}
-          onToggle={setCurrentLanguage}
-        />
-      </View>
+      {/* Floating, like the Menu/Next Game controls on every game screen,
+          so the top of the screen isn't a mostly-empty bordered bar - the
+          title gets that space instead. */}
+      <LanguageToggleButton
+        currentLanguage={currentLanguage}
+        onToggle={setCurrentLanguage}
+        style={[styles.languageFloating, { top: insets.top + 12 }]}
+      />
 
       {/* Main Content */}
       <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
@@ -194,6 +194,10 @@ function MainMenu({
           contentContainerStyle={[
             styles.content,
             isLandscape && styles.contentLandscape,
+            {
+              paddingTop: insets.top + (isLandscape ? 54 : 64),
+              paddingBottom: insets.bottom + 24,
+            },
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -320,7 +324,7 @@ function MainMenu({
           </BouncyButton>
         </ScrollView>
       </Animated.View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -329,15 +333,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#BD0000',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 2,
-    borderBottomColor: '#FFD700',
+  languageFloating: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 10,
   },
   content: {
     flexGrow: 1,

@@ -578,6 +578,13 @@ export default function TraceLetterGame({
               />
             )}
           </View>
+          {!!targetAnimal && (
+            <Text style={styles.animalNameText}>
+              {currentLanguage === 'en'
+                ? targetAnimal.name
+                : targetAnimal.spanish_name}
+            </Text>
+          )}
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
             <BouncyButton
               onPress={handlePlayPrompt}
@@ -821,11 +828,23 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
   },
   animalAnimation: {
     width: 92,
     height: 92,
+  },
+  // The written word next to the letter being traced, so a child connects
+  // the animal, its name and the letter rather than tracing in isolation.
+  animalNameText: {
+    marginBottom: 10,
+    color: 'white',
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
     backgroundColor: '#FFD700',

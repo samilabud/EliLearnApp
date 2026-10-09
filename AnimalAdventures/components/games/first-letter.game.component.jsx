@@ -491,6 +491,13 @@ export default function FirstLetterGame({
               />
             )}
           </View>
+          {!!targetAnimal && (
+            <Text style={styles.animalNameText}>
+              {currentLanguage === 'en'
+                ? targetAnimal.name
+                : targetAnimal.spanish_name}
+            </Text>
+          )}
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
             <BouncyButton
               onPress={handlePlayPrompt}
@@ -715,11 +722,23 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 10,
   },
   animalAnimation: {
     width: 150,
     height: 150,
+  },
+  // The written word next to the letter options, so a child connects the
+  // animal, its name and the letter rather than guessing blind.
+  animalNameText: {
+    marginBottom: 10,
+    color: 'white',
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
     backgroundColor: '#FFD700',
