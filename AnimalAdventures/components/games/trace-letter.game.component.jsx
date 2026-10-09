@@ -55,17 +55,21 @@ const MAX_CANVAS_SIZE = 320;
 // the app has no way to read the actual outline the OS font renderer draws.
 const CANVAS_INSET_RATIO = 0.18;
 
-// A trace counts as reaching the letter once its bounding box spans at
-// least this fraction of the target area in both directions. Generous on
-// purpose: this checks "did a preschooler drag a finger across roughly the
-// right space", not stroke accuracy.
+// A trace counts as reaching the letter once its bounding box's diagonal
+// spans at least this fraction of the target area's diagonal. Checked on
+// the diagonal rather than width and height independently, so a narrow
+// letter traced mostly top-to-bottom (like "I") isn't failed for having
+// little horizontal spread - this checks "did a preschooler drag a finger
+// across roughly the right space", not stroke accuracy.
 const MIN_COVERAGE_RATIO = 0.55;
 // How far outside the target box the traced shape's center may drift and
 // still count - catches a scribble that covers enough area but sits in a
 // corner rather than over the letter.
 const CENTER_DRIFT_RATIO = 0.12;
-// Minimum total finger travel, so a single tap or dot can never pass.
-const MIN_PATH_LENGTH_RATIO = 0.7;
+// Minimum total finger travel, relative to the target box's own size rather
+// than the full canvas, so a single tap or a tiny jiggle can never pass
+// while a straight top-to-bottom trace of a narrow letter still can.
+const MIN_PATH_LENGTH_RATIO = 0.5;
 const MIN_POINTS = 6;
 
 // A lifted finger ends the current stroke; this is how long to wait before
@@ -382,16 +386,17 @@ export default function TraceLetterGame({
     const centerY = (minY + maxY) / 2;
     const driftMargin = canvasSize * CENTER_DRIFT_RATIO;
 
-    const coversWidth = spanX >= targetBox.width * MIN_COVERAGE_RATIO;
-    const coversHeight = spanY >= targetBox.height * MIN_COVERAGE_RATIO;
+    const targetDiagonal = Math.hypot(targetBox.width, targetBox.height);
+    const traceDiagonal = Math.hypot(spanX, spanY);
+    const coversEnough = traceDiagonal >= targetDiagonal * MIN_COVERAGE_RATIO;
     const centered =
       centerX >= targetBox.left - driftMargin &&
       centerX <= targetBox.right + driftMargin &&
       centerY >= targetBox.top - driftMargin &&
       centerY <= targetBox.bottom + driftMargin;
-    const longEnough = length >= canvasSize * MIN_PATH_LENGTH_RATIO;
+    const longEnough = length >= targetBox.height * MIN_PATH_LENGTH_RATIO;
 
-    if (coversWidth && coversHeight && centered && longEnough) {
+    if (coversEnough && centered && longEnough) {
       handleCorrect();
     } else {
       handleIncorrect();
