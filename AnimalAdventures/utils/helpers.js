@@ -74,6 +74,26 @@ export const isImageFile = filename => {
 };
 
 /**
+ * Strip accents, e.g. so "Águila" compares equal to "Aguila".
+ * @param {string} str
+ * @returns {string}
+ */
+export const stripAccents = str => str.normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/**
+ * The letter an animal's name starts with, in the given language.
+ * Accents are stripped first so "Águila" counts as starting with A, the
+ * same letter a child hears regardless of the written accent mark.
+ * @param {{name: string, spanish_name: string}} animal
+ * @param {'en'|'es'} lang
+ * @returns {string} A single uppercase letter.
+ */
+export const firstLetterOf = (animal, lang) => {
+  const name = lang === 'en' ? animal.name : animal.spanish_name;
+  return stripAccents(name).trim().charAt(0).toUpperCase();
+};
+
+/**
  * Debounce function to limit function calls
  * @param {Function} func - The function to debounce
  * @param {number} wait - The delay in milliseconds
@@ -116,6 +136,8 @@ export default {
   getFileExtension,
   isAudioFile,
   isImageFile,
+  stripAccents,
+  firstLetterOf,
   debounce,
   throttle,
 };

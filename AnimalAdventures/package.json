@@ -26,7 +26,10 @@
     "bump:major": "node scripts/bump-version.js --type major",
     "bump:set": "node scripts/bump-version.js --set",
     "bump:dry-run": "node scripts/bump-version.js --dry-run",
-    "production-build-eas:android": "node scripts/bump-version.js --type patch && eas build --platform android --profile production --non-interactive"
+    "production-build-eas:android": "node scripts/bump-version.js --type patch && eas build --platform android --profile production --non-interactive",
+    "update:staging-dev": "eas update --branch staging-dev --message",
+    "update:staging": "eas update --branch staging --message",
+    "update:production": "eas update --branch production --message"
   },
   "dependencies": {
     "@expo-google-fonts/bangers": "^0.4.1",
@@ -51,6 +54,7 @@
     "react-native-confetti-cannon": "^1.5.2",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1"
   },

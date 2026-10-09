@@ -7,6 +7,7 @@ import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
 import FirstLetterGame from './components/games/first-letter.game.component.jsx';
+import TraceLetterGame from './components/games/trace-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
@@ -138,6 +139,15 @@ function AppContent() {
   } else if (currentMode === 'letter') {
     content = (
       <FirstLetterGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        ambientEnabled={ambientEffectsEnabled}
+      />
+    );
+  } else if (currentMode === 'trace') {
+    content = (
+      <TraceLetterGame
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}

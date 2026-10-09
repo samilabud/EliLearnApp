@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import {
   ImageBackground,
+  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,13 +19,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
+import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
-import { useSettings } from '../../contexts/settings.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
@@ -44,26 +45,35 @@ import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
 
 const MAX_LEVEL = 6;
 
-// Levels at or below this teach vowels in isolation: both the animal shown
-// and the two wrong letters come only from {A, E, I, O, U}. Levels above it
-// draw from the whole alphabet, consonants included.
-const VOWEL_LEVELS = 2;
+// Square drawing area, clamped so it never outgrows a small phone or
+// dominates a tablet.
+const MIN_CANVAS_SIZE = 220;
+const MAX_CANVAS_SIZE = 320;
 
-const VOWELS = ['A', 'E', 'I', 'O', 'U'];
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// How far in from each edge of the canvas the ghost letter's "target area"
+// sits. A traced attempt is checked against this box, not the glyph itself -
+// the app has no way to read the actual outline the OS font renderer draws.
+const CANVAS_INSET_RATIO = 0.18;
 
-// After this many wrong taps the right letter starts to glow. Children aged
-// three to six learn by trying the wrong thing, so the game never ends on a
-// mistake - it just gets more helpful. Matches Guess the Animal's threshold.
-const HINT_AFTER_TRIES = 3;
+// A trace counts as reaching the letter once its bounding box spans at
+// least this fraction of the target area in both directions. Generous on
+// purpose: this checks "did a preschooler drag a finger across roughly the
+// right space", not stroke accuracy.
+const MIN_COVERAGE_RATIO = 0.55;
+// How far outside the target box the traced shape's center may drift and
+// still count - catches a scribble that covers enough area but sits in a
+// corner rather than over the letter.
+const CENTER_DRIFT_RATIO = 0.12;
+// Minimum total finger travel, so a single tap or dot can never pass.
+const MIN_PATH_LENGTH_RATIO = 0.7;
+const MIN_POINTS = 6;
 
-const OPTION_GAP = 20;
-const MIN_OPTION_SIZE = 96;
-const MAX_OPTION_SIZE = 140;
+// A lifted finger ends the current stroke; this is how long to wait before
+// grading the attempt, so a child can draw a multi-stroke letter (like "A")
+// across a few separate strokes without it grading after the first one.
+const EVALUATE_DELAY_MS = 700;
 
-const isVowel = letter => VOWELS.includes(letter);
-
-export default function FirstLetterGame({
+export default function TraceLetterGame({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
@@ -71,28 +81,28 @@ export default function FirstLetterGame({
 }) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const optionSize = Math.min(
-    MAX_OPTION_SIZE,
-    Math.max(MIN_OPTION_SIZE, Math.floor((windowWidth - OPTION_GAP * 4) / 3))
+  const canvasSize = Math.min(
+    MAX_CANVAS_SIZE,
+    Math.max(MIN_CANVAS_SIZE, windowWidth - 64)
   );
+  const guideFontSize = canvasSize * 0.72;
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
-  // Level and the current round are saved progress and live in the context,
-  // so they survive a trip to the menu, a rotation, or the app being killed.
-  // Only state meaningless outside the current round stays local.
-  const { letter, updateLetter, resetLetter, markAnimalMet } =
-    useGameProgress();
-  const { level, wrongCount, showComplete } = letter;
-  const { childAgeBand } = useSettings();
+
+  const { trace, updateTrace, resetTrace, markAnimalMet } = useGameProgress();
+  const { level, showComplete } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
-  const promptPlayer = useAudioPlayer(null);
+  const [showWrongOverlay, setShowWrongOverlay] = useState(false);
+  const [points, setPoints] = useState([]);
+  const [confettiKey, setConfettiKey] = useState(0);
   const [feedbackAnim] = useState(new Animated.Value(0));
   const [promptPulse] = useState(new Animated.Value(0));
-  const [showWrongOverlay, setShowWrongOverlay] = useState(false);
+
+  const pointsRef = useRef([]);
+  const promptPlayer = useAudioPlayer(null);
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
-  const [confettiKey, setConfettiKey] = useState(0);
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
@@ -109,23 +119,9 @@ export default function FirstLetterGame({
     return lookup;
   }, []);
 
-  // Animals whose name starts with a vowel in the language currently shown.
-  // Recomputed on language toggle, since "Owl" and "Buho" do not agree.
-  const vowelAnimals = useMemo(
-    () =>
-      animalList.filter(animal =>
-        isVowel(firstLetterOf(animal, currentLanguage))
-      ),
-    [currentLanguage]
-  );
-
-  // The saved round stores the animal id only. Artwork and audio are
-  // re-attached here rather than persisted, because Metro module ids shift
-  // between builds and would otherwise restore a round pointing at the wrong
-  // animal.
   const targetAnimal = useMemo(
-    () => animalsById[letter.targetId] || null,
-    [animalsById, letter.targetId]
+    () => animalsById[trace.targetId] || null,
+    [animalsById, trace.targetId]
   );
   const correctLetter = useMemo(
     () => (targetAnimal ? firstLetterOf(targetAnimal, currentLanguage) : null),
@@ -133,8 +129,8 @@ export default function FirstLetterGame({
   );
 
   // Every delayed action is registered here so unmounting cancels it. Without
-  // this, leaving mid-round leaves timers that later advance the level or
-  // clear an overlay in a game the child has already left.
+  // this, leaving mid-round leaves timers that later grade or clear a drawing
+  // in a game the child has already left.
   const timers = useRef([]);
   const later = useCallback((fn, ms) => {
     const id = setTimeout(fn, ms);
@@ -153,8 +149,8 @@ export default function FirstLetterGame({
 
   useEffect(() => {
     roundStartedAt.current = Date.now();
-    track(letter.targetId ? EVENTS.GAME_RESUMED : EVENTS.GAME_STARTED, {
-      game: 'letter',
+    track(trace.targetId ? EVENTS.GAME_RESUMED : EVENTS.GAME_STARTED, {
+      game: 'trace',
       level,
     });
     // Fires once per visit to the game, not once per round.
@@ -217,75 +213,46 @@ export default function FirstLetterGame({
     }
   }, [showComplete, gameWinPlayer, gameWinSoundFile]);
 
-  const shuffle = useCallback(arr => {
-    const copy = [...arr];
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
+  const clearCanvas = useCallback(() => {
+    pointsRef.current = [];
+    setPoints([]);
   }, []);
 
   const pickRound = useCallback(() => {
-    // A parent who has marked their child as under 4 keeps every level
-    // vowels-only, rather than switching to consonants after level 2.
-    const isVowelLevel = childAgeBand === 'under4' || level <= VOWEL_LEVELS;
-    const basePool =
-      isVowelLevel && vowelAnimals.length > 0 ? vowelAnimals : animalList;
-    // Every eligible animal gets a turn as the target before any repeats,
-    // so a child never gets asked about the same one twice in one match.
-    // Falls back to the full base pool once everything in it has had a
-    // turn, rather than running out of animals mid-match.
-    const unused = basePool.filter(
-      a => !letter.usedTargetIds.includes(a.id)
+    // Every animal gets a turn as the target before any repeats, so a child
+    // never gets asked about the same one twice in one match.
+    const unused = animalList.filter(
+      a => !trace.usedTargetIds.includes(a.id)
     );
-    const pool = unused.length > 0 ? unused : basePool;
+    const pool = unused.length > 0 ? unused : animalList;
     const nextTarget = pool[Math.floor(Math.random() * pool.length)];
-    const correct = firstLetterOf(nextTarget, currentLanguage);
-    const distractorAlphabet = isVowelLevel ? VOWELS : ALPHABET;
-    const distractors = shuffle(
-      distractorAlphabet.filter(letterOption => letterOption !== correct)
-    ).slice(0, 2);
-    updateLetter(prev => ({
+    updateTrace(prev => ({
       targetId: nextTarget.id,
-      optionLetters: shuffle([correct, ...distractors]),
-      wrongCount: 0,
       usedTargetIds: [...prev.usedTargetIds, nextTarget.id],
     }));
     setIsCorrect(false);
     setShowWrongOverlay(false);
+    clearCanvas();
     roundStartedAt.current = Date.now();
-  }, [
-    level,
-    childAgeBand,
-    vowelAnimals,
-    currentLanguage,
-    shuffle,
-    updateLetter,
-    letter.usedTargetIds,
-  ]);
+  }, [updateTrace, trace.usedTargetIds, clearCanvas]);
 
   // A round is dealt only when the saved one is missing, which covers a
-  // first run, a level change and a reset. A saved round that already has
-  // its three letters is restored untouched, so returning from the menu or
-  // rotating the device resumes the same question rather than silently
-  // replacing it.
+  // first run, a level change and a reset. A saved round that already has a
+  // target is restored untouched, so returning from the menu or rotating the
+  // device resumes the same animal rather than silently replacing it.
   useEffect(() => {
-    if (letter.optionLetters.length !== 3) {
+    if (!trace.targetId) {
       pickRound();
     }
-  }, [letter.optionLetters.length, pickRound]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trace.targetId]);
 
-  // Toggling the language can change which letter is correct for the
-  // animal already on screen (e.g. "Owl" -> "Buho"). When the saved letters
-  // no longer include the right answer, deal a fresh round rather than show
-  // a question with no correct option.
+  // The letter being traced can change shape on a language toggle (e.g.
+  // "Owl" -> "Buho"), so any half-drawn attempt from the other language no
+  // longer means anything. Clearing it also covers dealing a fresh round.
   useEffect(() => {
-    if (!targetAnimal) return;
-    if (!letter.optionLetters.includes(correctLetter)) {
-      pickRound();
-    }
-  }, [targetAnimal, correctLetter, letter.optionLetters, pickRound]);
+    clearCanvas();
+  }, [correctLetter, clearCanvas]);
 
   const playPrompt = useCallback(async () => {
     if (!targetAnimal) return;
@@ -303,112 +270,221 @@ export default function FirstLetterGame({
     }
   }, [targetAnimal, currentLanguage, playPrompt]);
 
-  const onSelect = useCallback(
-    async selectedLetter => {
-      if (showComplete || isCorrect || !targetAnimal) return;
-      const correct = selectedLetter === correctLetter;
-      if (correct) {
-        successFeedback();
-        setIsCorrect(true);
-        updateLetter({ wrongCount: 0 });
-        markAnimalMet(targetAnimal.id);
-        track(EVENTS.LEVEL_COMPLETED, {
-          game: 'letter',
-          level,
-          duration_ms: Date.now() - roundStartedAt.current,
-        });
-
-        later(() => {
-          if (level < MAX_LEVEL) {
-            playClip(gameSuccessPlayer, gameSuccessSoundFile);
-          }
-        }, 1000);
-
-        try {
-          if (targetAnimRef.current && targetAnimRef.current.play) {
-            targetAnimRef.current.play();
-          }
-        } catch {}
-
-        Animated.sequence([
-          Animated.timing(feedbackAnim, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(feedbackAnim, {
-            toValue: 0,
-            duration: 1900,
-            useNativeDriver: true,
-          }),
-        ]).start();
-
-        setConfettiKey(prev => prev + 1);
-
-        // Clearing the round is what triggers the next one to be dealt.
-        later(() => {
-          updateLetter(prev => {
-            if (prev.level < MAX_LEVEL) {
-              return {
-                level: prev.level + 1,
-                targetId: null,
-                optionLetters: [],
-              };
-            }
-            track(EVENTS.GAME_COMPLETED, { game: 'letter', level: prev.level });
-            return { showComplete: true };
-          });
-        }, 2500);
-      } else {
-        // A wrong pick is a normal part of learning, so nothing ends here.
-        // The child gets a gentle noise, the name again to compare against,
-        // and after a few tries the right letter starts to glow.
-        errorFeedback();
-        setShowWrongOverlay(true);
-        later(() => setShowWrongOverlay(false), 900);
-        playClip(wrongPlayer, wrongSoundFile);
-        later(() => playPrompt(), 700);
-        updateLetter(prev => ({ wrongCount: prev.wrongCount + 1 }));
-      }
-    },
-    [
-      targetAnimal,
-      correctLetter,
+  const handleCorrect = useCallback(() => {
+    successFeedback();
+    setIsCorrect(true);
+    markAnimalMet(targetAnimal.id);
+    track(EVENTS.LEVEL_COMPLETED, {
+      game: 'trace',
       level,
-      feedbackAnim,
-      wrongSoundFile,
-      showComplete,
-      wrongPlayer,
-      gameSuccessPlayer,
-      gameSuccessSoundFile,
-      isCorrect,
-      later,
-      updateLetter,
-      markAnimalMet,
-      playPrompt,
-    ]
-  );
+      duration_ms: Date.now() - roundStartedAt.current,
+    });
+
+    later(() => {
+      if (level < MAX_LEVEL) {
+        playClip(gameSuccessPlayer, gameSuccessSoundFile);
+      }
+    }, 1000);
+
+    try {
+      if (targetAnimRef.current && targetAnimRef.current.play) {
+        targetAnimRef.current.play();
+      }
+    } catch {}
+
+    Animated.sequence([
+      Animated.timing(feedbackAnim, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      }),
+      Animated.timing(feedbackAnim, {
+        toValue: 0,
+        duration: 1900,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setConfettiKey(prev => prev + 1);
+
+    // Clearing the round is what triggers the next one to be dealt.
+    later(() => {
+      updateTrace(prev => {
+        if (prev.level < MAX_LEVEL) {
+          return { level: prev.level + 1, targetId: null };
+        }
+        track(EVENTS.GAME_COMPLETED, { game: 'trace', level: prev.level });
+        return { showComplete: true };
+      });
+    }, 2500);
+  }, [
+    targetAnimal,
+    level,
+    feedbackAnim,
+    gameSuccessPlayer,
+    gameSuccessSoundFile,
+    later,
+    updateTrace,
+    markAnimalMet,
+  ]);
+
+  const handleIncorrect = useCallback(() => {
+    // A rough attempt is a normal part of learning to write, so nothing ends
+    // here. The child gets a gentle noise, the name again to compare
+    // against, and a clear canvas to try again.
+    errorFeedback();
+    setShowWrongOverlay(true);
+    later(() => setShowWrongOverlay(false), 900);
+    later(() => clearCanvas(), 900);
+    playClip(wrongPlayer, wrongSoundFile);
+    later(() => playPrompt(), 700);
+  }, [later, clearCanvas, wrongPlayer, wrongSoundFile, playPrompt]);
+
+  const evaluateAttempt = useCallback(() => {
+    if (showComplete || isCorrect || !targetAnimal) return;
+
+    const pts = pointsRef.current;
+    const inset = canvasSize * CANVAS_INSET_RATIO;
+    const targetBox = {
+      left: inset,
+      right: canvasSize - inset,
+      top: inset,
+      bottom: canvasSize - inset,
+      width: canvasSize - inset * 2,
+      height: canvasSize - inset * 2,
+    };
+
+    if (pts.length < MIN_POINTS) {
+      handleIncorrect();
+      return;
+    }
+
+    let minX = pts[0].x;
+    let maxX = pts[0].x;
+    let minY = pts[0].y;
+    let maxY = pts[0].y;
+    let length = 0;
+
+    pts.forEach((p, i) => {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+      if (i > 0 && !p.move) {
+        const prev = pts[i - 1];
+        length += Math.hypot(p.x - prev.x, p.y - prev.y);
+      }
+    });
+
+    const spanX = maxX - minX;
+    const spanY = maxY - minY;
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const driftMargin = canvasSize * CENTER_DRIFT_RATIO;
+
+    const coversWidth = spanX >= targetBox.width * MIN_COVERAGE_RATIO;
+    const coversHeight = spanY >= targetBox.height * MIN_COVERAGE_RATIO;
+    const centered =
+      centerX >= targetBox.left - driftMargin &&
+      centerX <= targetBox.right + driftMargin &&
+      centerY >= targetBox.top - driftMargin &&
+      centerY <= targetBox.bottom + driftMargin;
+    const longEnough = length >= canvasSize * MIN_PATH_LENGTH_RATIO;
+
+    if (coversWidth && coversHeight && centered && longEnough) {
+      handleCorrect();
+    } else {
+      handleIncorrect();
+    }
+  }, [showComplete, isCorrect, targetAnimal, canvasSize, handleCorrect, handleIncorrect]);
+
+  const evaluateTimer = useRef(null);
+  const scheduleEvaluate = useCallback(() => {
+    if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+    evaluateTimer.current = setTimeout(evaluateAttempt, EVALUATE_DELAY_MS);
+    timers.current.push(evaluateTimer.current);
+  }, [evaluateAttempt]);
+
+  useEffect(() => {
+    return () => {
+      if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+    };
+  }, []);
+
+  // PanResponder is built once, inside an effect rather than during render
+  // (reading a ref's `.current` while rendering is not allowed). It reads
+  // `scheduleEvaluate` through a ref kept current by the effect below rather
+  // than closing over it directly - otherwise the first render's (stale)
+  // evaluate logic would run forever, since the responder itself is never
+  // recreated.
+  const scheduleEvaluateRef = useRef(scheduleEvaluate);
+  useEffect(() => {
+    scheduleEvaluateRef.current = scheduleEvaluate;
+  }, [scheduleEvaluate]);
+
+  const [panResponder, setPanResponder] = useState(null);
+  useEffect(() => {
+    setPanResponder(
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponderCapture: () => true,
+        onPanResponderGrant: evt => {
+          if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+          const { locationX, locationY } = evt.nativeEvent;
+          const next = [
+            ...pointsRef.current,
+            { x: locationX, y: locationY, move: true },
+          ];
+          pointsRef.current = next;
+          setPoints(next);
+        },
+        onPanResponderMove: evt => {
+          const { locationX, locationY } = evt.nativeEvent;
+          const next = [
+            ...pointsRef.current,
+            { x: locationX, y: locationY, move: false },
+          ];
+          pointsRef.current = next;
+          setPoints(next);
+        },
+        onPanResponderRelease: () => {
+          scheduleEvaluateRef.current();
+        },
+        onPanResponderTerminate: () => {
+          scheduleEvaluateRef.current();
+        },
+      })
+    );
+  }, []);
 
   const onReset = useCallback(() => {
-    track(EVENTS.GAME_RESET, { game: 'letter', level });
+    track(EVENTS.GAME_RESET, { game: 'trace', level });
     setIsCorrect(false);
     setShowWrongOverlay(false);
     // Clearing progress empties the round, which re-deals via the effect above.
-    resetLetter();
-  }, [resetLetter, level]);
+    resetTrace();
+  }, [resetTrace, level]);
 
   const handleReset = useCallback(() => {
     tapFeedback();
     onReset();
   }, [onReset]);
 
+  const handleClear = useCallback(() => {
+    tapFeedback();
+    if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+    clearCanvas();
+  }, [clearCanvas]);
+
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
     if (!showComplete) {
-      track(EVENTS.GAME_ABANDONED, { game: 'letter', level, wrongCount });
+      track(EVENTS.GAME_ABANDONED, { game: 'trace', level });
     }
     onBackToMenu();
-  }, [onBackToMenu, showComplete, level, wrongCount]);
+  }, [onBackToMenu, showComplete, level]);
 
   useBackToMenu(handleBackToMenu);
 
@@ -422,6 +498,12 @@ export default function FirstLetterGame({
     inputRange: [0, 1],
     outputRange: [1, 1.06],
   });
+
+  const pathD = points.reduce(
+    (acc, p, i) =>
+      acc + (p.move || i === 0 ? `M ${p.x} ${p.y} ` : `L ${p.x} ${p.y} `),
+    ''
+  );
 
   return (
     <ImageBackground
@@ -496,50 +578,68 @@ export default function FirstLetterGame({
           </Animated.View>
           {!!targetAnimal && (
             <Text style={styles.helperText}>
-              {t(currentLanguage, 'whichLetter')}
+              {t(currentLanguage, 'traceInstruction')}
             </Text>
           )}
         </View>
 
-        {/* Letter options */}
-        <View style={styles.optionsContainer}>
-          {letter.optionLetters.map(letterOption => {
-            const isHinted =
-              wrongCount >= HINT_AFTER_TRIES &&
-              targetAnimal &&
-              letterOption === correctLetter;
-
-            return (
-              <BouncyButton
-                key={letterOption}
-                style={[
-                  styles.letterCard,
-                  { width: optionSize, height: optionSize },
-                ]}
-                onPress={() => onSelect(letterOption)}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yLetterOption', {
-                  letter: letterOption,
-                })}
-              >
-                {/* A rounded View with a background clips its children on
-                    Android regardless of `overflow`, which was cropping the
-                    big letter. Keeping the rounded card as an absolutely
-                    positioned sibling behind the Text (same trick as the
-                    animal option cards in guess-animal) avoids that. */}
-                <View
-                  style={[
-                    styles.letterCardBackground,
-                    isHinted && styles.letterCardHinted,
-                  ]}
+        {/* Drawing canvas */}
+        <View style={styles.canvasWrapper}>
+          <View
+            style={[
+              styles.canvas,
+              { width: canvasSize, height: canvasSize },
+            ]}
+            {...(panResponder ? panResponder.panHandlers : {})}
+            accessible={true}
+            accessibilityLabel={t(currentLanguage, 'a11yTraceCanvas', {
+              letter: correctLetter || '',
+            })}
+          >
+            <Svg
+              width={canvasSize}
+              height={canvasSize}
+              style={StyleSheet.absoluteFill}
+            >
+              {!!correctLetter && (
+                <SvgText
+                  x={canvasSize / 2}
+                  y={canvasSize / 2 + guideFontSize * 0.35}
+                  fontSize={guideFontSize}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fill="none"
+                  stroke="#FFD700"
+                  strokeWidth={4}
+                  strokeDasharray="12,16"
+                  strokeLinecap="round"
+                >
+                  {correctLetter}
+                </SvgText>
+              )}
+              {!!pathD && (
+                <Path
+                  d={pathD}
+                  stroke="#0A3D62"
+                  strokeWidth={16}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  fill="none"
                 />
-                <Text allowFontScaling={false} style={styles.letterText}>
-                  {letterOption}
-                </Text>
-              </BouncyButton>
-            );
-          })}
+              )}
+            </Svg>
+          </View>
+          <BouncyButton
+            onPress={handleClear}
+            style={styles.clearButton}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
+          >
+            <Text style={styles.clearButtonText}>
+              {t(currentLanguage, 'clearDrawing')}
+            </Text>
+          </BouncyButton>
         </View>
       </ScrollView>
 
@@ -653,18 +753,19 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 22,
-    // Bangers clips on Android without both of these - see letterText below.
+    // Bangers clips on Android without both of these - see
+    // first-letter.game.component.jsx for the full explanation.
     lineHeight: 30,
     includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
-    paddingBottom: 34,
+    paddingBottom: 20,
   },
   topActions: {
     flexDirection: 'row',
     gap: 10,
-    paddingBottom: 34,
+    paddingBottom: 20,
   },
   scrollArea: {
     flex: 1,
@@ -673,24 +774,24 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   animalContainer: {
-    paddingTop: 8,
+    paddingTop: 4,
     paddingHorizontal: 16,
     alignItems: 'center',
   },
   animalCard: {
-    width: 170,
-    height: 170,
+    width: 110,
+    height: 110,
     backgroundColor: '#ffffff',
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 3,
     borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 14,
   },
   animalAnimation: {
-    width: 150,
-    height: 150,
+    width: 92,
+    height: 92,
   },
   promptButton: {
     backgroundColor: '#FFD700',
@@ -716,54 +817,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 12,
   },
-  optionsContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+  canvasWrapper: {
     alignItems: 'center',
-    gap: OPTION_GAP,
-    paddingTop: 28,
+    paddingTop: 20,
     paddingHorizontal: 16,
   },
-  letterCard: {
-    // Plain on purpose: the rounded, filled look lives in
-    // letterCardBackground instead, so this container never combines
-    // borderRadius + backgroundColor with the Text as a child - see the
-    // comment at its usage above for why.
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letterCardBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  canvas: {
     backgroundColor: '#ffffff',
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 3,
     borderColor: '#FFD700',
+    overflow: 'hidden',
   },
-  letterText: {
-    fontSize: 56,
-    lineHeight: 72,
-    includeFontPadding: false,
-    // Deliberately the plain system font, not Bangers, and deliberately
-    // not italic/decorative: a child learning to recognize a letter needs
-    // the clean, standard letterform they will see in books, not the
-    // rough comic-marker style Bangers draws for a bare capital O/E/I -
-    // which reads as "broken" in isolation even though it renders fine.
-    fontWeight: '800',
-    color: '#0A3D62',
-    textAlign: 'center',
-  },
-  // Shown only after several tries, so it reads as help rather than an
-  // answer key.
-  letterCardHinted: {
-    borderWidth: 4,
+  clearButton: {
+    marginTop: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    minHeight: LARGE_TOUCH_TARGET,
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+    borderRadius: 20,
+    borderWidth: 2,
     borderColor: '#FFD700',
-    backgroundColor: 'rgba(255, 215, 0, 0.22)',
+  },
+  clearButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   feedbackOverlay: {
     position: 'absolute',

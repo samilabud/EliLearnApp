@@ -13,6 +13,8 @@ export const STRINGS = {
     modeMemoryDescription: 'Find matching animal pairs!',
     modeLetterTitle: 'Guess the First Letter',
     modeLetterDescription: 'Match animals to their first letter!',
+    modeTraceTitle: 'Trace the Letter',
+    modeTraceDescription: "Draw each animal's first letter!",
 
     // Shared navigation
     back: 'Back',
@@ -43,6 +45,10 @@ export const STRINGS = {
     // Guess the First Letter
     playName: 'Hear the Name',
     whichLetter: "What letter does this animal's name start with?",
+
+    // Trace the Letter
+    traceInstruction: "Trace this animal's first letter!",
+    clearDrawing: 'Clear',
 
     // Animal album
     albumTitle: 'Animal Album',
@@ -117,6 +123,8 @@ export const STRINGS = {
     a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
     a11yChildAge: "Set the child's age to {label}",
+    a11yTraceCanvas: 'Drawing area. Trace the letter {letter} with your finger',
+    a11yClearDrawing: 'Clear your drawing and try again',
   },
 
   es: {
@@ -131,6 +139,8 @@ export const STRINGS = {
     modeMemoryDescription: '¡Encuentra parejas de animales!',
     modeLetterTitle: 'Adivina la Primera Letra',
     modeLetterDescription: '¡Relaciona animales con su primera letra!',
+    modeTraceTitle: 'Traza la Letra',
+    modeTraceDescription: '¡Dibuja la primera letra de cada animal!',
 
     // Navegación común
     back: 'Atrás',
@@ -161,6 +171,10 @@ export const STRINGS = {
     // Adivina la Primera Letra
     playName: 'Escuchar el Nombre',
     whichLetter: '¿Con qué letra empieza el nombre de este animal?',
+
+    // Traza la Letra
+    traceInstruction: '¡Traza la primera letra de este animal!',
+    clearDrawing: 'Borrar',
 
     // Álbum de animales
     albumTitle: 'Álbum de Animales',
@@ -235,6 +249,8 @@ export const STRINGS = {
     a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
     a11yChildAge: 'Poner la edad del niño/a en {label}',
+    a11yTraceCanvas: 'Área para dibujar. Traza la letra {letter} con el dedo',
+    a11yClearDrawing: 'Borrar tu dibujo e inténtalo de nuevo',
   },
 };
 

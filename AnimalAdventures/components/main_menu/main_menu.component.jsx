@@ -44,6 +44,14 @@ const MODES = [
     titleKey: 'modeLetterTitle',
     descriptionKey: 'modeLetterDescription',
   },
+  // Also glyph-only for now - a pencil/gesture icon reads clearly as
+  // "drawing" without a bespoke Lottie.
+  {
+    key: 'trace',
+    glyph: 'gesture',
+    titleKey: 'modeTraceTitle',
+    descriptionKey: 'modeTraceDescription',
+  },
   {
     key: 'memory',
     icon: require('../../assets/animations/icons/memory_icon.json'),
