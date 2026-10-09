@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
@@ -598,6 +599,7 @@ export default function GuessAnimalGame({
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
               >
+                <MaterialIcons name="replay" size={20} color="#0A3D62" />
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
                 </Text>
@@ -610,6 +612,7 @@ export default function GuessAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
             >
+              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'nextGame')}
               </Text>
@@ -621,6 +624,7 @@ export default function GuessAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
@@ -807,6 +811,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bigButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
@@ -820,6 +828,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,
