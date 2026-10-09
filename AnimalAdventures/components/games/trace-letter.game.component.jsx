@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
@@ -79,6 +79,14 @@ const MIN_POINTS = 6;
 // across a few separate strokes without it grading after the first one.
 const EVALUATE_DELAY_MS = 700;
 
+// A trace that doesn't yet cover enough of the letter is a normal part of
+// a multi-stroke letter in progress (e.g. the loops of a "B" after its
+// vertical line), not a wrong answer - so it is left on screen rather than
+// cleared. Only after this many checkpoints in a row still haven't passed
+// does the canvas actually clear and the child hear "try again". Matches
+// the hint-after-N-tries threshold used by the other letter games.
+const MAX_ATTEMPTS_BEFORE_CLEAR = 3;
+
 export default function TraceLetterGame({
   currentLanguage,
   setCurrentLanguage,
@@ -96,7 +104,7 @@ export default function TraceLetterGame({
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
   const { trace, updateTrace, resetTrace, markAnimalMet } = useGameProgress();
-  const { level, showComplete } = trace;
+  const { level, showComplete, wrongCount } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
@@ -223,7 +231,11 @@ export default function TraceLetterGame({
   const clearCanvas = useCallback(() => {
     pointsRef.current = [];
     setPoints([]);
-  }, []);
+    // A fresh canvas means a fresh set of checkpoints before it clears
+    // again - covers a new round, a language switch, the 3rd failed
+    // checkpoint, and the child's own manual Clear tap.
+    updateTrace({ wrongCount: 0 });
+  }, [updateTrace]);
 
   const pickRound = useCallback(() => {
     // Every animal gets a turn as the target before any repeats, so a child
@@ -336,8 +348,9 @@ export default function TraceLetterGame({
   ]);
 
   const handleIncorrect = useCallback(() => {
-    // A rough attempt is a normal part of learning to write, so nothing ends
-    // here. The child gets a gentle noise, the name again to compare
+    // Reached only after MAX_ATTEMPTS_BEFORE_CLEAR checkpoints in a row
+    // haven't passed. The game never ends on a mistake, so this is
+    // encouragement, not failure: a gentle noise, the name again to compare
     // against, and a clear canvas to try again.
     errorFeedback();
     setShowWrongOverlay(true);
@@ -346,6 +359,19 @@ export default function TraceLetterGame({
     playClip(wrongPlayer, wrongSoundFile);
     later(() => playPrompt(), 700);
   }, [later, clearCanvas, wrongPlayer, wrongSoundFile, playPrompt]);
+
+  // A checkpoint that hasn't passed yet usually just means a multi-stroke
+  // letter (like "B") is still in progress, so the drawing is left on
+  // screen rather than cleared. Only once MAX_ATTEMPTS_BEFORE_CLEAR
+  // checkpoints in a row have failed does it actually reset.
+  const registerFailedAttempt = useCallback(() => {
+    const nextCount = wrongCount + 1;
+    if (nextCount >= MAX_ATTEMPTS_BEFORE_CLEAR) {
+      handleIncorrect();
+    } else {
+      updateTrace({ wrongCount: nextCount });
+    }
+  }, [wrongCount, handleIncorrect, updateTrace]);
 
   const evaluateAttempt = useCallback(() => {
     if (showComplete || isCorrect || !targetAnimal) return;
@@ -362,7 +388,7 @@ export default function TraceLetterGame({
     };
 
     if (pts.length < MIN_POINTS) {
-      handleIncorrect();
+      registerFailedAttempt();
       return;
     }
 
@@ -402,9 +428,16 @@ export default function TraceLetterGame({
     if (coversEnough && centered && longEnough) {
       handleCorrect();
     } else {
-      handleIncorrect();
+      registerFailedAttempt();
     }
-  }, [showComplete, isCorrect, targetAnimal, canvasSize, handleCorrect, handleIncorrect]);
+  }, [
+    showComplete,
+    isCorrect,
+    targetAnimal,
+    canvasSize,
+    handleCorrect,
+    registerFailedAttempt,
+  ]);
 
   const evaluateTimer = useRef(null);
   const scheduleEvaluate = useCallback(() => {
@@ -663,6 +696,7 @@ export default function TraceLetterGame({
             accessibilityRole="button"
             accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
           >
+            <MaterialCommunityIcons name="eraser" size={20} color="white" />
             <Text style={styles.clearButtonText}>
               {t(currentLanguage, 'clearDrawing')}
             </Text>
@@ -883,7 +917,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginTop: 16,
+    // Extra breathing room below, so this button doesn't crowd the
+    // floating Menu button anchored near the bottom of the screen.
+    marginBottom: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     minHeight: LARGE_TOUCH_TARGET,
     justifyContent: 'center',

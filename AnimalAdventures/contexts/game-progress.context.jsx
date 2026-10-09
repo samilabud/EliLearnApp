@@ -64,6 +64,7 @@ const DEFAULT_LETTER = {
 const DEFAULT_TRACE = {
   level: 1,
   targetId: null,
+  wrongCount: 0,
   showComplete: false,
   // Animal ids already asked as the target this match, so the same animal
   // is not asked about twice before every animal has had a turn.
