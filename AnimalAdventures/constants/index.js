@@ -2,3 +2,4 @@
 export * from './colors';
 export * from './strings';
 export * from './layout';
+export * from './games';

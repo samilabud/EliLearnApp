@@ -36,6 +36,7 @@ import {
 } from '../../utils/haptics';
 import { BouncyButton } from '../utility/bouncy-button.component';
 import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import { NextGameButton } from '../utility/next-game-button.component';
 import {
   BackToMenuButton,
   BACK_TO_MENU_CLEARANCE,
@@ -67,6 +68,7 @@ export default function FirstLetterGame({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
+  onNextGame,
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
@@ -412,6 +414,14 @@ export default function FirstLetterGame({
 
   useBackToMenu(handleBackToMenu);
 
+  const handleNextGame = useCallback(() => {
+    tapFeedback();
+    if (!showComplete) {
+      track(EVENTS.GAME_ABANDONED, { game: 'letter', level, wrongCount });
+    }
+    onNextGame();
+  }, [onNextGame, showComplete, level, wrongCount]);
+
   const handlePlayPrompt = useCallback(() => {
     tapFeedback();
     playPrompt();
@@ -454,6 +464,10 @@ export default function FirstLetterGame({
             <ConfirmResetButton
               currentLanguage={currentLanguage}
               onConfirm={onReset}
+            />
+            <NextGameButton
+              currentLanguage={currentLanguage}
+              onPress={handleNextGame}
             />
             <LanguageToggleButton
               currentLanguage={currentLanguage}
@@ -619,6 +633,17 @@ export default function FirstLetterGame({
                 </Text>
               </BouncyButton>
             </Animated.View>
+            <BouncyButton
+              onPress={handleNextGame}
+              style={styles.secondaryButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {t(currentLanguage, 'nextGame')}
+              </Text>
+            </BouncyButton>
             <BouncyButton
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
@@ -818,6 +843,8 @@ const styles = StyleSheet.create({
   completionActions: {
     marginTop: 24,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 12,
   },
   bigButton: {

@@ -23,6 +23,7 @@ export const STRINGS = {
     reset: 'Reset',
     resetConfirm: 'Tap again?',
     level: 'Level',
+    nextGame: 'Next Game',
 
     // Guess the Animal
     playSound: 'Play Sound',
@@ -125,6 +126,7 @@ export const STRINGS = {
     a11yChildAge: "Set the child's age to {label}",
     a11yTraceCanvas: 'Drawing area. Trace the letter {letter} with your finger',
     a11yClearDrawing: 'Clear your drawing and try again',
+    a11yNextGame: 'Play the next game, without going to the menu',
   },
 
   es: {
@@ -149,6 +151,7 @@ export const STRINGS = {
     reset: 'Reiniciar',
     resetConfirm: '¿Otra vez?',
     level: 'Nivel',
+    nextGame: 'Siguiente Juego',
 
     // Adivina el Animal
     playSound: 'Reproducir Sonido',
@@ -251,6 +254,7 @@ export const STRINGS = {
     a11yChildAge: 'Poner la edad del niño/a en {label}',
     a11yTraceCanvas: 'Área para dibujar. Traza la letra {letter} con el dedo',
     a11yClearDrawing: 'Borrar tu dibujo e inténtalo de nuevo',
+    a11yNextGame: 'Jugar el siguiente juego, sin ir al menú',
   },
 };
 
