@@ -463,6 +463,15 @@ export default function TraceLetterGame({
     evaluateAttemptRef.current = evaluateAttempt;
   }, [evaluateAttempt]);
 
+  // The canvas sits inside a ScrollView. On iOS, the ScrollView's own
+  // native pan gesture can still win a touch away from the PanResponder
+  // mid-stroke even with capture set below - it shows up as the whole
+  // screen dragging instead of the line being drawn. Disabling the
+  // ScrollView for the duration of a stroke (grant to release/terminate)
+  // removes that competing recognizer entirely. Android isn't affected,
+  // but toggling this there is harmless.
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+
   const [panResponder, setPanResponder] = useState(null);
   useEffect(() => {
     setPanResponder(
@@ -472,6 +481,7 @@ export default function TraceLetterGame({
         onMoveShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: evt => {
+          setScrollEnabled(false);
           if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
           // Started only on the first stroke of a burst and never reset by
           // later ones (unlike evaluateTimer above) - see MAX_BURST_MS.
@@ -500,9 +510,11 @@ export default function TraceLetterGame({
           setPoints(next);
         },
         onPanResponderRelease: () => {
+          setScrollEnabled(true);
           scheduleEvaluateRef.current();
         },
         onPanResponderTerminate: () => {
+          setScrollEnabled(true);
           scheduleEvaluateRef.current();
         },
       })
@@ -577,6 +589,7 @@ export default function TraceLetterGame({
           styles.scrollContent,
           { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
         ]}
+        scrollEnabled={scrollEnabled}
       >
         {/* Top controls */}
         <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
