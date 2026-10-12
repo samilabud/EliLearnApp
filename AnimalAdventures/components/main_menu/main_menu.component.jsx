@@ -511,8 +511,14 @@ const styles = StyleSheet.create({
   // A fixed width rather than flex:1 - this card now sits in a horizontally
   // scrolling row instead of a fixed-count one, so "share the row equally"
   // no longer makes sense; each card keeps a steady, swipeable size instead.
+  // Height is fixed too (not auto, not alignItems:'stretch' on the row),
+  // because a 1-line title/description ("Guess the Animal") and a 2-line
+  // one ("Learn Animal Sounds & Names") otherwise size their own card
+  // differently, leaving a ragged row - content is centered within the
+  // fixed height so shorter cards don't look off-balance.
   modeButtonLandscape: {
     width: 210,
+    height: 240,
     padding: 14,
     justifyContent: 'center',
   },
