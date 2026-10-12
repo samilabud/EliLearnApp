@@ -115,6 +115,15 @@ export default function TraceLetterGame({
   const { level, showComplete, wrongCount } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // Mirrors isCorrect, but settable synchronously. evaluateAttempt can be
+  // triggered twice in quick succession for the same completed trace - the
+  // debounced timer from onPanResponderRelease and the independent
+  // MAX_BURST_MS backstop can both fire within a few ms of each other on a
+  // multi-stroke letter. setIsCorrect(true) doesn't take effect until the
+  // next render, so a guard on the isCorrect *state* can miss that race and
+  // grade the same trace twice, advancing two rounds instead of one. This
+  // ref closes that window.
+  const isCorrectRef = useRef(false);
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
   const [points, setPoints] = useState([]);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -267,6 +276,7 @@ export default function TraceLetterGame({
       usedTargetIds: [...prev.usedTargetIds, nextTarget.id],
     }));
     setIsCorrect(false);
+    isCorrectRef.current = false;
     setShowWrongOverlay(false);
     clearCanvas();
     roundStartedAt.current = Date.now();
@@ -308,6 +318,7 @@ export default function TraceLetterGame({
 
   const handleCorrect = useCallback(() => {
     successFeedback();
+    isCorrectRef.current = true;
     setIsCorrect(true);
     markAnimalMet(targetAnimal.id);
     track(EVENTS.LEVEL_COMPLETED, {
@@ -403,7 +414,7 @@ export default function TraceLetterGame({
   }, [wrongCount, handleIncorrect, updateTrace]);
 
   const evaluateAttempt = useCallback(() => {
-    if (showComplete || isCorrect || !targetAnimal) return;
+    if (showComplete || isCorrectRef.current || !targetAnimal) return;
     if (burstTimer.current) clearTimeout(burstTimer.current);
     burstTimer.current = null;
 
@@ -421,7 +432,6 @@ export default function TraceLetterGame({
     }
   }, [
     showComplete,
-    isCorrect,
     targetAnimal,
     correctLetter,
     targetBox,
@@ -463,6 +473,15 @@ export default function TraceLetterGame({
     evaluateAttemptRef.current = evaluateAttempt;
   }, [evaluateAttempt]);
 
+  // The canvas sits inside a ScrollView. On iOS, the ScrollView's own
+  // native pan gesture can still win a touch away from the PanResponder
+  // mid-stroke even with capture set below - it shows up as the whole
+  // screen dragging instead of the line being drawn. Disabling the
+  // ScrollView for the duration of a stroke (grant to release/terminate)
+  // removes that competing recognizer entirely. Android isn't affected,
+  // but toggling this there is harmless.
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+
   const [panResponder, setPanResponder] = useState(null);
   useEffect(() => {
     setPanResponder(
@@ -472,6 +491,7 @@ export default function TraceLetterGame({
         onMoveShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: evt => {
+          setScrollEnabled(false);
           if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
           // Started only on the first stroke of a burst and never reset by
           // later ones (unlike evaluateTimer above) - see MAX_BURST_MS.
@@ -500,9 +520,11 @@ export default function TraceLetterGame({
           setPoints(next);
         },
         onPanResponderRelease: () => {
+          setScrollEnabled(true);
           scheduleEvaluateRef.current();
         },
         onPanResponderTerminate: () => {
+          setScrollEnabled(true);
           scheduleEvaluateRef.current();
         },
       })
@@ -512,6 +534,7 @@ export default function TraceLetterGame({
   const onReset = useCallback(() => {
     track(EVENTS.GAME_RESET, { game: 'trace', level });
     setIsCorrect(false);
+    isCorrectRef.current = false;
     setShowWrongOverlay(false);
     // Clearing progress empties the round, which re-deals via the effect above.
     resetTrace();
@@ -577,6 +600,7 @@ export default function TraceLetterGame({
           styles.scrollContent,
           { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
         ]}
+        scrollEnabled={scrollEnabled}
       >
         {/* Top controls */}
         <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
