@@ -35,7 +35,50 @@ const arc = (cx, cy, rx, ry, startDeg, endDeg, steps = 12) => {
 /** A straight stroke through the given [x, y] waypoints. */
 const line = (...coords) => coords.map(([x, y]) => ({ x, y }));
 
-export const LETTER_PATHS = {
+// How much of the 0-100 square a letter's longer dimension fills once
+// centered - see centerAndFit below.
+const TARGET_SPAN = 92;
+
+/**
+ * Recenters a letter's strokes on its own bounding box (not the nominal
+ * 0-100 square they were authored in) and scales them to fill TARGET_SPAN
+ * on their longer axis, preserving aspect ratio.
+ *
+ * Letters built from a left-side stem with a bowl bulging only to the
+ * right (B, D, P...) have nothing balancing them on the right half, so
+ * their bounding box sits well left of x=50 even though every coordinate
+ * is "in range" - the guide (and the grading built from the same data)
+ * would visibly drift left. Centering on each letter's own shape, rather
+ * than trusting the authored coordinates to already be centered, fixes
+ * every letter at once instead of hand-adjusting coordinates one by one.
+ * @param {{x:number,y:number}[][]} strokes
+ * @returns {{x:number,y:number}[][]}
+ */
+const centerAndFit = strokes => {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  strokes.forEach(stroke =>
+    stroke.forEach(p => {
+      minX = Math.min(minX, p.x);
+      maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y);
+      maxY = Math.max(maxY, p.y);
+    })
+  );
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+  const scale = TARGET_SPAN / Math.max(maxX - minX, maxY - minY);
+  return strokes.map(stroke =>
+    stroke.map(p => ({
+      x: Math.round((50 + (p.x - midX) * scale) * 10) / 10,
+      y: Math.round((50 + (p.y - midY) * scale) * 10) / 10,
+    }))
+  );
+};
+
+const RAW_LETTER_PATHS = {
   A: [line([12, 96], [50, 6]), line([50, 6], [88, 96]), line([28, 62], [72, 62])],
   B: [
     line([18, 6], [18, 96]),
@@ -87,6 +130,13 @@ export const LETTER_PATHS = {
   V: [line([12, 6], [50, 96]), line([50, 96], [88, 6])],
   W: [line([8, 6], [30, 96], [50, 40], [70, 96], [92, 6])],
 };
+
+export const LETTER_PATHS = Object.fromEntries(
+  Object.entries(RAW_LETTER_PATHS).map(([letter, strokes]) => [
+    letter,
+    centerAndFit(strokes),
+  ])
+);
 
 /**
  * A letter's strokes mapped from the normalized 0-100 square onto a real
