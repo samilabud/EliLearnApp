@@ -104,10 +104,11 @@ function MainMenu({
   const isLandscape = windowWidth > windowHeight;
   const insets = useSafeAreaInsets();
 
-  // Lets tapping the mascot/title jump straight to the mode cards. The
-  // cards' own y position (within the ScrollView's content, not the screen)
-  // is captured via onLayout rather than hardcoded, since it shifts with
-  // orientation, font scaling and screen size.
+  // Lets tapping the mascot/title jump straight to the mode cards, and lets
+  // scrolling there hide the language button so it stops floating over the
+  // cards. The cards' own y position (within the ScrollView's content, not
+  // the screen) is captured via onLayout rather than hardcoded, since it
+  // shifts with orientation, font scaling and screen size.
   const scrollRef = useRef(null);
   const modesY = useRef(0);
   const handleJumpToModes = () => {
@@ -116,6 +117,22 @@ function MainMenu({
       y: Math.max(0, modesY.current - 16),
       animated: true,
     });
+  };
+
+  const [languageVisible, setLanguageVisible] = React.useState(true);
+  const [languageOpacity] = React.useState(() => new Animated.Value(1));
+  useEffect(() => {
+    Animated.timing(languageOpacity, {
+      toValue: languageVisible ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [languageVisible, languageOpacity]);
+
+  const handleScroll = e => {
+    if (!modesY.current) return;
+    const y = e.nativeEvent.contentOffset.y;
+    setLanguageVisible(y < modesY.current - 40);
   };
 
   // The launch splash now lives in App, so this screen just fades itself in,
@@ -215,6 +232,8 @@ function MainMenu({
             },
           ]}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={32}
         >
           <Pressable
             onPress={handleJumpToModes}
@@ -368,15 +387,21 @@ function MainMenu({
           to size itself by. Wrapping it in a plain, separately positioned
           View and leaving the button itself in normal flow avoids that
           ambiguity entirely. */}
-      <View
-        pointerEvents="box-none"
-        style={[styles.languageFloating, { top: insets.top + 12 }]}
+      {/* Fades out once scrolled down to the mode cards, so it stops
+          floating over them - `none` while hidden so a faded-out button
+          can't still eat a tap meant for a card underneath it. */}
+      <Animated.View
+        pointerEvents={languageVisible ? 'box-none' : 'none'}
+        style={[
+          styles.languageFloating,
+          { top: insets.top + 12, opacity: languageOpacity },
+        ]}
       >
         <LanguageToggleButton
           currentLanguage={currentLanguage}
           onToggle={setCurrentLanguage}
         />
-      </View>
+      </Animated.View>
     </View>
   );
 }
