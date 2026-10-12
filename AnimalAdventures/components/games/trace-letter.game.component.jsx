@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
-import Svg, { Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
@@ -31,6 +31,8 @@ import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
+import { LETTER_PATHS, buildGuidePath } from '../../utils/letter-paths';
+import { gradeTrace } from '../../utils/trace-grading';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
@@ -53,33 +55,11 @@ const MAX_LEVEL = 6;
 const MIN_CANVAS_SIZE = 220;
 const MAX_CANVAS_SIZE = 320;
 
-// How far in from each edge of the canvas the ghost letter's "target area"
-// sits. A traced attempt is checked against this box, not the glyph itself -
-// the app has no way to read the actual outline the OS font renderer draws.
+// How far in from each edge of the canvas the guide letter's target box
+// sits. Both the dashed guide drawn on screen and the grading in
+// trace-grading.js are built from the same LETTER_PATHS data scaled into
+// this box, so what a child sees and what they're graded against match.
 const CANVAS_INSET_RATIO = 0.18;
-
-// A trace counts as reaching the letter once its bounding box's diagonal
-// spans at least this fraction of the target area's diagonal. Checked on
-// the diagonal rather than width and height independently, so a narrow
-// letter traced mostly top-to-bottom (like "I") isn't failed for having
-// little horizontal spread - this checks "did a preschooler drag a finger
-// across roughly the right space", not stroke accuracy.
-const MIN_COVERAGE_RATIO = 0.62;
-// How far outside the target box the traced shape's center may drift and
-// still count - catches a scribble that covers enough area but sits in a
-// corner rather than over the letter.
-const CENTER_DRIFT_RATIO = 0.12;
-// Minimum total finger travel, relative to the target box's own size rather
-// than the full canvas, so a single tap or a tiny jiggle can never pass
-// while a straight top-to-bottom trace of a narrow letter still can.
-const MIN_PATH_LENGTH_RATIO = 0.5;
-const MIN_POINTS = 6;
-// The largest empty stretch allowed in the trace's x or y coverage, as a
-// fraction of the target box. Catches two disconnected scribbles (e.g. one
-// stroke at the left edge, another at the right, nothing between) that
-// would otherwise satisfy the coverage/centered/length checks above
-// without resembling the letter at all.
-const MAX_GAP_RATIO = 0.32;
 
 // A lifted finger ends the current stroke; this is how long to wait before
 // grading the attempt, so a child can draw a multi-stroke letter (like "A")
@@ -118,7 +98,17 @@ export default function TraceLetterGame({
     MAX_CANVAS_SIZE,
     Math.max(MIN_CANVAS_SIZE, windowWidth - 64)
   );
-  const guideFontSize = canvasSize * 0.72;
+  // The square the guide letter is drawn into and graded against - see
+  // CANVAS_INSET_RATIO above.
+  const targetBox = useMemo(() => {
+    const inset = canvasSize * CANVAS_INSET_RATIO;
+    return {
+      left: inset,
+      top: inset,
+      width: canvasSize - inset * 2,
+      height: canvasSize - inset * 2,
+    };
+  }, [canvasSize]);
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
   const { trace, updateTrace, resetTrace, markAnimalMet } = useGameProgress();
@@ -417,77 +407,14 @@ export default function TraceLetterGame({
     if (burstTimer.current) clearTimeout(burstTimer.current);
     burstTimer.current = null;
 
-    const pts = pointsRef.current;
-    const inset = canvasSize * CANVAS_INSET_RATIO;
-    const targetBox = {
-      left: inset,
-      right: canvasSize - inset,
-      top: inset,
-      bottom: canvasSize - inset,
-      width: canvasSize - inset * 2,
-      height: canvasSize - inset * 2,
-    };
-
-    if (pts.length < MIN_POINTS) {
-      registerFailedAttempt();
-      return;
-    }
-
-    let minX = pts[0].x;
-    let maxX = pts[0].x;
-    let minY = pts[0].y;
-    let maxY = pts[0].y;
-    let length = 0;
-
-    pts.forEach((p, i) => {
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y);
-      maxY = Math.max(maxY, p.y);
-      if (i > 0 && !p.move) {
-        const prev = pts[i - 1];
-        length += Math.hypot(p.x - prev.x, p.y - prev.y);
-      }
+    const passed = gradeTrace({
+      tracePoints: pointsRef.current,
+      letterStrokes: LETTER_PATHS[correctLetter],
+      box: targetBox,
+      canvasSize,
     });
 
-    const spanX = maxX - minX;
-    const spanY = maxY - minY;
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const driftMargin = canvasSize * CENTER_DRIFT_RATIO;
-
-    const targetDiagonal = Math.hypot(targetBox.width, targetBox.height);
-    const traceDiagonal = Math.hypot(spanX, spanY);
-    const coversEnough = traceDiagonal >= targetDiagonal * MIN_COVERAGE_RATIO;
-    const centered =
-      centerX >= targetBox.left - driftMargin &&
-      centerX <= targetBox.right + driftMargin &&
-      centerY >= targetBox.top - driftMargin &&
-      centerY <= targetBox.bottom + driftMargin;
-    const longEnough = length >= targetBox.height * MIN_PATH_LENGTH_RATIO;
-
-    // The bounding-box checks above can't tell a real letter from two
-    // disconnected scribbles sitting at opposite edges of the box - that
-    // can "cover" plenty of area and look centered without following the
-    // letter at all. Sorting every point's x (and y) and checking the
-    // biggest gap between consecutive values catches that: a real trace,
-    // even a multi-stroke one, doesn't leave a wide dead zone with no ink
-    // anywhere in it, while two separate blobs do.
-    const xs = pts.map(p => p.x).sort((a, b) => a - b);
-    const ys = pts.map(p => p.y).sort((a, b) => a - b);
-    let maxGapX = 0;
-    for (let i = 1; i < xs.length; i++) {
-      maxGapX = Math.max(maxGapX, xs[i] - xs[i - 1]);
-    }
-    let maxGapY = 0;
-    for (let i = 1; i < ys.length; i++) {
-      maxGapY = Math.max(maxGapY, ys[i] - ys[i - 1]);
-    }
-    const noBigGap =
-      maxGapX <= targetBox.width * MAX_GAP_RATIO &&
-      maxGapY <= targetBox.height * MAX_GAP_RATIO;
-
-    if (coversEnough && centered && longEnough && noBigGap) {
+    if (passed) {
       handleCorrect();
     } else {
       registerFailedAttempt();
@@ -496,6 +423,8 @@ export default function TraceLetterGame({
     showComplete,
     isCorrect,
     targetAnimal,
+    correctLetter,
+    targetBox,
     canvasSize,
     handleCorrect,
     registerFailedAttempt,
@@ -746,21 +675,16 @@ export default function TraceLetterGame({
               height={canvasSize}
               style={StyleSheet.absoluteFill}
             >
-              {!!correctLetter && (
-                <SvgText
-                  x={canvasSize / 2}
-                  y={canvasSize / 2 + guideFontSize * 0.35}
-                  fontSize={guideFontSize}
-                  fontWeight="bold"
-                  textAnchor="middle"
+              {!!correctLetter && LETTER_PATHS[correctLetter] && (
+                <Path
+                  d={buildGuidePath(LETTER_PATHS[correctLetter], targetBox)}
                   fill="none"
                   stroke="#FFD700"
                   strokeWidth={4}
                   strokeDasharray="12,16"
                   strokeLinecap="round"
-                >
-                  {correctLetter}
-                </SvgText>
+                  strokeLinejoin="round"
+                />
               )}
               {!!pathD && (
                 <Path
