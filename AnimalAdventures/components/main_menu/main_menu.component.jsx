@@ -132,7 +132,7 @@ function MainMenu({
   const handleScroll = e => {
     if (!modesY.current) return;
     const y = e.nativeEvent.contentOffset.y;
-    setLanguageVisible(y < modesY.current - 40);
+    setLanguageVisible(y < modesY.current - 60);
   };
 
   // The launch splash now lives in App, so this screen just fades itself in,
