@@ -30,6 +30,7 @@ import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
+import { getLetterSound } from '../../utils/letter-sounds';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
@@ -124,6 +125,7 @@ export default function TraceLetterGame({
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
+  const letterNamePlayer = useAudioPlayer(null);
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
@@ -197,6 +199,9 @@ export default function TraceLetterGame({
       try {
         gameSuccessPlayer.remove();
       } catch {}
+      try {
+        letterNamePlayer.remove();
+      } catch {}
     };
   }, [
     stopAndUnload,
@@ -204,6 +209,7 @@ export default function TraceLetterGame({
     wrongPlayer,
     gameWinPlayer,
     gameSuccessPlayer,
+    letterNamePlayer,
   ]);
 
   // Continuous bubble effect on the Play button, matching the other games.
@@ -305,6 +311,15 @@ export default function TraceLetterGame({
       duration_ms: Date.now() - roundStartedAt.current,
     });
 
+    // Names the letter the child just traced (e.g. "P" -> "pee"), so the
+    // win confirms what was learned, not just that the attempt passed.
+    // These clips are very short, so firing it alongside the checkmark
+    // still leaves clear room before the success jingle below.
+    const letterSound = getLetterSound(correctLetter, currentLanguage);
+    if (letterSound) {
+      playClip(letterNamePlayer, letterSound);
+    }
+
     later(() => {
       if (level < MAX_LEVEL) {
         playClip(gameSuccessPlayer, gameSuccessSoundFile);
@@ -348,6 +363,9 @@ export default function TraceLetterGame({
     feedbackAnim,
     gameSuccessPlayer,
     gameSuccessSoundFile,
+    letterNamePlayer,
+    correctLetter,
+    currentLanguage,
     later,
     updateTrace,
     markAnimalMet,
