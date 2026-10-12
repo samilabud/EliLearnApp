@@ -179,15 +179,6 @@ function MainMenu({
     <View style={styles.container}>
       <StatusBar style="auto" />
 
-      {/* Floating, like the Menu/Next Game controls on every game screen,
-          so the top of the screen isn't a mostly-empty bordered bar - the
-          title gets that space instead. */}
-      <LanguageToggleButton
-        currentLanguage={currentLanguage}
-        onToggle={setCurrentLanguage}
-        style={[styles.languageFloating, { top: insets.top + 12 }]}
-      />
-
       {/* Main Content */}
       <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
         <ScrollView
@@ -324,6 +315,19 @@ function MainMenu({
           </BouncyButton>
         </ScrollView>
       </Animated.View>
+
+      {/* Floating, like the Menu/Next Game controls on every game screen.
+          Rendered last (after the scrollable content) on purpose: React
+          Native stacks siblings by render order by default, and a sibling
+          rendered before the content - even with a high zIndex - can end up
+          underneath it and unreachable to taps on some Android devices.
+          AmbientBackground's own comment documents the same lesson the
+          other way around. No zIndex needed once the order is right. */}
+      <LanguageToggleButton
+        currentLanguage={currentLanguage}
+        onToggle={setCurrentLanguage}
+        style={[styles.languageFloating, { top: insets.top + 12 }]}
+      />
     </View>
   );
 }
@@ -336,7 +340,6 @@ const styles = StyleSheet.create({
   languageFloating: {
     position: 'absolute',
     right: 20,
-    zIndex: 10,
   },
   content: {
     flexGrow: 1,
