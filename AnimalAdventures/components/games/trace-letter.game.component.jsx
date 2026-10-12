@@ -73,6 +73,12 @@ const CENTER_DRIFT_RATIO = 0.12;
 // while a straight top-to-bottom trace of a narrow letter still can.
 const MIN_PATH_LENGTH_RATIO = 0.5;
 const MIN_POINTS = 6;
+// The largest empty stretch allowed in the trace's x or y coverage, as a
+// fraction of the target box. Catches two disconnected scribbles (e.g. one
+// stroke at the left edge, another at the right, nothing between) that
+// would otherwise satisfy the coverage/centered/length checks above
+// without resembling the letter at all.
+const MAX_GAP_RATIO = 0.4;
 
 // A lifted finger ends the current stroke; this is how long to wait before
 // grading the attempt, so a child can draw a multi-stroke letter (like "A")
@@ -425,7 +431,28 @@ export default function TraceLetterGame({
       centerY <= targetBox.bottom + driftMargin;
     const longEnough = length >= targetBox.height * MIN_PATH_LENGTH_RATIO;
 
-    if (coversEnough && centered && longEnough) {
+    // The bounding-box checks above can't tell a real letter from two
+    // disconnected scribbles sitting at opposite edges of the box - that
+    // can "cover" plenty of area and look centered without following the
+    // letter at all. Sorting every point's x (and y) and checking the
+    // biggest gap between consecutive values catches that: a real trace,
+    // even a multi-stroke one, doesn't leave a wide dead zone with no ink
+    // anywhere in it, while two separate blobs do.
+    const xs = pts.map(p => p.x).sort((a, b) => a - b);
+    const ys = pts.map(p => p.y).sort((a, b) => a - b);
+    let maxGapX = 0;
+    for (let i = 1; i < xs.length; i++) {
+      maxGapX = Math.max(maxGapX, xs[i] - xs[i - 1]);
+    }
+    let maxGapY = 0;
+    for (let i = 1; i < ys.length; i++) {
+      maxGapY = Math.max(maxGapY, ys[i] - ys[i - 1]);
+    }
+    const noBigGap =
+      maxGapX <= targetBox.width * MAX_GAP_RATIO &&
+      maxGapY <= targetBox.height * MAX_GAP_RATIO;
+
+    if (coversEnough && centered && longEnough && noBigGap) {
       handleCorrect();
     } else {
       registerFailedAttempt();
@@ -626,6 +653,11 @@ export default function TraceLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
             >
+              {/* A rounded View with a background clips its children on
+                  Android regardless of `overflow`, cropping a 2nd line if
+                  this ever wraps. Keeping the rounded fill as an absolutely
+                  positioned sibling behind the Text avoids that. */}
+              <View style={styles.promptButtonBackground} />
               <Text
                 style={[
                   styles.promptText,
@@ -696,6 +728,7 @@ export default function TraceLetterGame({
             accessibilityRole="button"
             accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
           >
+            <View style={styles.clearButtonBackground} />
             <MaterialCommunityIcons name="eraser" size={20} color="white" />
             <Text style={styles.clearButtonText}>
               {t(currentLanguage, 'clearDrawing')}
@@ -775,6 +808,7 @@ export default function TraceLetterGame({
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
               >
+                <View style={styles.bigButtonBackground} />
                 <MaterialIcons name="replay" size={20} color="#0A3D62" />
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
@@ -788,6 +822,7 @@ export default function TraceLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'nextGame')}
@@ -800,6 +835,7 @@ export default function TraceLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
@@ -828,6 +864,10 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 22,
+    // Without this, a crowded top bar (Reset + Next Game + Language) can
+    // squeeze this text to where the level number gets cut off - letting it
+    // shrink/wrap instead keeps the whole string visible.
+    flexShrink: 1,
     // Bangers clips on Android without both of these - see
     // first-letter.game.component.jsx for the full explanation.
     lineHeight: 30,
@@ -881,12 +921,21 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
-    backgroundColor: '#FFD700',
-    borderRadius: 30,
-    minHeight: LARGE_TOUCH_TARGET,
+    // Plain on purpose - the filled rounded look lives in
+    // promptButtonBackground instead. See the comment at its usage above.
     justifyContent: 'center',
+    minHeight: LARGE_TOUCH_TARGET,
     paddingHorizontal: 36,
     paddingVertical: 12,
+  },
+  promptButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
+    borderRadius: 30,
     borderWidth: 3,
     borderColor: '#ffffff',
   },
@@ -917,17 +966,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   clearButton: {
+    // Plain on purpose - see promptButton above for why the fill lives in
+    // a separate absolutely positioned sibling instead of on this View.
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     marginTop: 16,
     // Extra breathing room below, so this button doesn't crowd the
     // floating Menu button anchored near the bottom of the screen.
     marginBottom: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     minHeight: LARGE_TOUCH_TARGET,
-    justifyContent: 'center',
     paddingHorizontal: 28,
+  },
+  clearButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
@@ -998,13 +1056,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bigButton: {
+    // Plain on purpose - the filled rounded look lives in
+    // bigButtonBackground instead, for the same reason as promptButton.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  bigButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#ffffff',
@@ -1019,9 +1086,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  secondaryButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#ffffff',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#FFD700',
