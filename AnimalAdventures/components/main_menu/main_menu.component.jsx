@@ -98,8 +98,10 @@ function MainMenu({
   const [glyphWiggle] = React.useState(() => new Animated.Value(0));
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Stacked full-width cards give one card per screen on a landscape tablet,
-  // which Android 16 can force regardless of the manifest. Side by side keeps
-  // all three adventures reachable without scrolling.
+  // which Android 16 can force regardless of the manifest. Side by side
+  // instead, in a horizontally scrolling row (see modeContainerLandscape) -
+  // now that there are six modes rather than three, they no longer fit a
+  // landscape screen's width unscrolled.
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
   const insets = useSafeAreaInsets();
@@ -132,7 +134,7 @@ function MainMenu({
   const handleScroll = e => {
     if (!modesY.current) return;
     const y = e.nativeEvent.contentOffset.y;
-    setLanguageVisible(y < modesY.current - 60);
+    setLanguageVisible(y < modesY.current - 120);
   };
 
   // The launch splash now lives in App, so this screen just fades itself in,
@@ -282,17 +284,8 @@ function MainMenu({
           </Animated.View>
 
           {/* Mode Selection Buttons */}
-          <View
-            style={[
-              styles.modeContainer,
-              isLandscape && styles.modeContainerLandscape,
-            ]}
-            onLayout={e => {
-              modesY.current = e.nativeEvent.layout.y;
-            }}
-          >
-            {ambientEnabled && <AmbientBackground />}
-            {MODES.map(mode => {
+          {(() => {
+            const modeCards = MODES.map(mode => {
               const title = t(currentLanguage, mode.titleKey);
               const description = t(currentLanguage, mode.descriptionKey);
 
@@ -350,8 +343,36 @@ function MainMenu({
                   <Text style={styles.modeDescription}>{description}</Text>
                 </BouncyButton>
               );
-            })}
-          </View>
+            });
+
+            const onLayout = e => {
+              modesY.current = e.nativeEvent.layout.y;
+            };
+
+            // Portrait stacks cards full-width in the page's own vertical
+            // scroll, which already reaches all of them. Landscape lays
+            // them out in a row instead - six cards side by side no longer
+            // fits any phone or tablet width, so that row needs its own
+            // horizontal scroll or the cards past the edge are simply
+            // unreachable (there's nothing to swipe).
+            return isLandscape ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.modeScrollLandscape}
+                contentContainerStyle={styles.modeContainerLandscape}
+                onLayout={onLayout}
+              >
+                {ambientEnabled && <AmbientBackground />}
+                {modeCards}
+              </ScrollView>
+            ) : (
+              <View style={styles.modeContainer} onLayout={onLayout}>
+                {ambientEnabled && <AmbientBackground />}
+                {modeCards}
+              </View>
+            );
+          })()}
 
           {/* Deliberately small, plain and at the bottom: this is the one
                 control on the screen that is not for the child. */}
@@ -462,10 +483,17 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 30,
   },
+  // Only a contentContainerStyle now (applied to the horizontal ScrollView
+  // below), not a plain View's style - see modeScrollLandscape for the
+  // ScrollView's own sizing.
   modeContainerLandscape: {
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 16,
+    paddingHorizontal: 4,
+  },
+  modeScrollLandscape: {
+    width: '100%',
   },
   modeButton: {
     backgroundColor: 'white',
@@ -480,8 +508,11 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFD700',
   },
+  // A fixed width rather than flex:1 - this card now sits in a horizontally
+  // scrolling row instead of a fixed-count one, so "share the row equally"
+  // no longer makes sense; each card keeps a steady, swipeable size instead.
   modeButtonLandscape: {
-    flex: 1,
+    width: 210,
     padding: 14,
     justifyContent: 'center',
   },
