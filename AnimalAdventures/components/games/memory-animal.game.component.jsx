@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
@@ -36,6 +37,7 @@ import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { BouncyButton } from '../utility/bouncy-button.component';
 import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import { NextGameButton } from '../utility/next-game-button.component';
 import {
   BackToMenuButton,
   BACK_TO_MENU_CLEARANCE,
@@ -74,6 +76,7 @@ export default function MemoryAnimalGame({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
+  onNextGame,
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
@@ -407,6 +410,19 @@ export default function MemoryAnimalGame({
 
   useBackToMenu(handleBackToMenu);
 
+  const handleNextGame = useCallback(() => {
+    tapFeedback();
+    if (!gameComplete) {
+      track(EVENTS.GAME_ABANDONED, {
+        game: 'memory',
+        level,
+        moves,
+        matched: matchedPairs.length,
+      });
+    }
+    onNextGame();
+  }, [onNextGame, gameComplete, level, moves, matchedPairs.length]);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -443,6 +459,10 @@ export default function MemoryAnimalGame({
             <ConfirmResetButton
               currentLanguage={currentLanguage}
               onConfirm={onReset}
+            />
+            <NextGameButton
+              currentLanguage={currentLanguage}
+              onPress={handleNextGame}
             />
             <LanguageToggleButton
               currentLanguage={currentLanguage}
@@ -573,8 +593,21 @@ export default function MemoryAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
             >
+              <MaterialIcons name="replay" size={20} color="#0A3D62" />
               <Text style={styles.bigButtonText}>
                 {t(currentLanguage, 'playAgain')}
+              </Text>
+            </BouncyButton>
+            <BouncyButton
+              onPress={handleNextGame}
+              style={styles.secondaryButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
+            >
+              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
+              <Text style={styles.secondaryButtonText}>
+                {t(currentLanguage, 'nextGame')}
               </Text>
             </BouncyButton>
             <BouncyButton
@@ -584,6 +617,7 @@ export default function MemoryAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
@@ -772,9 +806,15 @@ const styles = StyleSheet.create({
   completionActions: {
     marginTop: 24,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 12,
   },
   bigButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
@@ -788,6 +828,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,

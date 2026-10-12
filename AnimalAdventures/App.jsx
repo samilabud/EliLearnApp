@@ -7,6 +7,7 @@ import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
 import FirstLetterGame from './components/games/first-letter.game.component.jsx';
+import TraceLetterGame from './components/games/trace-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
@@ -18,6 +19,7 @@ import {
 } from './contexts/game-progress.context';
 import { SettingsProvider, useSettings } from './contexts/settings.context';
 import { EVENTS, initAnalytics, track } from './utils/analytics';
+import { GAME_ORDER } from './constants';
 
 // Long enough for the logo animation and its jingle to finish - but a child
 // waiting to hear a dog bark should not have to sit through it every time,
@@ -58,6 +60,19 @@ function AppContent() {
   const handleBackToMenu = () => {
     setCurrentMode(null);
   };
+
+  // Steps straight from one game to the next in the main menu's order,
+  // wrapping around after the last one, without landing on the menu in
+  // between. The game screen itself decides whether the switch is worth an
+  // abandoned-game analytics event (it is, unless the player had already
+  // finished).
+  const handleNextGame = useCallback(() => {
+    const currentIndex = GAME_ORDER.indexOf(currentMode);
+    const nextMode =
+      GAME_ORDER[(currentIndex + 1) % GAME_ORDER.length] || GAME_ORDER[0];
+    track(EVENTS.MODE_SELECTED, { mode: nextMode, via: 'next_game' });
+    setCurrentMode(nextMode);
+  }, [currentMode]);
 
   const handleLanguageChange = useCallback(
     next => {
@@ -123,6 +138,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
         ambientEnabled={ambientEffectsEnabled}
       />
     );
@@ -132,6 +148,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
         ambientEnabled={ambientEffectsEnabled}
       />
     );
@@ -141,6 +158,17 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
+        ambientEnabled={ambientEffectsEnabled}
+      />
+    );
+  } else if (currentMode === 'trace') {
+    content = (
+      <TraceLetterGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
         ambientEnabled={ambientEffectsEnabled}
       />
     );
@@ -150,6 +178,7 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
         ambientEnabled={ambientEffectsEnabled}
       />
     );

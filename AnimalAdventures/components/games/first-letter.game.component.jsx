@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
@@ -27,6 +28,7 @@ import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
+import { firstLetterOf } from '../../utils/helpers';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
@@ -35,6 +37,7 @@ import {
 } from '../../utils/haptics';
 import { BouncyButton } from '../utility/bouncy-button.component';
 import { LanguageToggleButton } from '../utility/language-toggle-button.component';
+import { NextGameButton } from '../utility/next-game-button.component';
 import {
   BackToMenuButton,
   BACK_TO_MENU_CLEARANCE,
@@ -60,24 +63,13 @@ const OPTION_GAP = 20;
 const MIN_OPTION_SIZE = 96;
 const MAX_OPTION_SIZE = 140;
 
-const stripAccents = str => str.normalize('NFD').replace(/[̀-ͯ]/g, '');
-
-/**
- * The letter a child should answer with, in the language currently shown.
- * Accents are stripped first so "Águila" counts as starting with A, the
- * same vowel a child hears regardless of the written accent mark.
- */
-const firstLetterOf = (animal, lang) => {
-  const name = lang === 'en' ? animal.name : animal.spanish_name;
-  return stripAccents(name).trim().charAt(0).toUpperCase();
-};
-
 const isVowel = letter => VOWELS.includes(letter);
 
 export default function FirstLetterGame({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
+  onNextGame,
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
@@ -423,6 +415,14 @@ export default function FirstLetterGame({
 
   useBackToMenu(handleBackToMenu);
 
+  const handleNextGame = useCallback(() => {
+    tapFeedback();
+    if (!showComplete) {
+      track(EVENTS.GAME_ABANDONED, { game: 'letter', level, wrongCount });
+    }
+    onNextGame();
+  }, [onNextGame, showComplete, level, wrongCount]);
+
   const handlePlayPrompt = useCallback(() => {
     tapFeedback();
     playPrompt();
@@ -466,6 +466,10 @@ export default function FirstLetterGame({
               currentLanguage={currentLanguage}
               onConfirm={onReset}
             />
+            <NextGameButton
+              currentLanguage={currentLanguage}
+              onPress={handleNextGame}
+            />
             <LanguageToggleButton
               currentLanguage={currentLanguage}
               onToggle={setCurrentLanguage}
@@ -487,6 +491,13 @@ export default function FirstLetterGame({
               />
             )}
           </View>
+          {!!targetAnimal && (
+            <Text style={styles.animalNameText}>
+              {currentLanguage === 'en'
+                ? targetAnimal.name
+                : targetAnimal.spanish_name}
+            </Text>
+          )}
           <Animated.View style={{ transform: [{ scale: promptScale }] }}>
             <BouncyButton
               onPress={handlePlayPrompt}
@@ -625,11 +636,24 @@ export default function FirstLetterGame({
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
               >
+                <MaterialIcons name="replay" size={20} color="#0A3D62" />
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
                 </Text>
               </BouncyButton>
             </Animated.View>
+            <BouncyButton
+              onPress={handleNextGame}
+              style={styles.secondaryButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
+            >
+              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
+              <Text style={styles.secondaryButtonText}>
+                {t(currentLanguage, 'nextGame')}
+              </Text>
+            </BouncyButton>
             <BouncyButton
               onPress={handleBackToMenu}
               style={styles.secondaryButton}
@@ -637,6 +661,7 @@ export default function FirstLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
               </Text>
@@ -697,11 +722,23 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 10,
   },
   animalAnimation: {
     width: 150,
     height: 150,
+  },
+  // The written word next to the letter options, so a child connects the
+  // animal, its name and the letter rather than guessing blind.
+  animalNameText: {
+    marginBottom: 10,
+    color: 'white',
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
     backgroundColor: '#FFD700',
@@ -829,9 +866,15 @@ const styles = StyleSheet.create({
   completionActions: {
     marginTop: 24,
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 12,
   },
   bigButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
@@ -845,6 +888,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,
