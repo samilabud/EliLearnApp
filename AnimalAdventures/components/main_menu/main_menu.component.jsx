@@ -21,6 +21,14 @@ import { LanguageToggleButton } from '../utility/language-toggle-button.componen
 
 const ICON_SIZE = { width: 90, height: 90 };
 const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
+const MASCOT_SIZE = { width: 110, height: 110 };
+const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 64 };
+
+// The same dog used in-game (animal.list's "Dog" entry) as a mascot above
+// the title - animated and background-free, unlike the dog baked into the
+// store icon artwork, and (unlike that artwork) it doesn't carry English
+// text that can't switch to Spanish.
+const DOG_MASCOT = require('../../assets/animations/animals/dog-tail-wag.json');
 
 // The three cards differ only by icon and copy, so they are described once
 // here and rendered in a loop. Keeps their accessibility wiring identical.
@@ -194,11 +202,19 @@ function MainMenu({
         >
           <Animated.View
             style={{
+              alignItems: 'center',
               transform: [
                 { scale: Animated.multiply(titleScale, titleBreatheScale) },
               ],
             }}
           >
+            <LottieView
+              autoPlay
+              loop
+              resizeMode="contain"
+              source={DOG_MASCOT}
+              style={isLandscape ? MASCOT_SIZE_LANDSCAPE : MASCOT_SIZE}
+            />
             <Text
               style={[
                 styles.title,
