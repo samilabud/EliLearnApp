@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   Text,
   Animated,
   Easing,
+  Pressable,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -103,6 +104,20 @@ function MainMenu({
   const isLandscape = windowWidth > windowHeight;
   const insets = useSafeAreaInsets();
 
+  // Lets tapping the mascot/title jump straight to the mode cards. The
+  // cards' own y position (within the ScrollView's content, not the screen)
+  // is captured via onLayout rather than hardcoded, since it shifts with
+  // orientation, font scaling and screen size.
+  const scrollRef = useRef(null);
+  const modesY = useRef(0);
+  const handleJumpToModes = () => {
+    tapFeedback();
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, modesY.current - 16),
+      animated: true,
+    });
+  };
+
   // The launch splash now lives in App, so this screen just fades itself in,
   // while the title bounces in and the subtitle slides up under it - a
   // livelier arrival for a screen a preschooler sees every launch.
@@ -190,6 +205,7 @@ function MainMenu({
       {/* Main Content */}
       <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.content,
             isLandscape && styles.contentLandscape,
@@ -200,31 +216,38 @@ function MainMenu({
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View
-            style={{
-              alignItems: 'center',
-              transform: [
-                { scale: Animated.multiply(titleScale, titleBreatheScale) },
-              ],
-            }}
+          <Pressable
+            onPress={handleJumpToModes}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yJumpToGames')}
           >
-            <LottieView
-              autoPlay
-              loop
-              resizeMode="contain"
-              source={DOG_MASCOT}
-              style={isLandscape ? MASCOT_SIZE_LANDSCAPE : MASCOT_SIZE}
-            />
-            <Text
-              style={[
-                styles.title,
-                isLandscape && styles.titleLandscape,
-                fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-              ]}
+            <Animated.View
+              style={{
+                alignItems: 'center',
+                transform: [
+                  { scale: Animated.multiply(titleScale, titleBreatheScale) },
+                ],
+              }}
             >
-              {t(currentLanguage, 'appTitle')}
-            </Text>
-          </Animated.View>
+              <LottieView
+                autoPlay
+                loop
+                resizeMode="contain"
+                source={DOG_MASCOT}
+                style={isLandscape ? MASCOT_SIZE_LANDSCAPE : MASCOT_SIZE}
+              />
+              <Text
+                style={[
+                  styles.title,
+                  isLandscape && styles.titleLandscape,
+                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                ]}
+              >
+                {t(currentLanguage, 'appTitle')}
+              </Text>
+            </Animated.View>
+          </Pressable>
 
           <Animated.View
             style={{ transform: [{ translateY: subtitleSlide }] }}
@@ -245,6 +268,9 @@ function MainMenu({
               styles.modeContainer,
               isLandscape && styles.modeContainerLandscape,
             ]}
+            onLayout={e => {
+              modesY.current = e.nativeEvent.layout.y;
+            }}
           >
             {ambientEnabled && <AmbientBackground />}
             {MODES.map(mode => {
@@ -333,17 +359,24 @@ function MainMenu({
       </Animated.View>
 
       {/* Floating, like the Menu/Next Game controls on every game screen.
-          Rendered last (after the scrollable content) on purpose: React
-          Native stacks siblings by render order by default, and a sibling
-          rendered before the content - even with a high zIndex - can end up
-          underneath it and unreachable to taps on some Android devices.
-          AmbientBackground's own comment documents the same lesson the
-          other way around. No zIndex needed once the order is right. */}
-      <LanguageToggleButton
-        currentLanguage={currentLanguage}
-        onToggle={setCurrentLanguage}
+          Rendered last (after the scrollable content) on purpose - see
+          AmbientBackground's own comment for why render order matters here.
+          Unlike BackToMenuButton, the absolute positioning is NOT passed as
+          a style into the button itself: BouncyButton applies its `style`
+          prop to the one child *inside* its Pressable, so a position:
+          absolute there can leave the Pressable with nothing in normal flow
+          to size itself by. Wrapping it in a plain, separately positioned
+          View and leaving the button itself in normal flow avoids that
+          ambiguity entirely. */}
+      <View
+        pointerEvents="box-none"
         style={[styles.languageFloating, { top: insets.top + 12 }]}
-      />
+      >
+        <LanguageToggleButton
+          currentLanguage={currentLanguage}
+          onToggle={setCurrentLanguage}
+        />
+      </View>
     </View>
   );
 }
