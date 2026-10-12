@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -6,6 +6,8 @@ import {
   Text,
   Animated,
   Easing,
+  Image,
+  Pressable,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -21,6 +23,14 @@ import { LanguageToggleButton } from '../utility/language-toggle-button.componen
 
 const ICON_SIZE = { width: 90, height: 90 };
 const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
+// Matches the source PNG's own 100:85 aspect ratio, so it isn't stretched.
+const MASCOT_SIZE = { width: 110, height: 94 };
+const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 54 };
+
+// The app's own dog sublogo mark as a mascot above the title - unlike the
+// dog baked into the store icon artwork, it has no background and doesn't
+// carry English text that can't switch to Spanish.
+const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog-1.png');
 
 // The three cards differ only by icon and copy, so they are described once
 // here and rendered in a loop. Keeps their accessibility wiring identical.
@@ -89,11 +99,44 @@ function MainMenu({
   const [glyphWiggle] = React.useState(() => new Animated.Value(0));
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Stacked full-width cards give one card per screen on a landscape tablet,
-  // which Android 16 can force regardless of the manifest. Side by side keeps
-  // all three adventures reachable without scrolling.
+  // which Android 16 can force regardless of the manifest. Side by side
+  // instead, in a horizontally scrolling row (see modeContainerLandscape) -
+  // now that there are six modes rather than three, they no longer fit a
+  // landscape screen's width unscrolled.
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
   const insets = useSafeAreaInsets();
+
+  // Lets tapping the mascot/title jump straight to the mode cards, and lets
+  // scrolling there hide the language button so it stops floating over the
+  // cards. The cards' own y position (within the ScrollView's content, not
+  // the screen) is captured via onLayout rather than hardcoded, since it
+  // shifts with orientation, font scaling and screen size.
+  const scrollRef = useRef(null);
+  const modesY = useRef(0);
+  const handleJumpToModes = () => {
+    tapFeedback();
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, modesY.current - 16),
+      animated: true,
+    });
+  };
+
+  const [languageVisible, setLanguageVisible] = React.useState(true);
+  const [languageOpacity] = React.useState(() => new Animated.Value(1));
+  useEffect(() => {
+    Animated.timing(languageOpacity, {
+      toValue: languageVisible ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [languageVisible, languageOpacity]);
+
+  const handleScroll = e => {
+    if (!modesY.current) return;
+    const y = e.nativeEvent.contentOffset.y;
+    setLanguageVisible(y < modesY.current - 120);
+  };
 
   // The launch splash now lives in App, so this screen just fades itself in,
   // while the title bounces in and the subtitle slides up under it - a
@@ -179,18 +222,10 @@ function MainMenu({
     <View style={styles.container}>
       <StatusBar style="auto" />
 
-      {/* Floating, like the Menu/Next Game controls on every game screen,
-          so the top of the screen isn't a mostly-empty bordered bar - the
-          title gets that space instead. */}
-      <LanguageToggleButton
-        currentLanguage={currentLanguage}
-        onToggle={setCurrentLanguage}
-        style={[styles.languageFloating, { top: insets.top + 12 }]}
-      />
-
       {/* Main Content */}
       <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             styles.content,
             isLandscape && styles.contentLandscape,
@@ -200,24 +235,39 @@ function MainMenu({
             },
           ]}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={32}
         >
-          <Animated.View
-            style={{
-              transform: [
-                { scale: Animated.multiply(titleScale, titleBreatheScale) },
-              ],
-            }}
+          <Pressable
+            onPress={handleJumpToModes}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yJumpToGames')}
           >
-            <Text
-              style={[
-                styles.title,
-                isLandscape && styles.titleLandscape,
-                fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-              ]}
+            <Animated.View
+              style={{
+                alignItems: 'center',
+                transform: [
+                  { scale: Animated.multiply(titleScale, titleBreatheScale) },
+                ],
+              }}
             >
-              {t(currentLanguage, 'appTitle')}
-            </Text>
-          </Animated.View>
+              <Image
+                source={DOG_MASCOT}
+                resizeMode="contain"
+                style={isLandscape ? MASCOT_SIZE_LANDSCAPE : MASCOT_SIZE}
+              />
+              <Text
+                style={[
+                  styles.title,
+                  isLandscape && styles.titleLandscape,
+                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                ]}
+              >
+                {t(currentLanguage, 'appTitle')}
+              </Text>
+            </Animated.View>
+          </Pressable>
 
           <Animated.View
             style={{ transform: [{ translateY: subtitleSlide }] }}
@@ -233,14 +283,8 @@ function MainMenu({
           </Animated.View>
 
           {/* Mode Selection Buttons */}
-          <View
-            style={[
-              styles.modeContainer,
-              isLandscape && styles.modeContainerLandscape,
-            ]}
-          >
-            {ambientEnabled && <AmbientBackground />}
-            {MODES.map(mode => {
+          {(() => {
+            const modeCards = MODES.map(mode => {
               const title = t(currentLanguage, mode.titleKey);
               const description = t(currentLanguage, mode.descriptionKey);
 
@@ -298,8 +342,36 @@ function MainMenu({
                   <Text style={styles.modeDescription}>{description}</Text>
                 </BouncyButton>
               );
-            })}
-          </View>
+            });
+
+            const onLayout = e => {
+              modesY.current = e.nativeEvent.layout.y;
+            };
+
+            // Portrait stacks cards full-width in the page's own vertical
+            // scroll, which already reaches all of them. Landscape lays
+            // them out in a row instead - six cards side by side no longer
+            // fits any phone or tablet width, so that row needs its own
+            // horizontal scroll or the cards past the edge are simply
+            // unreachable (there's nothing to swipe).
+            return isLandscape ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.modeScrollLandscape}
+                contentContainerStyle={styles.modeContainerLandscape}
+                onLayout={onLayout}
+              >
+                {ambientEnabled && <AmbientBackground />}
+                {modeCards}
+              </ScrollView>
+            ) : (
+              <View style={styles.modeContainer} onLayout={onLayout}>
+                {ambientEnabled && <AmbientBackground />}
+                {modeCards}
+              </View>
+            );
+          })()}
 
           {/* Deliberately small, plain and at the bottom: this is the one
                 control on the screen that is not for the child. */}
@@ -324,6 +396,32 @@ function MainMenu({
           </BouncyButton>
         </ScrollView>
       </Animated.View>
+
+      {/* Floating, like the Menu/Next Game controls on every game screen.
+          Rendered last (after the scrollable content) on purpose - see
+          AmbientBackground's own comment for why render order matters here.
+          Unlike BackToMenuButton, the absolute positioning is NOT passed as
+          a style into the button itself: BouncyButton applies its `style`
+          prop to the one child *inside* its Pressable, so a position:
+          absolute there can leave the Pressable with nothing in normal flow
+          to size itself by. Wrapping it in a plain, separately positioned
+          View and leaving the button itself in normal flow avoids that
+          ambiguity entirely. */}
+      {/* Fades out once scrolled down to the mode cards, so it stops
+          floating over them - `none` while hidden so a faded-out button
+          can't still eat a tap meant for a card underneath it. */}
+      <Animated.View
+        pointerEvents={languageVisible ? 'box-none' : 'none'}
+        style={[
+          styles.languageFloating,
+          { top: insets.top + 12, opacity: languageOpacity },
+        ]}
+      >
+        <LanguageToggleButton
+          currentLanguage={currentLanguage}
+          onToggle={setCurrentLanguage}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -336,7 +434,6 @@ const styles = StyleSheet.create({
   languageFloating: {
     position: 'absolute',
     right: 20,
-    zIndex: 10,
   },
   content: {
     flexGrow: 1,
@@ -385,10 +482,17 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 30,
   },
+  // Only a contentContainerStyle now (applied to the horizontal ScrollView
+  // below), not a plain View's style - see modeScrollLandscape for the
+  // ScrollView's own sizing.
   modeContainerLandscape: {
     flexDirection: 'row',
     alignItems: 'stretch',
     gap: 16,
+    paddingHorizontal: 4,
+  },
+  modeScrollLandscape: {
+    width: '100%',
   },
   modeButton: {
     backgroundColor: 'white',
@@ -403,8 +507,17 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#FFD700',
   },
+  // A fixed width rather than flex:1 - this card now sits in a horizontally
+  // scrolling row instead of a fixed-count one, so "share the row equally"
+  // no longer makes sense; each card keeps a steady, swipeable size instead.
+  // Height is fixed too (not auto, not alignItems:'stretch' on the row),
+  // because a 1-line title/description ("Guess the Animal") and a 2-line
+  // one ("Learn Animal Sounds & Names") otherwise size their own card
+  // differently, leaving a ragged row - content is centered within the
+  // fixed height so shorter cards don't look off-balance.
   modeButtonLandscape: {
-    flex: 1,
+    width: 210,
+    height: 240,
     padding: 14,
     justifyContent: 'center',
   },

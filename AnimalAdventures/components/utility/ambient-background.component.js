@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
+// Each bubble drives two looping native animations for as long as the
+// screen is mounted. Six of them (twelve concurrent loops) was reported as
+// visibly janky mid-scroll on real devices, so this stays lean - four still
+// reads as "floating bubbles" without the added load.
 const BUBBLES = [
-  { left: '8%', size: 26, duration: 9000, delay: 0 },
-  { left: '22%', size: 34, duration: 11000, delay: 1200 },
+  { left: '12%', size: 28, duration: 9000, delay: 0 },
   { left: '38%', size: 20, duration: 8000, delay: 800 },
-  { left: '54%', size: 28, duration: 9500, delay: 1600 },
-  { left: '72%', size: 24, duration: 10500, delay: 400 },
-  { left: '88%', size: 18, duration: 7500, delay: 2200 },
+  { left: '64%', size: 30, duration: 10000, delay: 1400 },
+  { left: '86%', size: 18, duration: 7500, delay: 2200 },
 ];
 
 export const AmbientBackground = () => {

@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
-import Svg, { Path, Text as SvgText } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
@@ -30,6 +30,9 @@ import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
+import { getLetterSound } from '../../utils/letter-sounds';
+import { LETTER_PATHS, buildGuidePath } from '../../utils/letter-paths';
+import { gradeTrace } from '../../utils/trace-grading';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
@@ -52,27 +55,11 @@ const MAX_LEVEL = 6;
 const MIN_CANVAS_SIZE = 220;
 const MAX_CANVAS_SIZE = 320;
 
-// How far in from each edge of the canvas the ghost letter's "target area"
-// sits. A traced attempt is checked against this box, not the glyph itself -
-// the app has no way to read the actual outline the OS font renderer draws.
+// How far in from each edge of the canvas the guide letter's target box
+// sits. Both the dashed guide drawn on screen and the grading in
+// trace-grading.js are built from the same LETTER_PATHS data scaled into
+// this box, so what a child sees and what they're graded against match.
 const CANVAS_INSET_RATIO = 0.18;
-
-// A trace counts as reaching the letter once its bounding box's diagonal
-// spans at least this fraction of the target area's diagonal. Checked on
-// the diagonal rather than width and height independently, so a narrow
-// letter traced mostly top-to-bottom (like "I") isn't failed for having
-// little horizontal spread - this checks "did a preschooler drag a finger
-// across roughly the right space", not stroke accuracy.
-const MIN_COVERAGE_RATIO = 0.55;
-// How far outside the target box the traced shape's center may drift and
-// still count - catches a scribble that covers enough area but sits in a
-// corner rather than over the letter.
-const CENTER_DRIFT_RATIO = 0.12;
-// Minimum total finger travel, relative to the target box's own size rather
-// than the full canvas, so a single tap or a tiny jiggle can never pass
-// while a straight top-to-bottom trace of a narrow letter still can.
-const MIN_PATH_LENGTH_RATIO = 0.5;
-const MIN_POINTS = 6;
 
 // A lifted finger ends the current stroke; this is how long to wait before
 // grading the attempt, so a child can draw a multi-stroke letter (like "A")
@@ -87,6 +74,17 @@ const EVALUATE_DELAY_MS = 700;
 // the hint-after-N-tries threshold used by the other letter games.
 const MAX_ATTEMPTS_BEFORE_CLEAR = 3;
 
+// A new stroke starting less than EVALUATE_DELAY_MS after the last one's
+// release cancels that pending evaluation (see onPanResponderGrant), so a
+// child mid-letter doesn't get graded between strokes. Fast, continuous
+// scribbling can keep doing that indefinitely though, with no gap ever
+// long enough for the debounced evaluation to fire - nothing ever gets
+// graded or cleared, no matter how many strokes pile up. This is a backstop
+// independent of that debounce: a timer started on the first stroke of a
+// burst and never reset by later ones, forcing an evaluation this long
+// after a burst starts even if the child never once pauses.
+const MAX_BURST_MS = 2500;
+
 export default function TraceLetterGame({
   currentLanguage,
   setCurrentLanguage,
@@ -100,7 +98,17 @@ export default function TraceLetterGame({
     MAX_CANVAS_SIZE,
     Math.max(MIN_CANVAS_SIZE, windowWidth - 64)
   );
-  const guideFontSize = canvasSize * 0.72;
+  // The square the guide letter is drawn into and graded against - see
+  // CANVAS_INSET_RATIO above.
+  const targetBox = useMemo(() => {
+    const inset = canvasSize * CANVAS_INSET_RATIO;
+    return {
+      left: inset,
+      top: inset,
+      width: canvasSize - inset * 2,
+      height: canvasSize - inset * 2,
+    };
+  }, [canvasSize]);
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
   const { trace, updateTrace, resetTrace, markAnimalMet } = useGameProgress();
@@ -114,10 +122,13 @@ export default function TraceLetterGame({
   const [promptPulse] = useState(new Animated.Value(0));
 
   const pointsRef = useRef([]);
+  // Backstop for MAX_BURST_MS - see its comment above.
+  const burstTimer = useRef(null);
   const promptPlayer = useAudioPlayer(null);
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
+  const letterNamePlayer = useAudioPlayer(null);
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
@@ -191,6 +202,9 @@ export default function TraceLetterGame({
       try {
         gameSuccessPlayer.remove();
       } catch {}
+      try {
+        letterNamePlayer.remove();
+      } catch {}
     };
   }, [
     stopAndUnload,
@@ -198,6 +212,7 @@ export default function TraceLetterGame({
     wrongPlayer,
     gameWinPlayer,
     gameSuccessPlayer,
+    letterNamePlayer,
   ]);
 
   // Continuous bubble effect on the Play button, matching the other games.
@@ -231,6 +246,8 @@ export default function TraceLetterGame({
   const clearCanvas = useCallback(() => {
     pointsRef.current = [];
     setPoints([]);
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+    burstTimer.current = null;
     // A fresh canvas means a fresh set of checkpoints before it clears
     // again - covers a new round, a language switch, the 3rd failed
     // checkpoint, and the child's own manual Clear tap.
@@ -299,6 +316,15 @@ export default function TraceLetterGame({
       duration_ms: Date.now() - roundStartedAt.current,
     });
 
+    // Names the letter the child just traced (e.g. "P" -> "pee"), so the
+    // win confirms what was learned, not just that the attempt passed.
+    // These clips are very short, so firing it alongside the checkmark
+    // still leaves clear room before the success jingle below.
+    const letterSound = getLetterSound(correctLetter, currentLanguage);
+    if (letterSound) {
+      playClip(letterNamePlayer, letterSound);
+    }
+
     later(() => {
       if (level < MAX_LEVEL) {
         playClip(gameSuccessPlayer, gameSuccessSoundFile);
@@ -342,6 +368,9 @@ export default function TraceLetterGame({
     feedbackAnim,
     gameSuccessPlayer,
     gameSuccessSoundFile,
+    letterNamePlayer,
+    correctLetter,
+    currentLanguage,
     later,
     updateTrace,
     markAnimalMet,
@@ -375,57 +404,17 @@ export default function TraceLetterGame({
 
   const evaluateAttempt = useCallback(() => {
     if (showComplete || isCorrect || !targetAnimal) return;
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+    burstTimer.current = null;
 
-    const pts = pointsRef.current;
-    const inset = canvasSize * CANVAS_INSET_RATIO;
-    const targetBox = {
-      left: inset,
-      right: canvasSize - inset,
-      top: inset,
-      bottom: canvasSize - inset,
-      width: canvasSize - inset * 2,
-      height: canvasSize - inset * 2,
-    };
-
-    if (pts.length < MIN_POINTS) {
-      registerFailedAttempt();
-      return;
-    }
-
-    let minX = pts[0].x;
-    let maxX = pts[0].x;
-    let minY = pts[0].y;
-    let maxY = pts[0].y;
-    let length = 0;
-
-    pts.forEach((p, i) => {
-      minX = Math.min(minX, p.x);
-      maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y);
-      maxY = Math.max(maxY, p.y);
-      if (i > 0 && !p.move) {
-        const prev = pts[i - 1];
-        length += Math.hypot(p.x - prev.x, p.y - prev.y);
-      }
+    const passed = gradeTrace({
+      tracePoints: pointsRef.current,
+      letterStrokes: LETTER_PATHS[correctLetter],
+      box: targetBox,
+      canvasSize,
     });
 
-    const spanX = maxX - minX;
-    const spanY = maxY - minY;
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const driftMargin = canvasSize * CENTER_DRIFT_RATIO;
-
-    const targetDiagonal = Math.hypot(targetBox.width, targetBox.height);
-    const traceDiagonal = Math.hypot(spanX, spanY);
-    const coversEnough = traceDiagonal >= targetDiagonal * MIN_COVERAGE_RATIO;
-    const centered =
-      centerX >= targetBox.left - driftMargin &&
-      centerX <= targetBox.right + driftMargin &&
-      centerY >= targetBox.top - driftMargin &&
-      centerY <= targetBox.bottom + driftMargin;
-    const longEnough = length >= targetBox.height * MIN_PATH_LENGTH_RATIO;
-
-    if (coversEnough && centered && longEnough) {
+    if (passed) {
       handleCorrect();
     } else {
       registerFailedAttempt();
@@ -434,6 +423,8 @@ export default function TraceLetterGame({
     showComplete,
     isCorrect,
     targetAnimal,
+    correctLetter,
+    targetBox,
     canvasSize,
     handleCorrect,
     registerFailedAttempt,
@@ -463,6 +454,15 @@ export default function TraceLetterGame({
     scheduleEvaluateRef.current = scheduleEvaluate;
   }, [scheduleEvaluate]);
 
+  // Same "latest ref" reasoning as scheduleEvaluateRef, for the MAX_BURST_MS
+  // backstop - it calls evaluateAttempt directly rather than through the
+  // schedule/cancel dance above, since the whole point is to run even while
+  // strokes keep cancelling that pending evaluation.
+  const evaluateAttemptRef = useRef(evaluateAttempt);
+  useEffect(() => {
+    evaluateAttemptRef.current = evaluateAttempt;
+  }, [evaluateAttempt]);
+
   const [panResponder, setPanResponder] = useState(null);
   useEffect(() => {
     setPanResponder(
@@ -473,6 +473,15 @@ export default function TraceLetterGame({
         onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: evt => {
           if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+          // Started only on the first stroke of a burst and never reset by
+          // later ones (unlike evaluateTimer above) - see MAX_BURST_MS.
+          if (!burstTimer.current) {
+            burstTimer.current = setTimeout(() => {
+              burstTimer.current = null;
+              evaluateAttemptRef.current();
+            }, MAX_BURST_MS);
+            timers.current.push(burstTimer.current);
+          }
           const { locationX, locationY } = evt.nativeEvent;
           const next = [
             ...pointsRef.current,
@@ -626,6 +635,11 @@ export default function TraceLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
             >
+              {/* A rounded View with a background clips its children on
+                  Android regardless of `overflow`, cropping a 2nd line if
+                  this ever wraps. Keeping the rounded fill as an absolutely
+                  positioned sibling behind the Text avoids that. */}
+              <View style={styles.promptButtonBackground} />
               <Text
                 style={[
                   styles.promptText,
@@ -661,21 +675,16 @@ export default function TraceLetterGame({
               height={canvasSize}
               style={StyleSheet.absoluteFill}
             >
-              {!!correctLetter && (
-                <SvgText
-                  x={canvasSize / 2}
-                  y={canvasSize / 2 + guideFontSize * 0.35}
-                  fontSize={guideFontSize}
-                  fontWeight="bold"
-                  textAnchor="middle"
+              {!!correctLetter && LETTER_PATHS[correctLetter] && (
+                <Path
+                  d={buildGuidePath(LETTER_PATHS[correctLetter], targetBox)}
                   fill="none"
                   stroke="#FFD700"
                   strokeWidth={4}
                   strokeDasharray="12,16"
                   strokeLinecap="round"
-                >
-                  {correctLetter}
-                </SvgText>
+                  strokeLinejoin="round"
+                />
               )}
               {!!pathD && (
                 <Path
@@ -696,6 +705,7 @@ export default function TraceLetterGame({
             accessibilityRole="button"
             accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
           >
+            <View style={styles.clearButtonBackground} />
             <MaterialCommunityIcons name="eraser" size={20} color="white" />
             <Text style={styles.clearButtonText}>
               {t(currentLanguage, 'clearDrawing')}
@@ -775,6 +785,7 @@ export default function TraceLetterGame({
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
               >
+                <View style={styles.bigButtonBackground} />
                 <MaterialIcons name="replay" size={20} color="#0A3D62" />
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
@@ -788,6 +799,7 @@ export default function TraceLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'nextGame')}
@@ -800,6 +812,7 @@ export default function TraceLetterGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
@@ -828,6 +841,10 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 22,
+    // Without this, a crowded top bar (Reset + Next Game + Language) can
+    // squeeze this text to where the level number gets cut off - letting it
+    // shrink/wrap instead keeps the whole string visible.
+    flexShrink: 1,
     // Bangers clips on Android without both of these - see
     // first-letter.game.component.jsx for the full explanation.
     lineHeight: 30,
@@ -881,12 +898,21 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
-    backgroundColor: '#FFD700',
-    borderRadius: 30,
-    minHeight: LARGE_TOUCH_TARGET,
+    // Plain on purpose - the filled rounded look lives in
+    // promptButtonBackground instead. See the comment at its usage above.
     justifyContent: 'center',
+    minHeight: LARGE_TOUCH_TARGET,
     paddingHorizontal: 36,
     paddingVertical: 12,
+  },
+  promptButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
+    borderRadius: 30,
     borderWidth: 3,
     borderColor: '#ffffff',
   },
@@ -917,17 +943,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   clearButton: {
+    // Plain on purpose - see promptButton above for why the fill lives in
+    // a separate absolutely positioned sibling instead of on this View.
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     marginTop: 16,
     // Extra breathing room below, so this button doesn't crowd the
     // floating Menu button anchored near the bottom of the screen.
     marginBottom: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     minHeight: LARGE_TOUCH_TARGET,
-    justifyContent: 'center',
     paddingHorizontal: 28,
+  },
+  clearButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
@@ -998,13 +1033,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bigButton: {
+    // Plain on purpose - the filled rounded look lives in
+    // bigButtonBackground instead, for the same reason as promptButton.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  bigButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#ffffff',
@@ -1019,9 +1063,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  secondaryButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#ffffff',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#FFD700',

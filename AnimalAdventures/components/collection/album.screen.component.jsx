@@ -52,6 +52,7 @@ export default function AlbumScreen({
   const voicePlayer = useAudioPlayer(null);
   const animRefs = useRef({});
   const insets = useSafeAreaInsets();
+  const voiceTimer = useRef(null);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const columns =
@@ -74,6 +75,7 @@ export default function AlbumScreen({
     return () => {
       releasePlayer(animPlayer);
       releasePlayer(voicePlayer);
+      if (voiceTimer.current) clearTimeout(voiceTimer.current);
     };
   }, [animPlayer, voicePlayer]);
 
@@ -91,10 +93,16 @@ export default function AlbumScreen({
         }
       }
       playClip(animPlayer, animal.sound);
-      playClip(
-        voicePlayer,
-        currentLanguage === 'en' ? animal.voice : animal.spanish_voice
-      );
+      // Staggered rather than simultaneous, so the animal's sound and its
+      // spoken name don't talk over each other - same delay the Learn
+      // screen uses for the same pairing.
+      if (voiceTimer.current) clearTimeout(voiceTimer.current);
+      voiceTimer.current = setTimeout(() => {
+        playClip(
+          voicePlayer,
+          currentLanguage === 'en' ? animal.voice : animal.spanish_voice
+        );
+      }, 1000);
     },
     [metSet, animPlayer, voicePlayer, currentLanguage]
   );

@@ -470,6 +470,11 @@ export default function GuessAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
             >
+              {/* A rounded View with a background clips its children on
+                  Android regardless of `overflow`, cropping a 2nd line if
+                  this ever wraps. Keeping the rounded fill as an absolutely
+                  positioned sibling behind the Text avoids that. */}
+              <View style={styles.promptButtonBackground} />
               <Text
                 style={[
                   styles.promptText,
@@ -599,6 +604,7 @@ export default function GuessAnimalGame({
                 accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
               >
+                <View style={styles.bigButtonBackground} />
                 <MaterialIcons name="replay" size={20} color="#0A3D62" />
                 <Text style={styles.bigButtonText}>
                   {t(currentLanguage, 'restart')}
@@ -612,6 +618,7 @@ export default function GuessAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'nextGame')}
@@ -624,6 +631,7 @@ export default function GuessAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
@@ -652,6 +660,10 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 22,
+    // Without this, a crowded top bar (Reset + Next Game + Language) can
+    // squeeze this text to where the level number gets cut off - letting it
+    // shrink/wrap instead keeps the whole string visible.
+    flexShrink: 1,
     // Bangers clips on Android without both of these - see promptText below.
     lineHeight: 30,
     includeFontPadding: false,
@@ -671,12 +683,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   promptButton: {
-    backgroundColor: '#FFD700',
-    borderRadius: 30,
-    minHeight: LARGE_TOUCH_TARGET,
+    // Plain on purpose - the filled rounded look lives in
+    // promptButtonBackground instead. See the comment at its usage above.
     justifyContent: 'center',
+    minHeight: LARGE_TOUCH_TARGET,
     paddingHorizontal: 36,
     paddingVertical: 12,
+  },
+  promptButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
+    borderRadius: 30,
     borderWidth: 3,
     borderColor: '#ffffff',
   },
@@ -811,13 +832,22 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bigButton: {
+    // Plain on purpose - see promptButton above for why the fill lives in
+    // a separate absolutely positioned sibling instead of on this View.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  bigButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#ffffff',
@@ -832,9 +862,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  secondaryButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#ffffff',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#FFD700',

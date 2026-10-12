@@ -593,6 +593,7 @@ export default function MemoryAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
             >
+              <View style={styles.bigButtonBackground} />
               <MaterialIcons name="replay" size={20} color="#0A3D62" />
               <Text style={styles.bigButtonText}>
                 {t(currentLanguage, 'playAgain')}
@@ -605,6 +606,7 @@ export default function MemoryAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'nextGame')}
@@ -617,6 +619,7 @@ export default function MemoryAnimalGame({
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
             >
+              <View style={styles.secondaryButtonBackground} />
               <MaterialIcons name="home" size={20} color="#0A3D62" />
               <Text style={styles.secondaryButtonText}>
                 {t(currentLanguage, 'mainMenuFull')}
@@ -660,6 +663,7 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 18,
+    flexShrink: 1,
     lineHeight: 24,
     includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
@@ -811,13 +815,24 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bigButton: {
+    // Plain on purpose - the filled rounded look lives in
+    // bigButtonBackground instead. A rounded View with a background clips
+    // its children on Android regardless of `overflow`, which would crop a
+    // 2nd line if this ever wraps.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFD700',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  bigButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FFD700',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#ffffff',
@@ -832,9 +847,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#ffffff',
     paddingHorizontal: 22,
     paddingVertical: 12,
+  },
+  secondaryButtonBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#ffffff',
     borderRadius: 26,
     borderWidth: 3,
     borderColor: '#FFD700',
