@@ -85,6 +85,8 @@ export const STRINGS = {
     promiseNoData: 'No personal information collected',
     versionLabel: 'Version {version}',
     brandCredit: 'EliLearn Apps',
+    supportTitle: 'Support the developer',
+    donateLabel: 'Donate via PayPal',
 
     // Play time
     timeUpTitle: 'Play time is over',
@@ -125,6 +127,8 @@ export const STRINGS = {
     a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
     a11yChildAge: "Set the child's age to {label}",
+    a11yDonate:
+      "Open PayPal to send an optional donation supporting this app's development",
     a11yTraceCanvas: 'Drawing area. Trace the letter {letter} with your finger',
     a11yClearDrawing: 'Clear your drawing and try again',
     a11yNextGame: 'Play the next game, without going to the menu',
@@ -214,6 +218,8 @@ export const STRINGS = {
     promiseNoData: 'No recopilamos información personal',
     versionLabel: 'Versión {version}',
     brandCredit: 'EliLearn Apps',
+    supportTitle: 'Apoya al desarrollador',
+    donateLabel: 'Donar con PayPal',
 
     // Tiempo de juego
     timeUpTitle: 'Se acabó el tiempo de juego',
@@ -254,6 +260,8 @@ export const STRINGS = {
     a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
     a11yChildAge: 'Poner la edad del niño/a en {label}',
+    a11yDonate:
+      'Abrir PayPal para enviar una donación opcional y apoyar el desarrollo de esta app',
     a11yTraceCanvas: 'Área para dibujar. Traza la letra {letter} con el dedo',
     a11yClearDrawing: 'Borrar tu dibujo e inténtalo de nuevo',
     a11yNextGame: 'Jugar el siguiente juego, sin ir al menú',

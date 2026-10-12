@@ -1,6 +1,8 @@
 import React from 'react';
 import {
+  Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -19,19 +21,26 @@ import {
 import { BouncyButton } from '../utility/bouncy-button.component';
 
 /**
- * The five things this app does not do.
+ * The things this app does not do.
  *
  * Every one is true of the current build. They are stated in the app rather
  * than only in the store listing because the parent deciding whether to hand
- * over the phone is holding the phone, not reading Play.
+ * over the phone is holding the phone, not reading Play. "No purchases" is
+ * dropped on iOS, where this app is a paid download rather than free -
+ * stating it there would be false, not just incomplete.
  */
 const PROMISE_KEYS = [
   'promiseNoAds',
   'promiseNoAccounts',
-  'promiseNoPurchases',
+  ...(Platform.OS === 'ios' ? [] : ['promiseNoPurchases']),
   'promiseNoLinks',
   'promiseNoData',
 ];
+
+// Opens in the device browser (or the PayPal app, if installed) rather than
+// any in-app payment flow - a voluntary, parent-initiated donation link, not
+// a purchase this app sells or processes itself.
+const PAYPAL_DONATE_URL = 'https://paypal.me/samilabud';
 
 const appVersion =
   Constants?.expoConfig?.version || Constants?.manifest?.version || '';
@@ -73,6 +82,11 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
   const handleChildAge = band => {
     tapFeedback();
     setChildAgeBand(band);
+  };
+
+  const handleDonate = () => {
+    tapFeedback();
+    Linking.openURL(PAYPAL_DONATE_URL).catch(() => {});
   };
 
   const limitLabel = minutes =>
@@ -231,6 +245,28 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               ))}
             </View>
 
+            {/* Android only - the iOS build is a paid download instead, so
+                there's nothing to donate towards there. */}
+            {Platform.OS === 'android' && (
+              <>
+                <Text style={styles.sectionLabel}>
+                  {t(currentLanguage, 'supportTitle')}
+                </Text>
+                <BouncyButton
+                  onPress={handleDonate}
+                  style={styles.donateButton}
+                  accessible
+                  accessibilityRole="button"
+                  accessibilityLabel={t(currentLanguage, 'a11yDonate')}
+                >
+                  <MaterialIcons name="favorite" size={20} color="#ffffff" />
+                  <Text style={styles.donateButtonText}>
+                    {t(currentLanguage, 'donateLabel')}
+                  </Text>
+                </BouncyButton>
+              </>
+            )}
+
             <Text style={styles.version}>
               {t(currentLanguage, 'brandCredit')}
               {!!appVersion &&
@@ -348,6 +384,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#333333',
     flexShrink: 1,
+  },
+  // PayPal's own brand blue, so this reads as "leaves to PayPal" rather
+  // than looking like another in-app control.
+  donateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: MIN_TOUCH_TARGET,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: '#0070BA',
+  },
+  donateButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
   version: {
     marginTop: 24,
