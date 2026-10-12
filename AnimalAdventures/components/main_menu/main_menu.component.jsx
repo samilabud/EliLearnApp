@@ -6,6 +6,7 @@ import {
   Text,
   Animated,
   Easing,
+  Image,
   Pressable,
   ScrollView,
   useWindowDimensions,
@@ -22,14 +23,14 @@ import { LanguageToggleButton } from '../utility/language-toggle-button.componen
 
 const ICON_SIZE = { width: 90, height: 90 };
 const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
-const MASCOT_SIZE = { width: 110, height: 110 };
-const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 64 };
+// Matches the source PNG's own 100:85 aspect ratio, so it isn't stretched.
+const MASCOT_SIZE = { width: 110, height: 94 };
+const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 54 };
 
-// The same dog used in-game (animal.list's "Dog" entry) as a mascot above
-// the title - animated and background-free, unlike the dog baked into the
-// store icon artwork, and (unlike that artwork) it doesn't carry English
-// text that can't switch to Spanish.
-const DOG_MASCOT = require('../../assets/animations/animals/dog-tail-wag.json');
+// The app's own dog sublogo mark as a mascot above the title - unlike the
+// dog baked into the store icon artwork, it has no background and doesn't
+// carry English text that can't switch to Spanish.
+const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog 1.png');
 
 // The three cards differ only by icon and copy, so they are described once
 // here and rendered in a loop. Keeps their accessibility wiring identical.
@@ -251,11 +252,9 @@ function MainMenu({
                 ],
               }}
             >
-              <LottieView
-                autoPlay
-                loop
-                resizeMode="contain"
+              <Image
                 source={DOG_MASCOT}
+                resizeMode="contain"
                 style={isLandscape ? MASCOT_SIZE_LANDSCAPE : MASCOT_SIZE}
               />
               <Text
