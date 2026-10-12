@@ -30,7 +30,7 @@ const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 54 };
 // The app's own dog sublogo mark as a mascot above the title - unlike the
 // dog baked into the store icon artwork, it has no background and doesn't
 // carry English text that can't switch to Spanish.
-const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog 1.png');
+const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog-1.png');
 
 // The three cards differ only by icon and copy, so they are described once
 // here and rendered in a loop. Keeps their accessibility wiring identical.
