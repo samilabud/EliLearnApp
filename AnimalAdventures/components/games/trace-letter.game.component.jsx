@@ -64,7 +64,7 @@ const CANVAS_INSET_RATIO = 0.18;
 // letter traced mostly top-to-bottom (like "I") isn't failed for having
 // little horizontal spread - this checks "did a preschooler drag a finger
 // across roughly the right space", not stroke accuracy.
-const MIN_COVERAGE_RATIO = 0.55;
+const MIN_COVERAGE_RATIO = 0.62;
 // How far outside the target box the traced shape's center may drift and
 // still count - catches a scribble that covers enough area but sits in a
 // corner rather than over the letter.
@@ -79,7 +79,7 @@ const MIN_POINTS = 6;
 // stroke at the left edge, another at the right, nothing between) that
 // would otherwise satisfy the coverage/centered/length checks above
 // without resembling the letter at all.
-const MAX_GAP_RATIO = 0.4;
+const MAX_GAP_RATIO = 0.32;
 
 // A lifted finger ends the current stroke; this is how long to wait before
 // grading the attempt, so a child can draw a multi-stroke letter (like "A")
@@ -93,6 +93,17 @@ const EVALUATE_DELAY_MS = 700;
 // does the canvas actually clear and the child hear "try again". Matches
 // the hint-after-N-tries threshold used by the other letter games.
 const MAX_ATTEMPTS_BEFORE_CLEAR = 3;
+
+// A new stroke starting less than EVALUATE_DELAY_MS after the last one's
+// release cancels that pending evaluation (see onPanResponderGrant), so a
+// child mid-letter doesn't get graded between strokes. Fast, continuous
+// scribbling can keep doing that indefinitely though, with no gap ever
+// long enough for the debounced evaluation to fire - nothing ever gets
+// graded or cleared, no matter how many strokes pile up. This is a backstop
+// independent of that debounce: a timer started on the first stroke of a
+// burst and never reset by later ones, forcing an evaluation this long
+// after a burst starts even if the child never once pauses.
+const MAX_BURST_MS = 2500;
 
 export default function TraceLetterGame({
   currentLanguage,
@@ -121,6 +132,8 @@ export default function TraceLetterGame({
   const [promptPulse] = useState(new Animated.Value(0));
 
   const pointsRef = useRef([]);
+  // Backstop for MAX_BURST_MS - see its comment above.
+  const burstTimer = useRef(null);
   const promptPlayer = useAudioPlayer(null);
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
@@ -243,6 +256,8 @@ export default function TraceLetterGame({
   const clearCanvas = useCallback(() => {
     pointsRef.current = [];
     setPoints([]);
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+    burstTimer.current = null;
     // A fresh canvas means a fresh set of checkpoints before it clears
     // again - covers a new round, a language switch, the 3rd failed
     // checkpoint, and the child's own manual Clear tap.
@@ -399,6 +414,8 @@ export default function TraceLetterGame({
 
   const evaluateAttempt = useCallback(() => {
     if (showComplete || isCorrect || !targetAnimal) return;
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+    burstTimer.current = null;
 
     const pts = pointsRef.current;
     const inset = canvasSize * CANVAS_INSET_RATIO;
@@ -508,6 +525,15 @@ export default function TraceLetterGame({
     scheduleEvaluateRef.current = scheduleEvaluate;
   }, [scheduleEvaluate]);
 
+  // Same "latest ref" reasoning as scheduleEvaluateRef, for the MAX_BURST_MS
+  // backstop - it calls evaluateAttempt directly rather than through the
+  // schedule/cancel dance above, since the whole point is to run even while
+  // strokes keep cancelling that pending evaluation.
+  const evaluateAttemptRef = useRef(evaluateAttempt);
+  useEffect(() => {
+    evaluateAttemptRef.current = evaluateAttempt;
+  }, [evaluateAttempt]);
+
   const [panResponder, setPanResponder] = useState(null);
   useEffect(() => {
     setPanResponder(
@@ -518,6 +544,15 @@ export default function TraceLetterGame({
         onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: evt => {
           if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+          // Started only on the first stroke of a burst and never reset by
+          // later ones (unlike evaluateTimer above) - see MAX_BURST_MS.
+          if (!burstTimer.current) {
+            burstTimer.current = setTimeout(() => {
+              burstTimer.current = null;
+              evaluateAttemptRef.current();
+            }, MAX_BURST_MS);
+            timers.current.push(burstTimer.current);
+          }
           const { locationX, locationY } = evt.nativeEvent;
           const next = [
             ...pointsRef.current,
