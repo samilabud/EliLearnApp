@@ -390,21 +390,28 @@ export default function GuessAnimalGame({
 
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
-    if (!showComplete) {
+    if (showComplete) {
+      // Finishing every level is worth celebrating in the moment, but it
+      // should not be what a child finds waiting for them next time they
+      // open this game - only an in-progress level is worth resuming.
+      resetGuess();
+    } else {
       track(EVENTS.GAME_ABANDONED, { game: 'guess', level, wrongCount });
     }
     onBackToMenu();
-  }, [onBackToMenu, showComplete, level, wrongCount]);
+  }, [onBackToMenu, showComplete, level, wrongCount, resetGuess]);
 
   useBackToMenu(handleBackToMenu);
 
   const handleNextGame = useCallback(() => {
     tapFeedback();
-    if (!showComplete) {
+    if (showComplete) {
+      resetGuess();
+    } else {
       track(EVENTS.GAME_ABANDONED, { game: 'guess', level, wrongCount });
     }
     onNextGame();
-  }, [onNextGame, showComplete, level, wrongCount]);
+  }, [onNextGame, showComplete, level, wrongCount, resetGuess]);
 
   const handlePlayPrompt = useCallback(() => {
     tapFeedback();
@@ -436,6 +443,11 @@ export default function GuessAnimalGame({
         <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
           <Text
             style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
+            // See the same fix in trace-letter.game.component.jsx - Android's
+            // default line-breaking has mismeasured this custom font often
+            // enough to clip the tail of the string.
+            textBreakStrategy="simple"
+            collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
               level,
@@ -462,7 +474,10 @@ export default function GuessAnimalGame({
 
         {/* Prompt */}
         <View style={styles.promptContainer}>
-          <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+          <Animated.View
+            renderToHardwareTextureAndroid
+            style={{ transform: [{ scale: promptScale }] }}
+          >
             <BouncyButton
               onPress={handlePlayPrompt}
               style={styles.promptButton}
@@ -596,7 +611,10 @@ export default function GuessAnimalGame({
             origin={{ x: 0, y: 0 }}
           />
           <View style={styles.completionActions}>
-            <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+            <Animated.View
+              renderToHardwareTextureAndroid
+              style={{ transform: [{ scale: promptScale }] }}
+            >
               <BouncyButton
                 onPress={handleReset}
                 style={styles.bigButton}

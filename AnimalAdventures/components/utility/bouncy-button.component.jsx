@@ -45,7 +45,14 @@ export function BouncyButton({
       onPressOut={handlePressOut}
       {...rest}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }]}>
+      {/* Android can clip/truncate a child Text (showing only its first
+          word) while this view's transform is actively animating - a GPU
+          layer-flattening glitch, not a layout bug. Rendering this view to
+          its own hardware texture avoids it; no-op on iOS. */}
+      <Animated.View
+        renderToHardwareTextureAndroid
+        style={[style, { transform: [{ scale }] }]}
+      >
         {children}
       </Animated.View>
     </Pressable>

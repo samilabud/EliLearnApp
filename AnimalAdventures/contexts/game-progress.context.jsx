@@ -148,8 +148,12 @@ export const faceDownUnmatched = cards =>
  * Losing is not a state any game can be in any more - none of them end on a
  * mistake - so completion is the only thing to clear.
  *
- * This runs only at hydration, so within a session leaving to the menu and
- * returning still shows the overlay the child left behind.
+ * Each game's own Menu/Next Game handlers already clear their completed
+ * state the moment a child navigates away from it (a finished game should
+ * only resume on a level, never on its own victory screen - see
+ * handleBackToMenu in e.g. trace-letter.game.component.jsx), so by the time
+ * this runs a lingering completed state only means the app was killed (or
+ * crashed) while still sitting on that screen, never a normal exit.
  */
 const clearTerminalStates = (memory, guess, letter, trace) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,

@@ -23,7 +23,7 @@ export function LanguageToggleButton({ currentLanguage, onToggle, style }) {
       accessibilityRole="button"
       accessibilityLabel={t(currentLanguage, 'a11yLanguageToggle')}
     >
-      <MaterialIcons name="translate" size={20} color="white" />
+      <MaterialIcons name="translate" size={20} color="#0A3D62" />
       <Text style={styles.text}>{currentLanguage.toUpperCase()}</Text>
     </BouncyButton>
   );
@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     gap: 6,
     minHeight: MIN_TOUCH_TARGET,
     minWidth: LARGE_TOUCH_TARGET,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 25,
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#0A3D62',
   },
 });
 

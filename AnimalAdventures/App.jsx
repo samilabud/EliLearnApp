@@ -41,6 +41,7 @@ function AppContent() {
     timeUp,
     grantMoreTime,
     ambientEffectsEnabled,
+    menuScrollAnimationsEnabled,
   } = useSettings();
 
   useEffect(() => {
@@ -130,6 +131,7 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onOpenParents={() => setGateVisible(true)}
         ambientEnabled={ambientEffectsEnabled}
+        scrollAnimationsEnabled={menuScrollAnimationsEnabled}
       />
     );
   } else if (currentMode === 'learn') {
