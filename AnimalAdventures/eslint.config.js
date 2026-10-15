@@ -25,6 +25,14 @@ module.exports = [
       // from an accidental cascading render. Demoted to a warning so CI stays
       // green; worth cleaning up as a separate refactor.
       'react-hooks/set-state-in-effect': 'warn',
+
+      // Same situation, surfaced by a later v7 release: this flags ordinary
+      // `someRef.current = ...` assignments inside a useCallback (e.g. a
+      // debounce timer ref in trace-letter.game.component.jsx) as mutating a
+      // "hook argument", even though a ref's whole purpose is to be mutated
+      // after the hook call. A pre-existing, idiomatic pattern, not a bug -
+      // demoted to a warning for the same reason as above.
+      'react-hooks/immutability': 'warn',
     },
   },
   {
