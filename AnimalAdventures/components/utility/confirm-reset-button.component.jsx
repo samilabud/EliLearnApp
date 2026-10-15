@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { BouncyButton } from './bouncy-button.component';
@@ -12,11 +13,11 @@ const CONFIRM_WINDOW_MS = 2500;
  *
  * It sits in the top bar, right where a child's thumb rests during play, and
  * a single accidental tap used to wipe the level instantly. The first tap
- * now only arms it (the label flips to a question); the level only clears on
- * a second tap that follows within a few seconds, after which it quietly
- * disarms itself again. Deliberately not used for the "Play Again" button on
- * the completion screen - that tap is already a considered choice, not an
- * accidental one.
+ * now only arms it (the background flips to yellow as the only cue, since
+ * this is icon-only); the level only clears on a second tap that follows
+ * within a few seconds, after which it quietly disarms itself again.
+ * Deliberately not used for the "Play Again" button on the completion
+ * screen - that tap is already a considered choice, not an accidental one.
  */
 export function ConfirmResetButton({ currentLanguage, onConfirm, style }) {
   const [confirming, setConfirming] = useState(false);
@@ -52,39 +53,26 @@ export function ConfirmResetButton({ currentLanguage, onConfirm, style }) {
         confirming ? 'a11yResetConfirm' : 'a11yResetButton'
       )}
     >
-      <Text style={[styles.text, confirming && styles.textConfirming]}>
-        {t(currentLanguage, confirming ? 'resetConfirm' : 'reset')}
-      </Text>
+      <MaterialIcons name="replay" size={22} color="#0A3D62" />
     </BouncyButton>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    minHeight: MIN_TOUCH_TARGET,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: MIN_TOUCH_TARGET,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 6,
+    borderRadius: 25,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
   buttonConfirming: {
     backgroundColor: '#FFD700',
     borderColor: '#ffffff',
-  },
-  text: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
-  },
-  textConfirming: {
-    color: '#0A3D62',
-    textShadowColor: 'transparent',
   },
 });
 

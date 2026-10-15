@@ -84,6 +84,7 @@ function MainMenu({
   setCurrentLanguage,
   onOpenParents,
   ambientEnabled,
+  scrollAnimationsEnabled,
 }) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
   // Entrance scale for the title (bounces in) and the idle "breathe" loop
@@ -132,11 +133,38 @@ function MainMenu({
     }).start();
   }, [languageVisible, languageOpacity]);
 
+  // Pauses the Lottie icons while the screen is actively scrolling -
+  // smoother on older phones with six animated cards on screen. A parent can
+  // turn this off (see ParentArea) to keep them animating always.
+  //
+  // Driven off onScroll itself (debounced) rather than onScrollBeginDrag/
+  // onScrollEndDrag/onMomentumScrollBegin/onMomentumScrollEnd: those fire in
+  // matched pairs only when a gesture completes cleanly, and a new touch
+  // grabbing the list mid-fling can interrupt momentum without
+  // onMomentumScrollEnd ever firing - isScrolling got stuck true forever,
+  // freezing these animations permanently after a single scroll. onScroll
+  // itself can't get stuck unpaired the same way: it just stops arriving
+  // once the list is actually still, which the timeout below detects.
+  const [isScrolling, setIsScrolling] = React.useState(false);
+  const pauseAnimations = isScrolling && !scrollAnimationsEnabled;
+  const scrollIdleTimer = useRef(null);
+  useEffect(() => {
+    return () => {
+      if (scrollIdleTimer.current) clearTimeout(scrollIdleTimer.current);
+    };
+  }, []);
+
   const handleScroll = e => {
     if (!modesY.current) return;
     const y = e.nativeEvent.contentOffset.y;
     setLanguageVisible(y < modesY.current - 120);
+
+    setIsScrolling(true);
+    if (scrollIdleTimer.current) clearTimeout(scrollIdleTimer.current);
+    scrollIdleTimer.current = setTimeout(() => setIsScrolling(false), 150);
   };
+
+  const lottieRefs = useRef({});
 
   // The launch splash now lives in App, so this screen just fades itself in,
   // while the title bounces in and the subtitle slides up under it - a
@@ -202,6 +230,28 @@ function MainMenu({
       ])
     ).start();
   }, [fadeAnim, titleScale, titleBreathe, subtitleSlide, glyphWiggle]);
+
+  // Only the Lottie icons are paused while scrolling - unlike Lottie's own
+  // pause()/resume(), which are built for exactly this, stopping and
+  // restarting a native-driven Animated.loop (the title breathe and glyph
+  // wiggle below) by calling .start() on the same composite object again
+  // turned out to be unreliable on Android: restarting it that way left the
+  // glyph icons (letter/trace/album) never visibly animating again, iPhone
+  // was fine. Those two are cheap, small-amplitude, native-driver
+  // animations anyway - not worth the cross-platform risk to pause - so they
+  // are left running continuously and only the Lottie icons react here.
+  const isFirstPauseEffect = useRef(true);
+  useEffect(() => {
+    if (isFirstPauseEffect.current) {
+      isFirstPauseEffect.current = false;
+      return;
+    }
+    if (pauseAnimations) {
+      Object.values(lottieRefs.current).forEach(ref => ref?.pause());
+    } else {
+      Object.values(lottieRefs.current).forEach(ref => ref?.resume());
+    }
+  }, [pauseAnimations]);
 
   const handleModeSelect = mode => {
     selectFeedback();
@@ -321,6 +371,9 @@ function MainMenu({
                       </Animated.View>
                     ) : (
                       <LottieView
+                        ref={el => {
+                          lottieRefs.current[mode.key] = el;
+                        }}
                         source={mode.icon}
                         autoPlay
                         loop

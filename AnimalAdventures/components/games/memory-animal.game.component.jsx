@@ -397,7 +397,12 @@ export default function MemoryAnimalGame({
 
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
-    if (!gameComplete) {
+    if (gameComplete) {
+      // Finishing every level is worth celebrating in the moment, but it
+      // should not be what a child finds waiting for them next time they
+      // open this game - only an in-progress level is worth resuming.
+      resetMemory();
+    } else {
       track(EVENTS.GAME_ABANDONED, {
         game: 'memory',
         level,
@@ -406,13 +411,22 @@ export default function MemoryAnimalGame({
       });
     }
     onBackToMenu();
-  }, [onBackToMenu, gameComplete, level, moves, matchedPairs.length]);
+  }, [
+    onBackToMenu,
+    gameComplete,
+    level,
+    moves,
+    matchedPairs.length,
+    resetMemory,
+  ]);
 
   useBackToMenu(handleBackToMenu);
 
   const handleNextGame = useCallback(() => {
     tapFeedback();
-    if (!gameComplete) {
+    if (gameComplete) {
+      resetMemory();
+    } else {
       track(EVENTS.GAME_ABANDONED, {
         game: 'memory',
         level,
@@ -421,7 +435,14 @@ export default function MemoryAnimalGame({
       });
     }
     onNextGame();
-  }, [onNextGame, gameComplete, level, moves, matchedPairs.length]);
+  }, [
+    onNextGame,
+    gameComplete,
+    level,
+    moves,
+    matchedPairs.length,
+    resetMemory,
+  ]);
 
   if (!fontsLoaded) return null;
 

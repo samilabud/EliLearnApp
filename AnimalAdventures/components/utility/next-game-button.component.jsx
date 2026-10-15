@@ -24,7 +24,7 @@ export function NextGameButton({ currentLanguage, onPress, style }) {
       accessibilityRole="button"
       accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
     >
-      <MaterialIcons name="skip-next" size={22} color="white" />
+      <MaterialIcons name="skip-next" size={22} color="#0A3D62" />
     </BouncyButton>
   );
 }
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     // counter next to it in a crowded top bar.
     minHeight: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 6,
     borderRadius: 25,
     borderWidth: 2,

@@ -20,8 +20,6 @@ export const STRINGS = {
     back: 'Back',
     mainMenu: 'Menu',
     mainMenuFull: 'Main Menu',
-    reset: 'Reset',
-    resetConfirm: 'Tap again?',
     level: 'Level',
     nextGame: 'Next Game',
 
@@ -70,6 +68,8 @@ export const STRINGS = {
     off: 'Off',
     ambientEffectsLabel: 'Floating bubbles',
     ambientEffectsHint: 'Turn off if the app feels slow on this device',
+    menuScrollAnimationsLabel: 'Animate menu while scrolling',
+    menuScrollAnimationsHint: 'Off by default for smoother scrolling',
     playLimitLabel: 'Daily play limit',
     noLimit: 'No limit',
     minutesShort: '{count} min',
@@ -125,6 +125,7 @@ export const STRINGS = {
     a11yGateDelete: 'Delete the last number',
     a11ySoundToggle: 'Turn the sound {state}',
     a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
+    a11yMenuScrollAnimationsToggle: 'Turn animating the menu while scrolling {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
     a11yChildAge: "Set the child's age to {label}",
     a11yDonate:
@@ -153,8 +154,6 @@ export const STRINGS = {
     back: 'Atrás',
     mainMenu: 'Menú',
     mainMenuFull: 'Menú Principal',
-    reset: 'Reiniciar',
-    resetConfirm: '¿Otra vez?',
     level: 'Nivel',
     nextGame: 'Siguiente Juego',
 
@@ -203,6 +202,8 @@ export const STRINGS = {
     off: 'Desactivado',
     ambientEffectsLabel: 'Burbujas flotantes',
     ambientEffectsHint: 'Desactívalas si la app va lenta en este dispositivo',
+    menuScrollAnimationsLabel: 'Animar el menú al desplazarse',
+    menuScrollAnimationsHint: 'Desactivado por defecto para un desplazamiento más fluido',
     playLimitLabel: 'Límite diario',
     noLimit: 'Sin límite',
     minutesShort: '{count} min',
@@ -258,6 +259,8 @@ export const STRINGS = {
     a11yGateDelete: 'Borrar el último número',
     a11ySoundToggle: 'Poner el sonido en {state}',
     a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
+    a11yMenuScrollAnimationsToggle:
+      'Poner animar el menú al desplazarse en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
     a11yChildAge: 'Poner la edad del niño/a en {label}',
     a11yDonate:

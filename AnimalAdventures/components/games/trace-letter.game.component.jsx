@@ -83,7 +83,22 @@ const MAX_ATTEMPTS_BEFORE_CLEAR = 3;
 // independent of that debounce: a timer started on the first stroke of a
 // burst and never reset by later ones, forcing an evaluation this long
 // after a burst starts even if the child never once pauses.
-const MAX_BURST_MS = 2500;
+// Needs to be generous: gradeTrace only requires ~65% coverage to pass (see
+// trace-grading.js), so firing this mid-stroke, while a finger is still down
+// drawing a letter like "P" in one continuous motion, can already read as
+// "correct" before the loop is actually closed - ending the round out from
+// under a child who was still mid-letter, not scribbling.
+const MAX_BURST_MS = 6000;
+
+// A hard ceiling on the whole attempt, independent of EVALUATE_DELAY_MS and
+// MAX_BURST_MS above: those two still let an incomplete multi-stroke letter
+// sit ungraded indefinitely as long as each checkpoint quietly asks for "one
+// more stroke" (see MAX_ATTEMPTS_BEFORE_CLEAR). This forces a definitive
+// pass/fail the moment this much time has passed since the child's first
+// touch on a fresh attempt, bypassing that leniency so nothing is ever left
+// without a verdict. 4s cut off multi-stroke letters (e.g. "P"'s loop)
+// mid-draw, so this is deliberately generous rather than a tight deadline.
+const FORCE_EVALUATE_MS = 8000;
 
 export default function TraceLetterGame({
   currentLanguage,
@@ -133,6 +148,8 @@ export default function TraceLetterGame({
   const pointsRef = useRef([]);
   // Backstop for MAX_BURST_MS - see its comment above.
   const burstTimer = useRef(null);
+  // Backstop for FORCE_EVALUATE_MS - see its comment above.
+  const forceEvaluateTimer = useRef(null);
   const promptPlayer = useAudioPlayer(null);
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
@@ -257,6 +274,8 @@ export default function TraceLetterGame({
     setPoints([]);
     if (burstTimer.current) clearTimeout(burstTimer.current);
     burstTimer.current = null;
+    if (forceEvaluateTimer.current) clearTimeout(forceEvaluateTimer.current);
+    forceEvaluateTimer.current = null;
     // A fresh canvas means a fresh set of checkpoints before it clears
     // again - covers a new round, a language switch, the 3rd failed
     // checkpoint, and the child's own manual Clear tap.
@@ -440,6 +459,40 @@ export default function TraceLetterGame({
     registerFailedAttempt,
   ]);
 
+  // FORCE_EVALUATE_MS backstop - unlike evaluateAttempt above, a fail here
+  // goes straight to handleIncorrect rather than registerFailedAttempt: this
+  // only fires once the attempt has already run this long without a verdict,
+  // so the MAX_ATTEMPTS_BEFORE_CLEAR leniency for an in-progress multi-stroke
+  // letter no longer applies - the child gets a definitive answer now.
+  const forceEvaluateAttempt = useCallback(() => {
+    forceEvaluateTimer.current = null;
+    if (showComplete || isCorrectRef.current || !targetAnimal) return;
+    if (burstTimer.current) clearTimeout(burstTimer.current);
+    burstTimer.current = null;
+    if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+
+    const passed = gradeTrace({
+      tracePoints: pointsRef.current,
+      letterStrokes: LETTER_PATHS[correctLetter],
+      box: targetBox,
+      canvasSize,
+    });
+
+    if (passed) {
+      handleCorrect();
+    } else {
+      handleIncorrect();
+    }
+  }, [
+    showComplete,
+    targetAnimal,
+    correctLetter,
+    targetBox,
+    canvasSize,
+    handleCorrect,
+    handleIncorrect,
+  ]);
+
   const evaluateTimer = useRef(null);
   const scheduleEvaluate = useCallback(() => {
     if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
@@ -473,6 +526,12 @@ export default function TraceLetterGame({
     evaluateAttemptRef.current = evaluateAttempt;
   }, [evaluateAttempt]);
 
+  // Same "latest ref" reasoning again, for the FORCE_EVALUATE_MS backstop.
+  const forceEvaluateAttemptRef = useRef(forceEvaluateAttempt);
+  useEffect(() => {
+    forceEvaluateAttemptRef.current = forceEvaluateAttempt;
+  }, [forceEvaluateAttempt]);
+
   // The canvas sits inside a ScrollView. On iOS, the ScrollView's own
   // native pan gesture can still win a touch away from the PanResponder
   // mid-stroke even with capture set below - it shows up as the whole
@@ -501,6 +560,15 @@ export default function TraceLetterGame({
               evaluateAttemptRef.current();
             }, MAX_BURST_MS);
             timers.current.push(burstTimer.current);
+          }
+          // Only armed on the very first touch of a fresh attempt (an empty
+          // canvas) and, unlike burstTimer, never cleared by a normal
+          // evaluateAttempt call - see FORCE_EVALUATE_MS.
+          if (pointsRef.current.length === 0 && !forceEvaluateTimer.current) {
+            forceEvaluateTimer.current = setTimeout(() => {
+              forceEvaluateAttemptRef.current();
+            }, FORCE_EVALUATE_MS);
+            timers.current.push(forceEvaluateTimer.current);
           }
           const { locationX, locationY } = evt.nativeEvent;
           const next = [
@@ -553,21 +621,28 @@ export default function TraceLetterGame({
 
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
-    if (!showComplete) {
+    if (showComplete) {
+      // Finishing every level is worth celebrating in the moment, but it
+      // should not be what a child finds waiting for them next time they
+      // open this game - only an in-progress level is worth resuming.
+      resetTrace();
+    } else {
       track(EVENTS.GAME_ABANDONED, { game: 'trace', level });
     }
     onBackToMenu();
-  }, [onBackToMenu, showComplete, level]);
+  }, [onBackToMenu, showComplete, level, resetTrace]);
 
   useBackToMenu(handleBackToMenu);
 
   const handleNextGame = useCallback(() => {
     tapFeedback();
-    if (!showComplete) {
+    if (showComplete) {
+      resetTrace();
+    } else {
       track(EVENTS.GAME_ABANDONED, { game: 'trace', level });
     }
     onNextGame();
-  }, [onNextGame, showComplete, level]);
+  }, [onNextGame, showComplete, level, resetTrace]);
 
   const handlePlayPrompt = useCallback(() => {
     tapFeedback();
@@ -579,6 +654,10 @@ export default function TraceLetterGame({
     inputRange: [0, 1],
     outputRange: [1, 1.06],
   });
+
+  // Drives the Clear/Menu swap at the bottom of the canvas - see the comment
+  // there for why they're mutually exclusive rather than both shown.
+  const hasTrace = points.length > 0;
 
   const pathD = points.reduce(
     (acc, p, i) =>
@@ -606,6 +685,14 @@ export default function TraceLetterGame({
         <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
           <Text
             style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
+            // Android's default "highQuality" line-breaking has mismeasured
+            // this custom font often enough to clip the tail of the string
+            // (just "NIVEL" with the number gone) - "simple" measures more
+            // literally and doesn't. collapsable={false} keeps Android from
+            // flattening this Text into its parent, another path to the same
+            // glitch. Same root cause as the "ESCUCHAR..." button fix.
+            textBreakStrategy="simple"
+            collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
               level,
@@ -651,7 +738,10 @@ export default function TraceLetterGame({
                 : targetAnimal.spanish_name}
             </Text>
           )}
-          <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+          <Animated.View
+            renderToHardwareTextureAndroid
+            style={{ transform: [{ scale: promptScale }] }}
+          >
             <BouncyButton
               onPress={handlePlayPrompt}
               style={styles.promptButton}
@@ -722,23 +812,28 @@ export default function TraceLetterGame({
               )}
             </Svg>
           </View>
-          <BouncyButton
-            onPress={handleClear}
-            style={styles.clearButton}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
-          >
-            <View style={styles.clearButtonBackground} />
-            <MaterialCommunityIcons name="eraser" size={20} color="white" />
-            <Text style={styles.clearButtonText}>
-              {t(currentLanguage, 'clearDrawing')}
-            </Text>
-          </BouncyButton>
+          {hasTrace && (
+            <BouncyButton
+              onPress={handleClear}
+              style={styles.clearButton}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
+            >
+              <View style={styles.clearButtonBackground} />
+              <MaterialCommunityIcons name="eraser" size={20} color="#0A3D62" />
+              <Text style={styles.clearButtonText}>
+                {t(currentLanguage, 'clearDrawing')}
+              </Text>
+            </BouncyButton>
+          )}
         </View>
       </ScrollView>
 
-      {!showComplete && (
+      {/* Mutually exclusive with the Clear button above: once there's a
+          trace on the canvas, Clear is the relevant action and Menu would
+          just be an easy way to accidentally abandon a half-drawn letter. */}
+      {!showComplete && !hasTrace && (
         <BackToMenuButton
           currentLanguage={currentLanguage}
           onPress={handleBackToMenu}
@@ -801,7 +896,10 @@ export default function TraceLetterGame({
             origin={{ x: 0, y: 0 }}
           />
           <View style={styles.completionActions}>
-            <Animated.View style={{ transform: [{ scale: promptScale }] }}>
+            <Animated.View
+              renderToHardwareTextureAndroid
+              style={{ transform: [{ scale: promptScale }] }}
+            >
               <BouncyButton
                 onPress={handleReset}
                 style={styles.bigButton}
@@ -986,18 +1084,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#ffffff',
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
   clearButtonText: {
-    color: 'white',
+    color: '#0A3D62',
     fontWeight: 'bold',
     fontSize: 18,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   feedbackOverlay: {
     position: 'absolute',
