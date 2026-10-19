@@ -9,6 +9,7 @@ import GuessAnimalGame from './components/games/guess-animal.game.component.jsx'
 import FirstLetterGame from './components/games/first-letter.game.component.jsx';
 import TraceLetterGame from './components/games/trace-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
+import FindAnimalGame from './components/games/find-animal.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
 import ParentArea from './components/parents/parent-area.component.jsx';
@@ -177,6 +178,16 @@ function AppContent() {
   } else if (currentMode === 'memory') {
     content = (
       <MemoryAnimalGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
+        ambientEnabled={ambientEffectsEnabled}
+      />
+    );
+  } else if (currentMode === 'findAnimal') {
+    content = (
+      <FindAnimalGame
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}

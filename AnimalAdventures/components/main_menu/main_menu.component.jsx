@@ -68,6 +68,14 @@ const MODES = [
     titleKey: 'modeMemoryTitle',
     descriptionKey: 'modeMemoryDescription',
   },
+  // No Lottie icon of its own yet either - 'search' reads clearly as "find"
+  // without colliding with the glyphs already used above.
+  {
+    key: 'findAnimal',
+    glyph: 'search',
+    titleKey: 'modeFindAnimalTitle',
+    descriptionKey: 'modeFindAnimalDescription',
+  },
   // The album ships no Lottie of its own, so it uses a glyph at the same size
   // as the other icons rather than borrowing an animal's animation.
   {

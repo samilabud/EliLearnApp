@@ -6,4 +6,11 @@
  * This is the sequence the "Next Game" button steps through from any game
  * screen, wrapping back to the start after the last one.
  */
-export const GAME_ORDER = ['learn', 'guess', 'letter', 'trace', 'memory'];
+export const GAME_ORDER = [
+  'learn',
+  'guess',
+  'letter',
+  'trace',
+  'memory',
+  'findAnimal',
+];

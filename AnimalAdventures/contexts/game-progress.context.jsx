@@ -71,6 +71,17 @@ const DEFAULT_TRACE = {
   usedTargetIds: [],
 };
 
+const DEFAULT_FINDANIMAL = {
+  level: 1,
+  targetId: null,
+  optionIds: [],
+  wrongCount: 0,
+  showComplete: false,
+  // Animal ids already asked as the target this match, so the same animal
+  // is not asked about twice before every animal has had a turn.
+  usedTargetIds: [],
+};
+
 /**
  * Animals the child has met, by id.
  *
@@ -118,6 +129,12 @@ const traceIsUsable = trace => {
   return true;
 };
 
+const findAnimalIsUsable = findAnimal => {
+  if (!findAnimal) return false;
+  if (findAnimal.targetId && !validIds.has(findAnimal.targetId)) return false;
+  return (findAnimal.optionIds || []).every(id => validIds.has(id));
+};
+
 /**
  * Cards left face up by a comparison that never resolved.
  *
@@ -155,11 +172,12 @@ export const faceDownUnmatched = cards =>
  * this runs a lingering completed state only means the app was killed (or
  * crashed) while still sitting on that screen, never a normal exit.
  */
-const clearTerminalStates = (memory, guess, letter, trace) => ({
+const clearTerminalStates = (memory, guess, letter, trace, findAnimal) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,
   guess: guess.showComplete ? DEFAULT_GUESS : guess,
   letter: letter.showComplete ? DEFAULT_LETTER : letter,
   trace: trace.showComplete ? DEFAULT_TRACE : trace,
+  findAnimal: findAnimal.showComplete ? DEFAULT_FINDANIMAL : findAnimal,
 });
 
 /**
@@ -183,9 +201,10 @@ export function GameProgressProvider({ children }) {
   const [guess, setGuessState] = useState(DEFAULT_GUESS);
   const [letter, setLetterState] = useState(DEFAULT_LETTER);
   const [trace, setTraceState] = useState(DEFAULT_TRACE);
+  const [findAnimal, setFindAnimalState] = useState(DEFAULT_FINDANIMAL);
   const [met, setMet] = useState(DEFAULT_MET);
   const persistTimer = useRef(null);
-  const latest = useRef({ memory, guess, letter, trace });
+  const latest = useRef({ memory, guess, letter, trace, findAnimal });
 
   useEffect(() => {
     let cancelled = false;
@@ -207,12 +226,16 @@ export function GameProgressProvider({ children }) {
             : DEFAULT_LETTER,
           traceIsUsable(stored.trace)
             ? { ...DEFAULT_TRACE, ...stored.trace }
-            : DEFAULT_TRACE
+            : DEFAULT_TRACE,
+          findAnimalIsUsable(stored.findAnimal)
+            ? { ...DEFAULT_FINDANIMAL, ...stored.findAnimal }
+            : DEFAULT_FINDANIMAL
         );
         setMemoryState(restored.memory);
         setGuessState(restored.guess);
         setLetterState(restored.letter);
         setTraceState(restored.trace);
+        setFindAnimalState(restored.findAnimal);
         if (Array.isArray(stored.met)) {
           setMet(stored.met.filter(id => validIds.has(id)));
         }
@@ -226,7 +249,7 @@ export function GameProgressProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    latest.current = { memory, guess, letter, trace, met, hydrated };
+    latest.current = { memory, guess, letter, trace, findAnimal, met, hydrated };
     // Nothing is written until the stored value has been read, otherwise the
     // initial empty state would overwrite real progress during startup.
     if (!hydrated) return;
@@ -239,6 +262,7 @@ export function GameProgressProvider({ children }) {
         guess,
         letter,
         trace,
+        findAnimal,
         met,
       });
     }, PERSIST_DEBOUNCE_MS);
@@ -246,7 +270,7 @@ export function GameProgressProvider({ children }) {
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
     };
-  }, [memory, guess, letter, trace, met, hydrated]);
+  }, [memory, guess, letter, trace, findAnimal, met, hydrated]);
 
   // Flush on teardown so a fast exit cannot outrun the debounce. Guarded on
   // `hydrated`: a teardown that happens while storage is still being read must
@@ -258,6 +282,7 @@ export function GameProgressProvider({ children }) {
         guess: g,
         letter: l,
         trace: tr,
+        findAnimal: fa,
         met: k,
         hydrated: isHydrated,
       } = latest.current;
@@ -268,6 +293,7 @@ export function GameProgressProvider({ children }) {
         guess: g,
         letter: l,
         trace: tr,
+        findAnimal: fa,
         met: k,
       });
     };
@@ -301,6 +327,13 @@ export function GameProgressProvider({ children }) {
     }));
   }, []);
 
+  const updateFindAnimal = useCallback(patch => {
+    setFindAnimalState(prev => ({
+      ...prev,
+      ...(typeof patch === 'function' ? patch(prev) : patch),
+    }));
+  }, []);
+
   /**
    * Record that a child has met an animal. Idempotent, and never undone -
    * resetting a game must not take an animal back out of the album.
@@ -315,6 +348,10 @@ export function GameProgressProvider({ children }) {
   const resetGuess = useCallback(() => setGuessState(DEFAULT_GUESS), []);
   const resetLetter = useCallback(() => setLetterState(DEFAULT_LETTER), []);
   const resetTrace = useCallback(() => setTraceState(DEFAULT_TRACE), []);
+  const resetFindAnimal = useCallback(
+    () => setFindAnimalState(DEFAULT_FINDANIMAL),
+    []
+  );
 
   const value = useMemo(
     () => ({
@@ -323,16 +360,19 @@ export function GameProgressProvider({ children }) {
       guess,
       letter,
       trace,
+      findAnimal,
       met,
       markAnimalMet,
       updateMemory,
       updateGuess,
       updateLetter,
       updateTrace,
+      updateFindAnimal,
       resetMemory,
       resetGuess,
       resetLetter,
       resetTrace,
+      resetFindAnimal,
     }),
     [
       hydrated,
@@ -340,16 +380,19 @@ export function GameProgressProvider({ children }) {
       guess,
       letter,
       trace,
+      findAnimal,
       met,
       markAnimalMet,
       updateMemory,
       updateGuess,
       updateLetter,
       updateTrace,
+      updateFindAnimal,
       resetMemory,
       resetGuess,
       resetLetter,
       resetTrace,
+      resetFindAnimal,
     ]
   );
 
@@ -363,9 +406,10 @@ export function GameProgressProvider({ children }) {
 /**
  * Access saved progress for all games.
  * @returns {{hydrated: boolean, memory: object, guess: object, letter: object,
- *   trace: object, updateMemory: Function, updateGuess: Function,
- *   updateLetter: Function, updateTrace: Function, resetMemory: Function,
- *   resetGuess: Function, resetLetter: Function, resetTrace: Function}}
+ *   trace: object, findAnimal: object, updateMemory: Function,
+ *   updateGuess: Function, updateLetter: Function, updateTrace: Function,
+ *   updateFindAnimal: Function, resetMemory: Function, resetGuess: Function,
+ *   resetLetter: Function, resetTrace: Function, resetFindAnimal: Function}}
  */
 export function useGameProgress() {
   const ctx = useContext(GameProgressContext);
@@ -375,4 +419,10 @@ export function useGameProgress() {
   return ctx;
 }
 
-export { DEFAULT_MEMORY, DEFAULT_GUESS, DEFAULT_LETTER, DEFAULT_TRACE };
+export {
+  DEFAULT_MEMORY,
+  DEFAULT_GUESS,
+  DEFAULT_LETTER,
+  DEFAULT_TRACE,
+  DEFAULT_FINDANIMAL,
+};
