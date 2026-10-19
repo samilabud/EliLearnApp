@@ -15,6 +15,8 @@ export const STRINGS = {
     modeLetterDescription: 'Match animals to their first letter!',
     modeTraceTitle: 'Trace the Letter',
     modeTraceDescription: "Draw each animal's first letter!",
+    modeFindAnimalTitle: 'Find the Animal',
+    modeFindAnimalDescription: 'Listen for the name and tap it!',
 
     // Shared navigation
     back: 'Back',
@@ -48,6 +50,9 @@ export const STRINGS = {
     // Trace the Letter
     traceInstruction: "Trace this animal's first letter!",
     clearDrawing: 'Clear',
+
+    // Find the Animal
+    findAnimalHelperText: 'Tap the animal you hear!',
 
     // Animal album
     albumTitle: 'Animal Album',
@@ -112,6 +117,7 @@ export const STRINGS = {
     a11yMovesStatus: '{moves} moves so far',
     a11yAnimalCard: '{animal}. Tap to hear its sound',
     a11yAnswerOption: '{animal}. Tap if this animal makes the sound',
+    a11yFindAnimalOption: '{animal}. Tap if this is the animal you heard',
     a11yLetterOption: 'Letter {letter}. Tap if this is the first letter',
     a11yMemoryCard: 'Hidden card {number}. Tap to turn it over',
     a11yMemoryCardRevealed: '{animal}. Already turned over',
@@ -149,6 +155,8 @@ export const STRINGS = {
     modeLetterDescription: '¡Relaciona animales con su primera letra!',
     modeTraceTitle: 'Traza la Letra',
     modeTraceDescription: '¡Dibuja la primera letra de cada animal!',
+    modeFindAnimalTitle: 'Encuentra al Animal',
+    modeFindAnimalDescription: '¡Escucha el nombre y tócalo!',
 
     // Navegación común
     back: 'Atrás',
@@ -182,6 +190,9 @@ export const STRINGS = {
     // Traza la Letra
     traceInstruction: '¡Traza la primera letra de este animal!',
     clearDrawing: 'Borrar',
+
+    // Encuentra al Animal
+    findAnimalHelperText: '¡Toca el animal que escuchaste!',
 
     // Álbum de animales
     albumTitle: 'Álbum de Animales',
@@ -246,6 +257,7 @@ export const STRINGS = {
     a11yMovesStatus: '{moves} movimientos hasta ahora',
     a11yAnimalCard: '{animal}. Toca para escuchar su sonido',
     a11yAnswerOption: '{animal}. Toca si este animal hace el sonido',
+    a11yFindAnimalOption: '{animal}. Toca si este es el animal que escuchaste',
     a11yLetterOption: 'Letra {letter}. Toca si es la primera letra',
     a11yMemoryCard: 'Carta oculta {number}. Toca para darle la vuelta',
     a11yMemoryCardRevealed: '{animal}. Ya está descubierta',
