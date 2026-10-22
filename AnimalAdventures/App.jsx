@@ -12,6 +12,7 @@ import MemoryAnimalGame from './components/games/memory-animal.game.component.js
 import FindAnimalGame from './components/games/find-animal.game.component.jsx';
 import WhoseSoundGame from './components/games/whose-sound.game.component.jsx';
 import BuildSceneGame from './components/games/build-scene.game.component.jsx';
+import ColoringGame from './components/games/coloring.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
 import ParentArea from './components/parents/parent-area.component.jsx';
@@ -212,6 +213,16 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
+      />
+    );
+  } else if (currentMode === 'coloring') {
+    content = (
+      <ColoringGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
+        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'album') {
