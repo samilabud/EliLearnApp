@@ -109,6 +109,13 @@ export const MODES = [
     titleKey: 'modeBuildSceneTitle',
     descriptionKey: 'modeBuildSceneDescription',
   },
+  {
+    key: 'coloring',
+    icon: require('../../assets/animations/icons/coloring_icon.json'),
+    glyph: 'palette',
+    titleKey: 'modeColoringTitle',
+    descriptionKey: 'modeColoringDescription',
+  },
 ];
 
 // The album isn't a game to try once and move past like the cards above -

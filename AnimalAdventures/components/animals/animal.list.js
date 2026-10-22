@@ -124,12 +124,20 @@ export const animalList = [
   },
   {
     id: 'koala',
-    name: 'Koala',
-    spanish_name: 'Coala',
-    animation_path: require(`${animation_path}koala.json`),
+    name: 'Panda',
+    spanish_name: 'Panda',
+    // The artwork and voice are a panda, not a koala (see panda.json's own
+    // rename) - `id` stays "koala" since that's what's persisted in
+    // `met`/`metVia`/`stars`/placed-scene-and-coloring-page data for anyone
+    // who already played; renaming it would orphan that progress. `name`
+    // driving the displayed label AND the target letter in
+    // Guess-the-First-Letter/Trace-the-Letter (see firstLetterOf in
+    // utils/helpers.js, which reads `name`/`spanish_name`, never `id`)
+    // means this one field change fixes both correctly to "P".
+    animation_path: require(`${animation_path}panda.json`),
     sound: require(`${sound_path}/Panda-Bear.mp3`),
-    voice: require(`${english_folder}/koala.mp3`),
-    spanish_voice: require(`${spanish_folder}/coala.mp3`),
+    voice: require(`${english_folder}/panda.mp3`),
+    spanish_voice: require(`${spanish_folder}/Panda.mp3`),
   },
   {
     id: 'dolphin',

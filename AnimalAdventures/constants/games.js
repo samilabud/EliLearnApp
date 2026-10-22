@@ -15,4 +15,5 @@ export const GAME_ORDER = [
   'findAnimal',
   'whoseSound',
   'buildScene',
+  'coloring',
 ];

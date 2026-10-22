@@ -152,6 +152,26 @@ const DEFAULT_STARS = {
  */
 const DEFAULT_SCENE = { placed: [] };
 
+/**
+ * Free-form coloring pages, one per animal a child has drawn on. Permanent
+ * like `scene` - a page a child spent time coloring survives a restart.
+ * `strokes` holds finished strokes only (color + the points drawn in it);
+ * the in-progress stroke lives in the coloring screen's own component state
+ * until released, same split `scene`'s drag ghost uses between "committed"
+ * and "in flight".
+ */
+const DEFAULT_COLORING = { pages: {} };
+
+/** Oldest strokes drop once a single page passes this many - see
+ * `addColorStroke`'s comment for why a cap exists at all. */
+const MAX_STROKES_PER_PAGE = 300;
+
+/** Skip a new point this close to the stroke's last one - cuts the point
+ * count of a slow, careful stroke substantially with no visible difference,
+ * since raw per-move-event points are far denser than the line actually
+ * needs. */
+const MIN_POINT_DISTANCE = 3;
+
 const GameProgressContext = createContext(null);
 
 const validIds = new Set(animalList.map(a => a.id));
@@ -231,6 +251,31 @@ const scenePlacedIsUsable = p =>
   p.x <= 1 &&
   p.y >= 0 &&
   p.y <= 1;
+
+const colorStrokeIsUsable = s =>
+  !!s &&
+  typeof s.color === 'string' &&
+  Array.isArray(s.points) &&
+  s.points.every(p => typeof p.x === 'number' && typeof p.y === 'number');
+
+/**
+ * Drops pages for animals this build no longer ships (see `memoryIsUsable`'s
+ * comment for why - the same "ids are stable, require() results aren't"
+ * reasoning applies here) and any individual stroke that doesn't look right,
+ * without throwing away the rest of a page over one bad stroke. Same "keep
+ * what's still good" approach as `metVia`'s hydrate sanitizing below.
+ */
+const sanitizeColoringPages = pages => {
+  const sanitized = {};
+  if (!pages || typeof pages !== 'object' || Array.isArray(pages)) {
+    return sanitized;
+  }
+  Object.entries(pages).forEach(([id, page]) => {
+    if (!validIds.has(id) || !page || !Array.isArray(page.strokes)) return;
+    sanitized[id] = { strokes: page.strokes.filter(colorStrokeIsUsable) };
+  });
+  return sanitized;
+};
 
 /**
  * Cards left face up by a comparison that never resolved.
@@ -312,6 +357,7 @@ export function GameProgressProvider({ children }) {
   const [metVia, setMetVia] = useState(DEFAULT_MET_VIA);
   const [stars, setStars] = useState(DEFAULT_STARS);
   const [scene, setScene] = useState(DEFAULT_SCENE);
+  const [coloring, setColoring] = useState(DEFAULT_COLORING);
   const [lastCelebratedDailyAnimal, setLastCelebratedDailyAnimal] =
     useState(null);
   const persistTimer = useRef(null);
@@ -376,6 +422,9 @@ export function GameProgressProvider({ children }) {
         if (stored.scene && Array.isArray(stored.scene.placed)) {
           setScene({ placed: stored.scene.placed.filter(scenePlacedIsUsable) });
         }
+        if (stored.coloring) {
+          setColoring({ pages: sanitizeColoringPages(stored.coloring.pages) });
+        }
         if (typeof stored.lastCelebratedDailyAnimal === 'string') {
           setLastCelebratedDailyAnimal(stored.lastCelebratedDailyAnimal);
         }
@@ -400,6 +449,7 @@ export function GameProgressProvider({ children }) {
       metVia,
       stars,
       scene,
+      coloring,
       lastCelebratedDailyAnimal,
       hydrated,
     };
@@ -421,6 +471,7 @@ export function GameProgressProvider({ children }) {
         metVia,
         stars,
         scene,
+        coloring,
         lastCelebratedDailyAnimal,
       });
     }, PERSIST_DEBOUNCE_MS);
@@ -439,6 +490,7 @@ export function GameProgressProvider({ children }) {
     metVia,
     stars,
     scene,
+    coloring,
     lastCelebratedDailyAnimal,
     hydrated,
   ]);
@@ -459,6 +511,7 @@ export function GameProgressProvider({ children }) {
         metVia: mv,
         stars: st,
         scene: sc,
+        coloring: co,
         lastCelebratedDailyAnimal: lc,
         hydrated: isHydrated,
       } = latest.current;
@@ -475,6 +528,7 @@ export function GameProgressProvider({ children }) {
         metVia: mv,
         stars: st,
         scene: sc,
+        coloring: co,
         lastCelebratedDailyAnimal: lc,
       });
     };
@@ -596,6 +650,95 @@ export function GameProgressProvider({ children }) {
     }));
   }, []);
 
+  /**
+   * Commit one finished stroke to an animal's coloring page, creating the
+   * page on first use. `points` is thinned to MIN_POINT_DISTANCE apart (the
+   * screen draws every raw move event; storing all of them is far denser
+   * than the line needs) and the page is capped at MAX_STROKES_PER_PAGE,
+   * dropping the oldest stroke first - a safety net against unbounded
+   * storage growth, not a limit a child would ever run into by drawing
+   * normally.
+   * @param {string} animalId
+   * @param {string} color - Hex color of this stroke.
+   * @param {{x: number, y: number}[]} points - Canvas-local coordinates.
+   * @param {number} width - Brush width this stroke was drawn with.
+   */
+  const addColorStroke = useCallback((animalId, color, points, width) => {
+    if (!validIds.has(animalId) || points.length === 0) return;
+    const thinned = points.reduce((acc, p) => {
+      const last = acc[acc.length - 1];
+      if (
+        last &&
+        Math.hypot(p.x - last.x, p.y - last.y) < MIN_POINT_DISTANCE
+      ) {
+        return acc;
+      }
+      acc.push(p);
+      return acc;
+    }, []);
+    setColoring(prev => {
+      const page = prev.pages[animalId] || { strokes: [] };
+      const nextStrokes = [
+        ...page.strokes,
+        { color, points: thinned, width },
+      ].slice(-MAX_STROKES_PER_PAGE);
+      return {
+        pages: { ...prev.pages, [animalId]: { strokes: nextStrokes } },
+      };
+    });
+  }, []);
+
+  /** Remove the single most recently drawn stroke from an animal's page -
+   * a simple one-step undo. Erased strokes (see `eraseStrokesNear`) are not
+   * part of this history; erasing is already its own correction tool. */
+  const undoLastStroke = useCallback(animalId => {
+    setColoring(prev => {
+      const page = prev.pages[animalId];
+      if (!page || page.strokes.length === 0) return prev;
+      return {
+        pages: {
+          ...prev.pages,
+          [animalId]: { strokes: page.strokes.slice(0, -1) },
+        },
+      };
+    });
+  }, []);
+
+  /**
+   * Delete every whole stroke on an animal's page that passes near any
+   * point of an eraser gesture - a full stroke disappears rather than being
+   * partially trimmed, which is simpler to reason about (for a child) and
+   * to implement than true path-segment erasing.
+   * @param {string} animalId
+   * @param {{x: number, y: number}[]} points - The eraser gesture's path.
+   * @param {number} threshold - How close (px) counts as "touched".
+   */
+  const eraseStrokesNear = useCallback((animalId, points, threshold) => {
+    setColoring(prev => {
+      const page = prev.pages[animalId];
+      if (!page || page.strokes.length === 0) return prev;
+      const touched = s =>
+        s.points.some(sp =>
+          points.some(ep => Math.hypot(sp.x - ep.x, sp.y - ep.y) < threshold)
+        );
+      const nextStrokes = page.strokes.filter(s => !touched(s));
+      if (nextStrokes.length === page.strokes.length) return prev;
+      return {
+        pages: { ...prev.pages, [animalId]: { strokes: nextStrokes } },
+      };
+    });
+  }, []);
+
+  /** Clear one animal's coloring page - the rest stay untouched. */
+  const clearColorPage = useCallback(animalId => {
+    setColoring(prev => {
+      if (!prev.pages[animalId]) return prev;
+      const pages = { ...prev.pages };
+      delete pages[animalId];
+      return { pages };
+    });
+  }, []);
+
   // Derived here (rather than exposing `today()` itself) so the main menu
   // doesn't need its own copy of the calendar-day format just to compare.
   const hasSeenTodaysAnimal = lastCelebratedDailyAnimal === today();
@@ -627,6 +770,7 @@ export function GameProgressProvider({ children }) {
       metVia,
       stars,
       scene,
+      coloring,
       lastCelebratedDailyAnimal,
       hasSeenTodaysAnimal,
       markAnimalMet,
@@ -635,6 +779,10 @@ export function GameProgressProvider({ children }) {
       addPlacedItem,
       movePlacedItem,
       removePlacedItem,
+      addColorStroke,
+      undoLastStroke,
+      eraseStrokesNear,
+      clearColorPage,
       updateMemory,
       updateGuess,
       updateLetter,
@@ -661,6 +809,7 @@ export function GameProgressProvider({ children }) {
       metVia,
       stars,
       scene,
+      coloring,
       lastCelebratedDailyAnimal,
       hasSeenTodaysAnimal,
       markAnimalMet,
@@ -669,6 +818,10 @@ export function GameProgressProvider({ children }) {
       addPlacedItem,
       movePlacedItem,
       removePlacedItem,
+      addColorStroke,
+      undoLastStroke,
+      eraseStrokesNear,
+      clearColorPage,
       updateMemory,
       updateGuess,
       updateLetter,
@@ -696,11 +849,14 @@ export function GameProgressProvider({ children }) {
  * Access saved progress for all games.
  * @returns {{hydrated: boolean, memory: object, guess: object, letter: object,
  *   trace: object, findAnimal: object, whoseSound: object, stars: object,
- *   scene: {placed: object[]}, met: string[], metVia: Object<string,string>,
+ *   scene: {placed: object[]}, coloring: {pages: Object<string,object>},
+ *   met: string[], metVia: Object<string,string>,
  *   lastCelebratedDailyAnimal: ?string, hasSeenTodaysAnimal: boolean,
  *   markLevelStarred: Function,
  *   markDailyAnimalCelebrated: Function, addPlacedItem: Function,
  *   movePlacedItem: Function, removePlacedItem: Function,
+ *   addColorStroke: Function, undoLastStroke: Function,
+ *   eraseStrokesNear: Function, clearColorPage: Function,
  *   updateMemory: Function,
  *   updateGuess: Function, updateLetter: Function, updateTrace: Function,
  *   updateFindAnimal: Function, updateWhoseSound: Function,
