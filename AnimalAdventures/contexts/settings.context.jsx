@@ -46,10 +46,6 @@ const DEFAULT_SETTINGS = {
   playLimitMinutes: 0,
   ambientEffectsEnabled: true,
   childAgeBand: '4to6',
-  // Off by default: the main menu's Lottie icons and title/glyph wiggles
-  // pause while the screen is actively scrolling, which is smoother on
-  // older phones. A parent can flip this on to keep them animating.
-  menuScrollAnimationsEnabled: false,
 };
 
 const SettingsContext = createContext(null);
@@ -152,15 +148,12 @@ export function SettingsProvider({ children }) {
       playLimitMinutes: settings.playLimitMinutes,
       ambientEffectsEnabled: settings.ambientEffectsEnabled,
       childAgeBand: settings.childAgeBand,
-      menuScrollAnimationsEnabled: settings.menuScrollAnimationsEnabled,
       setLanguage: language => update({ language }),
       setSoundEnabled: soundEnabled => update({ soundEnabled }),
       setPlayLimitMinutes: playLimitMinutes => update({ playLimitMinutes }),
       setAmbientEffectsEnabled: ambientEffectsEnabled =>
         update({ ambientEffectsEnabled }),
       setChildAgeBand: childAgeBand => update({ childAgeBand }),
-      setMenuScrollAnimationsEnabled: menuScrollAnimationsEnabled =>
-        update({ menuScrollAnimationsEnabled }),
       timeUp,
       minutesRemaining:
         limitSeconds > 0

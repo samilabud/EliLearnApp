@@ -62,8 +62,6 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     setAmbientEffectsEnabled,
     childAgeBand,
     setChildAgeBand,
-    menuScrollAnimationsEnabled,
-    setMenuScrollAnimationsEnabled,
   } = useSettings();
 
   const handleSound = value => {
@@ -74,11 +72,6 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
   const handleAmbientEffects = value => {
     tapFeedback();
     setAmbientEffectsEnabled(value);
-  };
-
-  const handleMenuScrollAnimations = value => {
-    tapFeedback();
-    setMenuScrollAnimationsEnabled(value);
   };
 
   const handleLimit = minutes => {
@@ -170,35 +163,6 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
                     state: ambientEffectsEnabled
                       ? t(currentLanguage, 'off')
                       : t(currentLanguage, 'on'),
-                  }
-                )}
-              />
-            </View>
-
-            {/* Main menu's Lottie icons and title/glyph wiggle - off while
-                actively scrolling by default for a smoother scroll on older
-                phones, unless a parent asks to keep them always animating. */}
-            <View style={styles.row}>
-              <View style={styles.rowTextGroup}>
-                <Text style={styles.rowLabel}>
-                  {t(currentLanguage, 'menuScrollAnimationsLabel')}
-                </Text>
-                <Text style={styles.rowHint}>
-                  {t(currentLanguage, 'menuScrollAnimationsHint')}
-                </Text>
-              </View>
-              <Switch
-                value={menuScrollAnimationsEnabled}
-                onValueChange={handleMenuScrollAnimations}
-                trackColor={{ false: '#C8D6DE', true: '#BD0000' }}
-                thumbColor="#ffffff"
-                accessibilityLabel={t(
-                  currentLanguage,
-                  'a11yMenuScrollAnimationsToggle',
-                  {
-                    state: menuScrollAnimationsEnabled
-                      ? t(currentLanguage, 'on')
-                      : t(currentLanguage, 'off'),
                   }
                 )}
               />

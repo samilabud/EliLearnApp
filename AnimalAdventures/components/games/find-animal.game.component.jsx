@@ -56,10 +56,11 @@ const MAX_LEVEL = 8;
 // mistake - it just gets more helpful.
 const HINT_AFTER_TRIES = 3;
 
-// How long the one-time "how to play" line gets to finish before the first
-// name prompt starts, so the two don't talk over each other. Re-measure this
-// once the real recording replaces the placeholder silent clip.
-const INTRO_TO_PROMPT_DELAY_MS = 3000;
+// Short settle time before the very first prompt of a screen visit plays, so
+// it doesn't fire while the screen transition is still animating in. There
+// is deliberately no spoken "how to play" line here - the on-screen helper
+// text covers that instead of a recorded clip.
+const FIRST_ROUND_DELAY_MS = 600;
 
 export default function FindAnimalGame({
   currentLanguage,
@@ -86,13 +87,17 @@ export default function FindAnimalGame({
   // Level, the current round and lives are saved progress and live in the
   // context, so they survive a trip to the menu, a rotation, or the app being
   // killed. Only state meaningless outside the current round stays local.
-  const { findAnimal, updateFindAnimal, resetFindAnimal, markAnimalMet } =
-    useGameProgress();
+  const {
+    findAnimal,
+    updateFindAnimal,
+    resetFindAnimal,
+    markAnimalMet,
+    markLevelStarred,
+  } = useGameProgress();
   const { level, wrongCount, showComplete } = findAnimal;
 
   const [isCorrect, setIsCorrect] = useState(false);
   const promptPlayer = useAudioPlayer(null);
-  const introPlayer = useAudioPlayer(null);
   const [feedbackAnim] = useState(new Animated.Value(0));
   const [promptPulse] = useState(new Animated.Value(0));
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
@@ -108,10 +113,6 @@ export default function FindAnimalGame({
   const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
-  const introSoundFileEn = require('../../assets/sounds/prompts/english/find-animal-intro.mp3');
-  const introSoundFileEs = require('../../assets/sounds/prompts/spanish/find-animal-intro.mp3');
-  const introSoundFile =
-    currentLanguage === 'en' ? introSoundFileEn : introSoundFileEs;
 
   const animalsById = useMemo(() => {
     const lookup = {};
@@ -158,10 +159,6 @@ export default function FindAnimalGame({
       game: 'findAnimal',
       level,
     });
-    // The how-to-play line is a one-time greeting for the screen, not
-    // something tied to any particular round - it plays once here and is
-    // never replayed, unlike the per-round name prompt below.
-    playClip(introPlayer, introSoundFile);
     // Fires once per visit to the game, not once per round.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -182,9 +179,6 @@ export default function FindAnimalGame({
         promptPlayer.remove();
       } catch {}
       try {
-        introPlayer.remove();
-      } catch {}
-      try {
         wrongPlayer.remove();
       } catch {}
       try {
@@ -200,7 +194,6 @@ export default function FindAnimalGame({
   }, [
     stopAndUnload,
     promptPlayer,
-    introPlayer,
     wrongPlayer,
     gameWinPlayer,
     gameSuccessPlayer,
@@ -291,17 +284,16 @@ export default function FindAnimalGame({
     );
   }, [targetAnimal, stopAndUnload, promptPlayer, currentLanguage]);
 
-  // True once the first name prompt of this screen visit has been scheduled,
-  // so only that very first one waits for the how-to-play line to finish -
-  // every later round or language toggle plays immediately, same as
-  // "Guess the Animal".
-  const hasPlayedIntroRef = useRef(false);
+  // The very first prompt of a screen visit gets a brief settle delay so it
+  // doesn't fire mid-transition; every later round or language toggle plays
+  // immediately.
+  const hasPlayedFirstRef = useRef(false);
 
   useEffect(() => {
     if (!targetAnimal) return;
-    if (!hasPlayedIntroRef.current) {
-      hasPlayedIntroRef.current = true;
-      later(() => playPrompt(), INTRO_TO_PROMPT_DELAY_MS);
+    if (!hasPlayedFirstRef.current) {
+      hasPlayedFirstRef.current = true;
+      later(() => playPrompt(), FIRST_ROUND_DELAY_MS);
     } else {
       playPrompt();
     }
@@ -315,7 +307,8 @@ export default function FindAnimalGame({
         successFeedback();
         setIsCorrect(true);
         updateFindAnimal({ wrongCount: 0 });
-        markAnimalMet(selected.id);
+        markAnimalMet(selected.id, 'findAnimal');
+        markLevelStarred('findAnimal', level);
         track(EVENTS.LEVEL_COMPLETED, {
           game: 'findAnimal',
           level,
@@ -400,6 +393,7 @@ export default function FindAnimalGame({
       later,
       updateFindAnimal,
       markAnimalMet,
+      markLevelStarred,
       playPrompt,
     ]
   );
@@ -555,14 +549,10 @@ export default function FindAnimalGame({
                 onPress={() => onSelect(opt)}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={t(
-                  currentLanguage,
-                  'a11yFindAnimalOption',
-                  {
-                    animal:
-                      currentLanguage === 'en' ? opt.name : opt.spanish_name,
-                  }
-                )}
+                accessibilityLabel={t(currentLanguage, 'a11yFindAnimalOption', {
+                  animal:
+                    currentLanguage === 'en' ? opt.name : opt.spanish_name,
+                })}
               >
                 <View style={styles.optionInner}>
                   <View style={styles.animationBackground} />
@@ -725,7 +715,10 @@ const styles = StyleSheet.create({
   },
   topActions: {
     flexDirection: 'row',
-    gap: 10,
+    // Wider than the 10dp this used to be - three adjacent small controls
+    // this close together risked a mis-tap between neighbors for a child
+    // still developing fine motor precision.
+    gap: 16,
     paddingBottom: 34,
   },
   promptContainer: {

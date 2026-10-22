@@ -126,7 +126,8 @@ export default function TraceLetterGame({
   }, [canvasSize]);
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
-  const { trace, updateTrace, resetTrace, markAnimalMet } = useGameProgress();
+  const { trace, updateTrace, resetTrace, markAnimalMet, markLevelStarred } =
+    useGameProgress();
   const { level, showComplete, wrongCount } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
@@ -285,9 +286,7 @@ export default function TraceLetterGame({
   const pickRound = useCallback(() => {
     // Every animal gets a turn as the target before any repeats, so a child
     // never gets asked about the same one twice in one match.
-    const unused = animalList.filter(
-      a => !trace.usedTargetIds.includes(a.id)
-    );
+    const unused = animalList.filter(a => !trace.usedTargetIds.includes(a.id));
     const pool = unused.length > 0 ? unused : animalList;
     const nextTarget = pool[Math.floor(Math.random() * pool.length)];
     updateTrace(prev => ({
@@ -339,7 +338,8 @@ export default function TraceLetterGame({
     successFeedback();
     isCorrectRef.current = true;
     setIsCorrect(true);
-    markAnimalMet(targetAnimal.id);
+    markAnimalMet(targetAnimal.id, 'trace');
+    markLevelStarred('trace', level);
     track(EVENTS.LEVEL_COMPLETED, {
       game: 'trace',
       level,
@@ -404,6 +404,7 @@ export default function TraceLetterGame({
     later,
     updateTrace,
     markAnimalMet,
+    markLevelStarred,
   ]);
 
   const handleIncorrect = useCallback(() => {
@@ -774,10 +775,7 @@ export default function TraceLetterGame({
         {/* Drawing canvas */}
         <View style={styles.canvasWrapper}>
           <View
-            style={[
-              styles.canvas,
-              { width: canvasSize, height: canvasSize },
-            ]}
+            style={[styles.canvas, { width: canvasSize, height: canvasSize }]}
             {...(panResponder ? panResponder.panHandlers : {})}
             accessible={true}
             accessibilityLabel={t(currentLanguage, 'a11yTraceCanvas', {
@@ -978,7 +976,10 @@ const styles = StyleSheet.create({
   },
   topActions: {
     flexDirection: 'row',
-    gap: 10,
+    // Wider than the 10dp this used to be - three adjacent small controls
+    // this close together risked a mis-tap between neighbors for a child
+    // still developing fine motor precision.
+    gap: 16,
     paddingBottom: 20,
   },
   scrollArea: {

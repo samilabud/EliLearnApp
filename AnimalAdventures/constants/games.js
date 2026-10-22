@@ -13,4 +13,6 @@ export const GAME_ORDER = [
   'trace',
   'memory',
   'findAnimal',
+  'whoseSound',
+  'buildScene',
 ];

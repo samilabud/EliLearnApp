@@ -17,6 +17,10 @@ export const STRINGS = {
     modeTraceDescription: "Draw each animal's first letter!",
     modeFindAnimalTitle: 'Find the Animal',
     modeFindAnimalDescription: 'Listen for the name and tap it!',
+    modeWhoseSoundTitle: 'Whose Sound Is It?',
+    modeWhoseSoundDescription: 'Listen and tap the animal!',
+    modeBuildSceneTitle: 'Build a Scene',
+    modeBuildSceneDescription: 'Drag animals to make your own scene!',
 
     // Shared navigation
     back: 'Back',
@@ -54,12 +58,23 @@ export const STRINGS = {
     // Find the Animal
     findAnimalHelperText: 'Tap the animal you hear!',
 
+    // Whose Sound Is It?
+    whoseSoundHelperText: 'Listen, then tap the animal that makes this sound!',
+
+    // Build a Scene
+    buildSceneEmptyHint: 'Drag animals here to build your scene!',
+
     // Animal album
     albumTitle: 'Animal Album',
     albumDescription: 'See every animal you have met!',
     albumProgress: '{met} of {total} animals met',
     albumHintEmpty: 'Play any game to start meeting animals!',
     notMetYet: 'Not met yet',
+    starsShelfTitle: 'Stars Earned',
+
+    // Rewards
+    starsEarnedLabel: '{count} stars',
+    todaysAnimalLabel: "Today's Animal",
 
     // For parents
     forParents: 'For Parents',
@@ -73,8 +88,6 @@ export const STRINGS = {
     off: 'Off',
     ambientEffectsLabel: 'Floating bubbles',
     ambientEffectsHint: 'Turn off if the app feels slow on this device',
-    menuScrollAnimationsLabel: 'Animate menu while scrolling',
-    menuScrollAnimationsHint: 'Off by default for smoother scrolling',
     playLimitLabel: 'Daily play limit',
     noLimit: 'No limit',
     minutesShort: '{count} min',
@@ -118,6 +131,13 @@ export const STRINGS = {
     a11yAnimalCard: '{animal}. Tap to hear its sound',
     a11yAnswerOption: '{animal}. Tap if this animal makes the sound',
     a11yFindAnimalOption: '{animal}. Tap if this is the animal you heard',
+    a11yWhoseSoundOption:
+      '{animal}. Tap if this animal makes the sound you heard',
+    a11yTrayAnimal: '{animal}. Drag into the scene to place it',
+    a11yPlacedAnimal: '{animal}. Tap to hear it, or drag to move it',
+    a11ySceneDropZone: 'Your scene. Drag animals here to place them',
+    a11yClearScene: 'Clear your scene and start over',
+    a11yClearSceneConfirm: 'Tap again to clear your scene',
     a11yLetterOption: 'Letter {letter}. Tap if this is the first letter',
     a11yMemoryCard: 'Hidden card {number}. Tap to turn it over',
     a11yMemoryCardRevealed: '{animal}. Already turned over',
@@ -125,13 +145,13 @@ export const STRINGS = {
     a11yJumpToGames: 'Jump to the list of games',
     a11yOpenAlbum: 'Open the animal album',
     a11yAlbumAnimal: '{animal}. You have met this animal',
+    a11yAlbumAnimalMetVia: '{animal}. Found playing {game}',
     a11yAlbumLocked: 'An animal you have not met yet',
     a11yForParents: 'For parents. Opens a section for grown-ups',
     a11yGateDigit: 'Type the number {number}',
     a11yGateDelete: 'Delete the last number',
     a11ySoundToggle: 'Turn the sound {state}',
     a11yAmbientEffectsToggle: 'Turn the floating bubbles {state}',
-    a11yMenuScrollAnimationsToggle: 'Turn animating the menu while scrolling {state}',
     a11yPlayLimit: 'Set the play time limit to {label}',
     a11yChildAge: "Set the child's age to {label}",
     a11yDonate:
@@ -139,6 +159,8 @@ export const STRINGS = {
     a11yTraceCanvas: 'Drawing area. Trace the letter {letter} with your finger',
     a11yClearDrawing: 'Clear your drawing and try again',
     a11yNextGame: 'Play the next game, without going to the menu',
+    a11yStarBadge: '{count} stars earned in {title}',
+    a11yTodaysAnimal: "Today's animal: {animal}. Tap to hear it",
   },
 
   es: {
@@ -157,6 +179,10 @@ export const STRINGS = {
     modeTraceDescription: '¡Dibuja la primera letra de cada animal!',
     modeFindAnimalTitle: 'Encuentra al Animal',
     modeFindAnimalDescription: '¡Escucha el nombre y tócalo!',
+    modeWhoseSoundTitle: '¿De Quién es Este Sonido?',
+    modeWhoseSoundDescription: '¡Escucha y toca el animal!',
+    modeBuildSceneTitle: 'Crea una Escena',
+    modeBuildSceneDescription: '¡Arrastra animales para crear tu escena!',
 
     // Navegación común
     back: 'Atrás',
@@ -194,12 +220,24 @@ export const STRINGS = {
     // Encuentra al Animal
     findAnimalHelperText: '¡Toca el animal que escuchaste!',
 
+    // ¿De Quién es Este Sonido?
+    whoseSoundHelperText:
+      '¡Escucha y luego toca el animal que hace este sonido!',
+
+    // Crea una Escena
+    buildSceneEmptyHint: '¡Arrastra animales aquí para crear tu escena!',
+
     // Álbum de animales
     albumTitle: 'Álbum de Animales',
     albumDescription: '¡Mira todos los animales que has conocido!',
     albumProgress: '{met} de {total} animales conocidos',
     albumHintEmpty: '¡Juega para empezar a conocer animales!',
     notMetYet: 'Aún no lo conoces',
+    starsShelfTitle: 'Estrellas Ganadas',
+
+    // Recompensas
+    starsEarnedLabel: '{count} estrellas',
+    todaysAnimalLabel: 'Animal del Día',
 
     // Para padres
     forParents: 'Para Padres',
@@ -213,8 +251,6 @@ export const STRINGS = {
     off: 'Desactivado',
     ambientEffectsLabel: 'Burbujas flotantes',
     ambientEffectsHint: 'Desactívalas si la app va lenta en este dispositivo',
-    menuScrollAnimationsLabel: 'Animar el menú al desplazarse',
-    menuScrollAnimationsHint: 'Desactivado por defecto para un desplazamiento más fluido',
     playLimitLabel: 'Límite diario',
     noLimit: 'Sin límite',
     minutesShort: '{count} min',
@@ -258,6 +294,13 @@ export const STRINGS = {
     a11yAnimalCard: '{animal}. Toca para escuchar su sonido',
     a11yAnswerOption: '{animal}. Toca si este animal hace el sonido',
     a11yFindAnimalOption: '{animal}. Toca si este es el animal que escuchaste',
+    a11yWhoseSoundOption:
+      '{animal}. Toca si este animal hace el sonido que escuchaste',
+    a11yTrayAnimal: '{animal}. Arrastra a la escena para colocarlo',
+    a11yPlacedAnimal: '{animal}. Toca para escucharlo, o arrastra para moverlo',
+    a11ySceneDropZone: 'Tu escena. Arrastra animales aquí para colocarlos',
+    a11yClearScene: 'Borrar tu escena y empezar de nuevo',
+    a11yClearSceneConfirm: 'Toca otra vez para borrar tu escena',
     a11yLetterOption: 'Letra {letter}. Toca si es la primera letra',
     a11yMemoryCard: 'Carta oculta {number}. Toca para darle la vuelta',
     a11yMemoryCardRevealed: '{animal}. Ya está descubierta',
@@ -265,14 +308,13 @@ export const STRINGS = {
     a11yJumpToGames: 'Saltar a la lista de juegos',
     a11yOpenAlbum: 'Abrir el álbum de animales',
     a11yAlbumAnimal: '{animal}. Ya conoces este animal',
+    a11yAlbumAnimalMetVia: '{animal}. Encontrado jugando {game}',
     a11yAlbumLocked: 'Un animal que aún no conoces',
     a11yForParents: 'Para padres. Abre una sección para adultos',
     a11yGateDigit: 'Escribe el número {number}',
     a11yGateDelete: 'Borrar el último número',
     a11ySoundToggle: 'Poner el sonido en {state}',
     a11yAmbientEffectsToggle: 'Poner las burbujas flotantes en {state}',
-    a11yMenuScrollAnimationsToggle:
-      'Poner animar el menú al desplazarse en {state}',
     a11yPlayLimit: 'Poner el límite de tiempo en {label}',
     a11yChildAge: 'Poner la edad del niño/a en {label}',
     a11yDonate:
@@ -280,6 +322,8 @@ export const STRINGS = {
     a11yTraceCanvas: 'Área para dibujar. Traza la letra {letter} con el dedo',
     a11yClearDrawing: 'Borrar tu dibujo e inténtalo de nuevo',
     a11yNextGame: 'Jugar el siguiente juego, sin ir al menú',
+    a11yStarBadge: '{count} estrellas ganadas en {title}',
+    a11yTodaysAnimal: 'Animal del día: {animal}. Toca para escucharlo',
   },
 };
 
@@ -291,8 +335,30 @@ export const STRINGS = {
  * too young for this app cannot read "four", while any adult can.
  */
 export const NUMBER_WORDS = {
-  en: ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'],
-  es: ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'],
+  en: [
+    'zero',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'nine',
+  ],
+  es: [
+    'cero',
+    'uno',
+    'dos',
+    'tres',
+    'cuatro',
+    'cinco',
+    'seis',
+    'siete',
+    'ocho',
+    'nueve',
+  ],
 };
 
 export const DEFAULT_LANGUAGE = 'en';
