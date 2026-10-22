@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -14,10 +14,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
+import { useAudioPlayer } from 'expo-audio';
+import ConfettiCannon from 'react-native-confetti-cannon';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
+import { animalList } from '../animals/animal.list';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
+import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import { playClip, releasePlayer } from '../../utils/sound';
 import { BouncyButton } from '../utility/bouncy-button.component';
 import { LanguageToggleButton } from '../utility/language-toggle-button.component';
 
@@ -32,32 +38,45 @@ const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 54 };
 // carry English text that can't switch to Spanish.
 const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog-1.png');
 
-// The three cards differ only by icon and copy, so they are described once
-// here and rendered in a loop. Keeps their accessibility wiring identical.
-const MODES = [
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Every card now has its own small, hand-authored Lottie (a few KB each,
+// vector shapes only, no embedded images) - a consistent custom set instead
+// of the old mismatch of 3 rich character illustrations next to 5 plain
+// MaterialIcons glyphs. `glyph` is kept on each entry too: it's not used on
+// the menu card itself, but the album's "found via" badge on a met animal
+// (a ~20px corner badge, potentially many on screen in the grid at once)
+// needs something far cheaper than a full Lottie composition.
+//
+// The cards differ only by icon and copy, so they are described once here
+// and rendered in a loop. Keeps their accessibility wiring identical.
+// Exported so the album screen's stars shelf and "found via" badges can
+// reuse the same icon/title metadata instead of duplicating it.
+export const MODES = [
   {
     key: 'learn',
     icon: require('../../assets/animations/icons/learn_icon.json'),
+    glyph: 'explore',
     titleKey: 'modeLearnTitle',
     descriptionKey: 'modeLearnDescription',
   },
   {
     key: 'guess',
     icon: require('../../assets/animations/icons/guess_icon.json'),
+    glyph: 'quiz',
     titleKey: 'modeGuessTitle',
     descriptionKey: 'modeGuessDescription',
   },
-  // No Lottie icon of its own yet, so it uses a glyph like the album card.
   {
     key: 'letter',
+    icon: require('../../assets/animations/icons/letter_icon.json'),
     glyph: 'sort-by-alpha',
     titleKey: 'modeLetterTitle',
     descriptionKey: 'modeLetterDescription',
   },
-  // Also glyph-only for now - a pencil/gesture icon reads clearly as
-  // "drawing" without a bespoke Lottie.
   {
     key: 'trace',
+    icon: require('../../assets/animations/icons/trace_icon.json'),
     glyph: 'gesture',
     titleKey: 'modeTraceTitle',
     descriptionKey: 'modeTraceDescription',
@@ -65,26 +84,44 @@ const MODES = [
   {
     key: 'memory',
     icon: require('../../assets/animations/icons/memory_icon.json'),
+    glyph: 'extension',
     titleKey: 'modeMemoryTitle',
     descriptionKey: 'modeMemoryDescription',
   },
-  // No Lottie icon of its own yet either - 'search' reads clearly as "find"
-  // without colliding with the glyphs already used above.
   {
     key: 'findAnimal',
+    icon: require('../../assets/animations/icons/findAnimal_icon.json'),
     glyph: 'search',
     titleKey: 'modeFindAnimalTitle',
     descriptionKey: 'modeFindAnimalDescription',
   },
-  // The album ships no Lottie of its own, so it uses a glyph at the same size
-  // as the other icons rather than borrowing an animal's animation.
   {
-    key: 'album',
-    glyph: 'collections-bookmark',
-    titleKey: 'albumTitle',
-    descriptionKey: 'albumDescription',
+    key: 'whoseSound',
+    icon: require('../../assets/animations/icons/whoseSound_icon.json'),
+    glyph: 'hearing',
+    titleKey: 'modeWhoseSoundTitle',
+    descriptionKey: 'modeWhoseSoundDescription',
+  },
+  {
+    key: 'buildScene',
+    icon: require('../../assets/animations/icons/build_scene_icon.json'),
+    glyph: 'landscape',
+    titleKey: 'modeBuildSceneTitle',
+    descriptionKey: 'modeBuildSceneDescription',
   },
 ];
+
+// The album isn't a game to try once and move past like the cards above -
+// it's a standing collection a child comes back to, so it lives as its own
+// persistent icon near the top instead of competing for a spot (and a
+// scroll) in the mode grid. Kept out of MODES itself: nothing else in the
+// app treats 'album' as a playable mode or a "found via" source.
+const ALBUM_MODE = {
+  key: 'album',
+  glyph: 'collections-bookmark',
+  titleKey: 'albumTitle',
+  descriptionKey: 'albumDescription',
+};
 
 function MainMenu({
   onModeSelect,
@@ -92,20 +129,70 @@ function MainMenu({
   setCurrentLanguage,
   onOpenParents,
   ambientEnabled,
-  scrollAnimationsEnabled,
 }) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
   // Entrance scale for the title (bounces in) and the idle "breathe" loop
   // that keeps it feeling alive once settled - same pulse pattern used for
   // the prompt button in the games (see promptPulse in first-letter.game).
+  const { stars, hasSeenTodaysAnimal, markDailyAnimalCelebrated } =
+    useGameProgress();
+  const { childAgeBand } = useSettings();
+
+  // A deterministic pick, not a random one, so it's the same animal all day
+  // and across every device - just an index into the list that changes once
+  // every 24 hours, no persistence needed.
+  const todaysAnimal =
+    animalList[Math.floor(new Date() / DAY_MS) % animalList.length];
+
+  const dailySoundPlayer = useAudioPlayer(null);
+  const dailyVoicePlayer = useAudioPlayer(null);
+  const [showDailyCelebration, setShowDailyCelebration] = React.useState(false);
+  // Imperative play/reset rather than a static `autoPlay` prop, so the same
+  // animation can be replayed on tap, not just once on the day's first view.
+  const dailyLottieRef = useRef(null);
+
+  // Fires once per calendar day, the first time the menu is seen that day -
+  // a little surprise rather than something a child has to go looking for.
+  useEffect(() => {
+    if (hasSeenTodaysAnimal) return;
+    setShowDailyCelebration(true);
+    dailyLottieRef.current?.play();
+    markDailyAnimalCelebrated();
+    const timer = setTimeout(() => setShowDailyCelebration(false), 2600);
+    return () => clearTimeout(timer);
+    // Runs once per mount - re-checking on every render would fire again if
+    // hasSeenTodaysAnimal's underlying state updates before this effect's own
+    // write is persisted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePlayTodaysAnimal = useCallback(() => {
+    tapFeedback();
+    dailyLottieRef.current?.reset();
+    dailyLottieRef.current?.play();
+    playClip(dailySoundPlayer, todaysAnimal.sound);
+    // Staggered rather than simultaneous, so the sound and the spoken name
+    // don't talk over each other - same pairing the album screen uses.
+    setTimeout(() => {
+      playClip(
+        dailyVoicePlayer,
+        currentLanguage === 'en'
+          ? todaysAnimal.voice
+          : todaysAnimal.spanish_voice
+      );
+    }, 1000);
+  }, [dailySoundPlayer, dailyVoicePlayer, todaysAnimal, currentLanguage]);
+
+  useEffect(() => {
+    return () => {
+      releasePlayer(dailySoundPlayer);
+      releasePlayer(dailyVoicePlayer);
+    };
+  }, [dailySoundPlayer, dailyVoicePlayer]);
+
   const [titleScale] = React.useState(() => new Animated.Value(0.6));
   const [titleBreathe] = React.useState(() => new Animated.Value(0));
   const [subtitleSlide] = React.useState(() => new Animated.Value(20));
-  // 'Guess the First Letter' and the album both fall back to a plain
-  // MaterialIcons glyph (no Lottie of their own yet - see MODES above), so
-  // without their own animation they'd sit dead next to the two cards that
-  // already loop. A gentle rock gives them the same liveliness.
-  const [glyphWiggle] = React.useState(() => new Animated.Value(0));
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Stacked full-width cards give one card per screen on a landscape tablet,
   // which Android 16 can force regardless of the manifest. Side by side
@@ -141,38 +228,27 @@ function MainMenu({
     }).start();
   }, [languageVisible, languageOpacity]);
 
-  // Pauses the Lottie icons while the screen is actively scrolling -
-  // smoother on older phones with six animated cards on screen. A parent can
-  // turn this off (see ParentArea) to keep them animating always.
-  //
-  // Driven off onScroll itself (debounced) rather than onScrollBeginDrag/
-  // onScrollEndDrag/onMomentumScrollBegin/onMomentumScrollEnd: those fire in
-  // matched pairs only when a gesture completes cleanly, and a new touch
-  // grabbing the list mid-fling can interrupt momentum without
-  // onMomentumScrollEnd ever firing - isScrolling got stuck true forever,
-  // freezing these animations permanently after a single scroll. onScroll
-  // itself can't get stuck unpaired the same way: it just stops arriving
-  // once the list is actually still, which the timeout below detects.
-  const [isScrolling, setIsScrolling] = React.useState(false);
-  const pauseAnimations = isScrolling && !scrollAnimationsEnabled;
-  const scrollIdleTimer = useRef(null);
+  // The top-left Parents shortcut is only meant to greet a parent right
+  // after launch, before a child has started scrolling/playing - so unlike
+  // the language/album controls (which stay up until the cards scroll under
+  // them), this one disappears the moment there's any scroll at all, not
+  // just once the cards arrive.
+  const [topParentsVisible, setTopParentsVisible] = React.useState(true);
+  const [topParentsOpacity] = React.useState(() => new Animated.Value(1));
   useEffect(() => {
-    return () => {
-      if (scrollIdleTimer.current) clearTimeout(scrollIdleTimer.current);
-    };
-  }, []);
+    Animated.timing(topParentsOpacity, {
+      toValue: topParentsVisible ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [topParentsVisible, topParentsOpacity]);
 
   const handleScroll = e => {
-    if (!modesY.current) return;
     const y = e.nativeEvent.contentOffset.y;
+    setTopParentsVisible(y <= 4);
+    if (!modesY.current) return;
     setLanguageVisible(y < modesY.current - 120);
-
-    setIsScrolling(true);
-    if (scrollIdleTimer.current) clearTimeout(scrollIdleTimer.current);
-    scrollIdleTimer.current = setTimeout(() => setIsScrolling(false), 150);
   };
-
-  const lottieRefs = useRef({});
 
   // The launch splash now lives in App, so this screen just fades itself in,
   // while the title bounces in and the subtitle slides up under it - a
@@ -214,52 +290,7 @@ function MainMenu({
         ])
       ).start();
     });
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glyphWiggle, {
-          toValue: 1,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glyphWiggle, {
-          toValue: -1,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(glyphWiggle, {
-          toValue: 0,
-          duration: 700,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, [fadeAnim, titleScale, titleBreathe, subtitleSlide, glyphWiggle]);
-
-  // Only the Lottie icons are paused while scrolling - unlike Lottie's own
-  // pause()/resume(), which are built for exactly this, stopping and
-  // restarting a native-driven Animated.loop (the title breathe and glyph
-  // wiggle below) by calling .start() on the same composite object again
-  // turned out to be unreliable on Android: restarting it that way left the
-  // glyph icons (letter/trace/album) never visibly animating again, iPhone
-  // was fine. Those two are cheap, small-amplitude, native-driver
-  // animations anyway - not worth the cross-platform risk to pause - so they
-  // are left running continuously and only the Lottie icons react here.
-  const isFirstPauseEffect = useRef(true);
-  useEffect(() => {
-    if (isFirstPauseEffect.current) {
-      isFirstPauseEffect.current = false;
-      return;
-    }
-    if (pauseAnimations) {
-      Object.values(lottieRefs.current).forEach(ref => ref?.pause());
-    } else {
-      Object.values(lottieRefs.current).forEach(ref => ref?.resume());
-    }
-  }, [pauseAnimations]);
+  }, [fadeAnim, titleScale, titleBreathe, subtitleSlide]);
 
   const handleModeSelect = mode => {
     selectFeedback();
@@ -269,11 +300,6 @@ function MainMenu({
   const titleBreatheScale = titleBreathe.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.03],
-  });
-
-  const glyphRotate = glyphWiggle.interpolate({
-    inputRange: [-1, 0, 1],
-    outputRange: ['-8deg', '0deg', '8deg'],
   });
 
   return (
@@ -327,24 +353,68 @@ function MainMenu({
             </Animated.View>
           </Pressable>
 
-          <Animated.View
-            style={{ transform: [{ translateY: subtitleSlide }] }}
-          >
+          <Animated.View style={{ transform: [{ translateY: subtitleSlide }] }}>
             <Text
-              style={[
-                styles.subtitle,
-                isLandscape && styles.subtitleLandscape,
-              ]}
+              style={[styles.subtitle, isLandscape && styles.subtitleLandscape]}
             >
               {t(currentLanguage, 'chooseAdventure')}
             </Text>
           </Animated.View>
 
+          {/* Today's Animal - a small daily highlight, not another mode to
+              pick. A tap just hears it, same as a met card in the album. */}
+          <BouncyButton
+            style={styles.dailyCard}
+            onPress={handlePlayTodaysAnimal}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yTodaysAnimal', {
+              animal:
+                currentLanguage === 'en'
+                  ? todaysAnimal.name
+                  : todaysAnimal.spanish_name,
+            })}
+          >
+            <LottieView
+              ref={dailyLottieRef}
+              autoPlay={showDailyCelebration}
+              loop={false}
+              autoSize={false}
+              resizeMode="contain"
+              source={todaysAnimal.animation_path}
+              style={styles.dailyAnimation}
+            />
+            <View>
+              <Text style={styles.dailyLabel}>
+                {t(currentLanguage, 'todaysAnimalLabel')}
+              </Text>
+              <Text
+                style={[styles.dailyName, { fontFamily: 'Bangers_400Regular' }]}
+              >
+                {currentLanguage === 'en'
+                  ? todaysAnimal.name
+                  : todaysAnimal.spanish_name}
+              </Text>
+            </View>
+          </BouncyButton>
+
           {/* Mode Selection Buttons */}
           {(() => {
-            const modeCards = MODES.map(mode => {
+            // Learn Animal Sounds & Names is the gentlest, most passive mode
+            // (hear a name, hear a sound) - right for a toddler just meeting
+            // these animals, but not worth a slot for an older child who has
+            // moved on to the active games below it. Hidden rather than
+            // removed: switching the age band back shows it again, nothing
+            // about it is lost.
+            const visibleModes = MODES.filter(
+              mode => mode.key !== 'learn' || childAgeBand === 'under4'
+            );
+            const modeCards = visibleModes.map(mode => {
               const title = t(currentLanguage, mode.titleKey);
               const description = t(currentLanguage, mode.descriptionKey);
+              // Absent for 'learn' - it has no level concept to earn a star
+              // for. See DEFAULT_STARS in game-progress.context.
+              const starCount = stars[mode.key]?.length || 0;
 
               return (
                 <BouncyButton
@@ -367,28 +437,27 @@ function MainMenu({
                       isLandscape && styles.modeIconContainerLandscape,
                     ]}
                   >
-                    {mode.glyph ? (
-                      <Animated.View
-                        style={{ transform: [{ rotate: glyphRotate }] }}
+                    <LottieView
+                      source={mode.icon}
+                      autoPlay
+                      loop
+                      resizeMode="contain"
+                      style={isLandscape ? ICON_SIZE_LANDSCAPE : ICON_SIZE}
+                      autoSize={false}
+                    />
+                    {starCount > 0 && (
+                      <View
+                        style={styles.starBadge}
+                        accessible={true}
+                        accessibilityLabel={t(
+                          currentLanguage,
+                          'a11yStarBadge',
+                          { count: starCount, title }
+                        )}
                       >
-                        <MaterialIcons
-                          name={mode.glyph}
-                          size={isLandscape ? 54 : 78}
-                          color="#BD0000"
-                        />
-                      </Animated.View>
-                    ) : (
-                      <LottieView
-                        ref={el => {
-                          lottieRefs.current[mode.key] = el;
-                        }}
-                        source={mode.icon}
-                        autoPlay
-                        loop
-                        resizeMode="contain"
-                        style={isLandscape ? ICON_SIZE_LANDSCAPE : ICON_SIZE}
-                        autoSize={false}
-                      />
+                        <MaterialIcons name="star" size={14} color="white" />
+                        <Text style={styles.starBadgeText}>{starCount}</Text>
+                      </View>
                     )}
                   </View>
                   <Text
@@ -458,6 +527,23 @@ function MainMenu({
         </ScrollView>
       </Animated.View>
 
+      {/* Outside the ScrollView and absolutely positioned, like every other
+          ConfettiCannon in this app (see feedbackOverlay/completionOverlay in
+          the games) - rendering it in the scrollable content instead shifts
+          the content height every time it mounts/unmounts, which was
+          disrupting the mode cards' own layout and animations below it. */}
+      {showDailyCelebration && (
+        <View pointerEvents="none" style={styles.dailyConfettiOverlay}>
+          <ConfettiCannon
+            count={60}
+            fadeOut={true}
+            explosionSpeed={300}
+            fallSpeed={3000}
+            origin={{ x: 0, y: 0 }}
+          />
+        </View>
+      )}
+
       {/* Floating, like the Menu/Next Game controls on every game screen.
           Rendered last (after the scrollable content) on purpose - see
           AmbientBackground's own comment for why render order matters here.
@@ -470,18 +556,63 @@ function MainMenu({
           ambiguity entirely. */}
       {/* Fades out once scrolled down to the mode cards, so it stops
           floating over them - `none` while hidden so a faded-out button
-          can't still eat a tap meant for a card underneath it. */}
+          can't still eat a tap meant for a card underneath it. The album
+          icon rides along with the language toggle: both are top overlay
+          controls that would otherwise sit on top of the cards once
+          scrolled, so they share the same visibility/fade. */}
       <Animated.View
         pointerEvents={languageVisible ? 'box-none' : 'none'}
         style={[
-          styles.languageFloating,
+          styles.topRightFloating,
           { top: insets.top + 12, opacity: languageOpacity },
         ]}
       >
+        <BouncyButton
+          style={styles.albumButton}
+          onPress={() => handleModeSelect(ALBUM_MODE.key)}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
+            title: t(currentLanguage, ALBUM_MODE.titleKey),
+            description: t(currentLanguage, ALBUM_MODE.descriptionKey),
+          })}
+        >
+          <MaterialIcons name={ALBUM_MODE.glyph} size={22} color="#0A3D62" />
+        </BouncyButton>
         <LanguageToggleButton
           currentLanguage={currentLanguage}
           onToggle={setCurrentLanguage}
         />
+      </Animated.View>
+
+      {/* Top-left, mirroring the language/album row on the right, but gone
+          the moment there's any scroll at all - this one is purely a "a
+          parent just opened the app" shortcut, not a persistent control a
+          child would otherwise tap into by accident while browsing games.
+          The plain bottom "For Parents" link stays too, for anyone who
+          scrolls past this without noticing it. */}
+      <Animated.View
+        pointerEvents={topParentsVisible ? 'box-none' : 'none'}
+        style={[
+          styles.topParentsFloating,
+          { top: insets.top + 12, opacity: topParentsOpacity },
+        ]}
+      >
+        <BouncyButton
+          style={styles.topParentsButton}
+          onPress={() => {
+            tapFeedback();
+            onOpenParents();
+          }}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={t(currentLanguage, 'a11yForParents')}
+        >
+          <MaterialIcons name="lock-outline" size={18} color="#0A3D62" />
+          <Text style={styles.topParentsText}>
+            {t(currentLanguage, 'forParents')}
+          </Text>
+        </BouncyButton>
       </Animated.View>
     </View>
   );
@@ -492,9 +623,50 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#BD0000',
   },
-  languageFloating: {
+  topRightFloating: {
     position: 'absolute',
     right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  albumButton: {
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: MIN_TOUCH_TARGET / 2,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topParentsFloating: {
+    position: 'absolute',
+    left: 20,
+  },
+  topParentsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: MIN_TOUCH_TARGET,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  topParentsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A3D62',
+  },
+  dailyConfettiOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   content: {
     flexGrow: 1,
@@ -538,6 +710,36 @@ const styles = StyleSheet.create({
   subtitleLandscape: {
     fontSize: 17,
     marginBottom: 14,
+  },
+  dailyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    maxWidth: 320,
+    alignSelf: 'center',
+  },
+  dailyAnimation: {
+    width: 56,
+    height: 56,
+  },
+  dailyLabel: {
+    fontSize: 13,
+    color: '#5A5A5A',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  dailyName: {
+    fontSize: 22,
+    lineHeight: 28,
+    includeFontPadding: false,
+    color: '#0A3D62',
   },
   modeContainer: {
     width: '100%',
@@ -584,6 +786,28 @@ const styles = StyleSheet.create({
   },
   modeIconContainer: {
     marginBottom: 15,
+  },
+  // Positioned relative to modeIconContainer (every View is a valid
+  // absolute-positioning context in React Native, no explicit
+  // position:'relative' needed on the parent).
+  starBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'white',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  starBadgeText: {
+    color: 'white',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
   modeIconContainerLandscape: {
     marginBottom: 6,

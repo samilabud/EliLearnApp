@@ -81,7 +81,8 @@ export default function GuessAnimalGame({
   // Level, the current round and lives are saved progress and live in the
   // context, so they survive a trip to the menu, a rotation, or the app being
   // killed. Only state meaningless outside the current round stays local.
-  const { guess, updateGuess, resetGuess, markAnimalMet } = useGameProgress();
+  const { guess, updateGuess, resetGuess, markAnimalMet, markLevelStarred } =
+    useGameProgress();
   const { level, wrongCount, showComplete } = guess;
 
   const [isCorrect, setIsCorrect] = useState(false);
@@ -231,9 +232,7 @@ export default function GuessAnimalGame({
     // child never gets asked about the same one twice in one match while
     // others go untouched. Falls back to the full list once everything
     // has had a turn, rather than running out of animals mid-match.
-    const unused = animalList.filter(
-      a => !guess.usedTargetIds.includes(a.id)
-    );
+    const unused = animalList.filter(a => !guess.usedTargetIds.includes(a.id));
     const targetPool = unused.length > 0 ? unused : animalList;
     const nextTarget = shuffle(targetPool)[0];
     const distractors = shuffle(
@@ -290,7 +289,8 @@ export default function GuessAnimalGame({
         successFeedback();
         setIsCorrect(true);
         updateGuess({ wrongCount: 0 });
-        markAnimalMet(selected.id);
+        markAnimalMet(selected.id, 'guess');
+        markLevelStarred('guess', level);
         track(EVENTS.LEVEL_COMPLETED, {
           game: 'guess',
           level,
@@ -371,6 +371,7 @@ export default function GuessAnimalGame({
       later,
       updateGuess,
       markAnimalMet,
+      markLevelStarred,
       playPrompt,
     ]
   );
@@ -692,7 +693,10 @@ const styles = StyleSheet.create({
   },
   topActions: {
     flexDirection: 'row',
-    gap: 10,
+    // Wider than the 10dp this used to be - three adjacent small controls
+    // this close together risked a mis-tap between neighbors for a child
+    // still developing fine motor precision.
+    gap: 16,
     paddingBottom: 34,
   },
   promptContainer: {

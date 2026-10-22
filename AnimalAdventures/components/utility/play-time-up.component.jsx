@@ -24,7 +24,7 @@ export default function PlayTimeUp({ currentLanguage, onMoreTime }) {
   return (
     <View style={styles.container}>
       <LottieView
-        source={require('../../assets/animations/animals/sleeping-polar-bear.json')}
+        source={require('../../assets/animations/animals/koala.json')}
         autoPlay
         loop
         resizeMode="contain"

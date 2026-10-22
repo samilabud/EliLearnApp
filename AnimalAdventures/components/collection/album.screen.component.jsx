@@ -10,9 +10,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
+import { MODES } from '../main_menu/main_menu.component.jsx';
 import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { useBackToMenu } from '../../utils/navigation';
@@ -47,7 +49,13 @@ export default function AlbumScreen({
   ambientEnabled,
 }) {
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
-  const { met } = useGameProgress();
+  const { met, metVia, stars } = useGameProgress();
+  // Only the leveled games earn stars - 'learn' and 'album' have no level
+  // concept, so they're naturally absent from `stars` and skipped here.
+  const starGames = useMemo(
+    () => MODES.filter(mode => mode.key in stars),
+    [stars]
+  );
   const animPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
   const animRefs = useRef({});
@@ -138,72 +146,131 @@ export default function AlbumScreen({
           { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
         ]}
       >
-          {metSet.size === 0 && (
-            <Text style={[styles.hint, { fontFamily: 'Bangers_400Regular' }]}>
-              {t(currentLanguage, 'albumHintEmpty')}
-            </Text>
-          )}
+        {metSet.size === 0 && (
+          <Text style={[styles.hint, { fontFamily: 'Bangers_400Regular' }]}>
+            {t(currentLanguage, 'albumHintEmpty')}
+          </Text>
+        )}
 
-          <View style={styles.grid}>
-            {animalList.map(animal => {
-              const isMet = metSet.has(animal.id);
-              const name =
-                currentLanguage === 'en' ? animal.name : animal.spanish_name;
-
-              return (
-                <BouncyButton
-                  key={animal.id}
-                  style={[styles.card, { width: cardWidth }]}
-                  onPress={() => handlePress(animal)}
-                  disabled={!isMet}
-                  accessible
-                  accessibilityRole={isMet ? 'button' : 'image'}
-                  accessibilityLabel={
-                    isMet
-                      ? t(currentLanguage, 'a11yAlbumAnimal', { animal: name })
-                      : t(currentLanguage, 'a11yAlbumLocked')
-                  }
-                >
-                  <View
-                    style={[
-                      styles.box,
-                      isMet ? styles.boxMet : styles.boxLocked,
-                    ]}
-                  >
-                    {isMet ? (
-                      <LottieView
-                        autoPlay={false}
-                        loop={false}
-                        autoSize={false}
-                        ref={el => (animRefs.current[animal.id] = el)}
-                        resizeMode="contain"
-                        source={animal.animation_path}
-                        style={styles.animation}
-                      />
-                    ) : (
-                      <Text style={styles.lockedMark}>?</Text>
-                    )}
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.label,
-                      isMet ? styles.labelMet : styles.labelLocked,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {isMet ? name : t(currentLanguage, 'notMetYet')}
-                  </Text>
-                </BouncyButton>
-              );
-            })}
-          </View>
+        <Text
+          style={[styles.starsShelfTitle, { fontFamily: 'Bangers_400Regular' }]}
+        >
+          {t(currentLanguage, 'starsShelfTitle')}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.starsShelf}
+        >
+          {starGames.map(mode => {
+            const count = stars[mode.key]?.length || 0;
+            const title = t(currentLanguage, mode.titleKey);
+            return (
+              <View
+                key={mode.key}
+                style={styles.starsShelfItem}
+                accessible={true}
+                accessibilityLabel={t(currentLanguage, 'a11yStarBadge', {
+                  count,
+                  title,
+                })}
+              >
+                <LottieView
+                  autoPlay
+                  loop
+                  autoSize={false}
+                  resizeMode="contain"
+                  source={mode.icon}
+                  style={styles.starsShelfIcon}
+                />
+                <View style={styles.starsShelfCount}>
+                  <MaterialIcons name="star" size={14} color="white" />
+                  <Text style={styles.starsShelfCountText}>{count}</Text>
+                </View>
+              </View>
+            );
+          })}
         </ScrollView>
 
-        <BackToMenuButton
-          currentLanguage={currentLanguage}
-          onPress={handleBackToMenu}
-        />
+        <View style={styles.grid}>
+          {animalList.map(animal => {
+            const isMet = metSet.has(animal.id);
+            const name =
+              currentLanguage === 'en' ? animal.name : animal.spanish_name;
+            // Absent for an animal met before this slice existed, or (in
+            // principle) an unrecognized game key from a future build - both
+            // just mean no badge rather than a broken one.
+            const sourceKey = metVia[animal.id];
+            const sourceMode = MODES.find(m => m.key === sourceKey);
+            const sourceTitle = sourceMode
+              ? t(currentLanguage, sourceMode.titleKey)
+              : null;
+
+            return (
+              <BouncyButton
+                key={animal.id}
+                style={[styles.card, { width: cardWidth }]}
+                onPress={() => handlePress(animal)}
+                disabled={!isMet}
+                accessible
+                accessibilityRole={isMet ? 'button' : 'image'}
+                accessibilityLabel={
+                  isMet
+                    ? sourceTitle
+                      ? t(currentLanguage, 'a11yAlbumAnimalMetVia', {
+                          animal: name,
+                          game: sourceTitle,
+                        })
+                      : t(currentLanguage, 'a11yAlbumAnimal', { animal: name })
+                    : t(currentLanguage, 'a11yAlbumLocked')
+                }
+              >
+                <View
+                  style={[styles.box, isMet ? styles.boxMet : styles.boxLocked]}
+                >
+                  {isMet ? (
+                    <LottieView
+                      autoPlay={false}
+                      loop={false}
+                      autoSize={false}
+                      ref={el => (animRefs.current[animal.id] = el)}
+                      resizeMode="contain"
+                      source={animal.animation_path}
+                      style={styles.animation}
+                    />
+                  ) : (
+                    <Text style={styles.lockedMark}>?</Text>
+                  )}
+                  {isMet && sourceMode && (
+                    <View style={styles.sourceBadge}>
+                      <MaterialIcons
+                        name={sourceMode.glyph}
+                        size={12}
+                        color="white"
+                      />
+                    </View>
+                  )}
+                </View>
+
+                <Text
+                  style={[
+                    styles.label,
+                    isMet ? styles.labelMet : styles.labelLocked,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {isMet ? name : t(currentLanguage, 'notMetYet')}
+                </Text>
+              </BouncyButton>
+            );
+          })}
+        </View>
+      </ScrollView>
+
+      <BackToMenuButton
+        currentLanguage={currentLanguage}
+        onPress={handleBackToMenu}
+      />
     </ImageBackground>
   );
 }
@@ -251,6 +318,53 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 2 },
   },
+  starsShelfTitle: {
+    color: '#FFD700',
+    fontSize: 20,
+    lineHeight: 26,
+    includeFontPadding: false,
+    letterSpacing: 1,
+    marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowRadius: 4,
+    textShadowOffset: { width: 0, height: 2 },
+  },
+  starsShelf: {
+    gap: 12,
+    paddingVertical: 10,
+  },
+  starsShelfItem: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: '#ffffff',
+    borderWidth: 3,
+    borderColor: '#FFD700',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  starsShelfIcon: {
+    width: 40,
+    height: 40,
+  },
+  starsShelfCount: {
+    position: 'absolute',
+    bottom: -8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: '#FFD700',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'white',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  starsShelfCountText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -288,6 +402,21 @@ const styles = StyleSheet.create({
   animation: {
     width: BOX_HEIGHT - 14,
     height: BOX_HEIGHT - 14,
+  },
+  // "box" is already position:'relative' by default (every RN View is), so
+  // this positions against it without any extra wiring.
+  sourceBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#0A3D62',
+    borderWidth: 1.5,
+    borderColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   lockedMark: {
     fontSize: 34,

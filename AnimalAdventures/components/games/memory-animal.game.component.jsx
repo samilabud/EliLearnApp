@@ -94,7 +94,7 @@ export default function MemoryAnimalGame({
   // Level, board and score are saved progress and live in the context so they
   // survive a trip to the menu, a rotation, or the app being killed. Only
   // state that is meaningless outside the current turn stays local.
-  const { memory, updateMemory, resetMemory, markAnimalMet } =
+  const { memory, updateMemory, resetMemory, markAnimalMet, markLevelStarred } =
     useGameProgress();
   const { level, matchedPairs, moves, gameComplete } = memory;
 
@@ -244,6 +244,7 @@ export default function MemoryAnimalGame({
     ) {
       celebrationFeedback();
       setShowLevelComplete(true);
+      markLevelStarred('memory', level);
       track(EVENTS.LEVEL_COMPLETED, {
         game: 'memory',
         level,
@@ -283,6 +284,7 @@ export default function MemoryAnimalGame({
     gameWinSoundFile,
     later,
     updateMemory,
+    markLevelStarred,
   ]);
 
   const playCardFlipSound = useCallback(
@@ -333,7 +335,7 @@ export default function MemoryAnimalGame({
 
         if (isMatch) {
           successFeedback();
-          markAnimalMet(firstCard.id);
+          markAnimalMet(firstCard.id, 'memory');
           updateMemory(prev => ({
             matchedPairs: [...prev.matchedPairs, firstCard.id],
             cards: prev.cards.map(c =>
@@ -699,7 +701,10 @@ const styles = StyleSheet.create({
   },
   topActions: {
     flexDirection: 'row',
-    gap: 10,
+    // Wider than the 10dp this used to be - three adjacent small controls
+    // this close together risked a mis-tap between neighbors for a child
+    // still developing fine motor precision.
+    gap: 16,
   },
   instructionsContainer: {
     paddingTop: 16,

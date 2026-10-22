@@ -10,6 +10,8 @@ import FirstLetterGame from './components/games/first-letter.game.component.jsx'
 import TraceLetterGame from './components/games/trace-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 import FindAnimalGame from './components/games/find-animal.game.component.jsx';
+import WhoseSoundGame from './components/games/whose-sound.game.component.jsx';
+import BuildSceneGame from './components/games/build-scene.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
 import ParentArea from './components/parents/parent-area.component.jsx';
@@ -42,7 +44,6 @@ function AppContent() {
     timeUp,
     grantMoreTime,
     ambientEffectsEnabled,
-    menuScrollAnimationsEnabled,
   } = useSettings();
 
   useEffect(() => {
@@ -132,7 +133,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onOpenParents={() => setGateVisible(true)}
         ambientEnabled={ambientEffectsEnabled}
-        scrollAnimationsEnabled={menuScrollAnimationsEnabled}
       />
     );
   } else if (currentMode === 'learn') {
@@ -193,6 +193,25 @@ function AppContent() {
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
         ambientEnabled={ambientEffectsEnabled}
+      />
+    );
+  } else if (currentMode === 'whoseSound') {
+    content = (
+      <WhoseSoundGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
+        ambientEnabled={ambientEffectsEnabled}
+      />
+    );
+  } else if (currentMode === 'buildScene') {
+    content = (
+      <BuildSceneGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
       />
     );
   } else if (currentMode === 'album') {

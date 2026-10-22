@@ -83,7 +83,7 @@ export default function FirstLetterGame({
   // Level and the current round are saved progress and live in the context,
   // so they survive a trip to the menu, a rotation, or the app being killed.
   // Only state meaningless outside the current round stays local.
-  const { letter, updateLetter, resetLetter, markAnimalMet } =
+  const { letter, updateLetter, resetLetter, markAnimalMet, markLevelStarred } =
     useGameProgress();
   const { level, wrongCount, showComplete } = letter;
   const { childAgeBand } = useSettings();
@@ -245,9 +245,7 @@ export default function FirstLetterGame({
     // so a child never gets asked about the same one twice in one match.
     // Falls back to the full base pool once everything in it has had a
     // turn, rather than running out of animals mid-match.
-    const unused = basePool.filter(
-      a => !letter.usedTargetIds.includes(a.id)
-    );
+    const unused = basePool.filter(a => !letter.usedTargetIds.includes(a.id));
     const pool = unused.length > 0 ? unused : basePool;
     const nextTarget = pool[Math.floor(Math.random() * pool.length)];
     const correct = firstLetterOf(nextTarget, currentLanguage);
@@ -320,7 +318,8 @@ export default function FirstLetterGame({
         successFeedback();
         setIsCorrect(true);
         updateLetter({ wrongCount: 0 });
-        markAnimalMet(targetAnimal.id);
+        markAnimalMet(targetAnimal.id, 'letter');
+        markLevelStarred('letter', level);
         track(EVENTS.LEVEL_COMPLETED, {
           game: 'letter',
           level,
@@ -405,6 +404,7 @@ export default function FirstLetterGame({
       later,
       updateLetter,
       markAnimalMet,
+      markLevelStarred,
       playPrompt,
     ]
   );
@@ -748,7 +748,10 @@ const styles = StyleSheet.create({
   },
   topActions: {
     flexDirection: 'row',
-    gap: 10,
+    // Wider than the 10dp this used to be - three adjacent small controls
+    // this close together risked a mis-tap between neighbors for a child
+    // still developing fine motor precision.
+    gap: 16,
     paddingBottom: 34,
   },
   scrollArea: {

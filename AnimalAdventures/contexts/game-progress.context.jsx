@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { animalList } from '../components/animals/animal.list';
+import { sceneryList } from '../components/scenery/scenery.list';
 import { loadJSON, saveJSON } from '../utils/storage';
 
 const PROGRESS_KEY = 'game.progress';
@@ -30,6 +31,19 @@ const SCHEMA_VERSION = 1;
 
 /** Card flips arrive in bursts, so writes are coalesced rather than per-tap. */
 const PERSIST_DEBOUNCE_MS = 400;
+
+/**
+ * Local calendar day, which is the boundary a child's "today" thinks in.
+ * Mirrors the identical helper in settings.context.jsx - each context owns
+ * its own copy rather than sharing a util, since each already owns its
+ * storage/hydration independently.
+ */
+const today = () => {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
 
 const DEFAULT_MEMORY = {
   level: 1,
@@ -82,6 +96,17 @@ const DEFAULT_FINDANIMAL = {
   usedTargetIds: [],
 };
 
+const DEFAULT_WHOSESOUND = {
+  level: 1,
+  targetId: null,
+  optionIds: [],
+  wrongCount: 0,
+  showComplete: false,
+  // Animal ids already asked as the target this match, so the same animal
+  // is not asked about twice before every animal has had a turn.
+  usedTargetIds: [],
+};
+
 /**
  * Animals the child has met, by id.
  *
@@ -91,9 +116,46 @@ const DEFAULT_FINDANIMAL = {
  */
 const DEFAULT_MET = [];
 
+/**
+ * Which game first met each animal, by id - e.g. `{ 'dog-tail-wag': 'guess' }`.
+ *
+ * A separate slice from `met` rather than changing `met`'s own shape, so
+ * every existing `met`-as-array consumer is untouched. An animal met before
+ * this slice existed simply has no entry here - the Album treats that as
+ * "known, source unrecorded" rather than an error.
+ */
+const DEFAULT_MET_VIA = {};
+
+/**
+ * Distinct levels ever completed, per leveled game.
+ *
+ * Permanent in the same spirit as `met` - a star earned by finishing a level
+ * is never taken away by a reset or a finished-game screen, so a child who
+ * replays a game they already mastered still sees what they already earned.
+ * 'learn' has no level concept and is deliberately absent here.
+ */
+const DEFAULT_STARS = {
+  guess: [],
+  letter: [],
+  trace: [],
+  memory: [],
+  findAnimal: [],
+  whoseSound: [],
+};
+
+/**
+ * Items (animals or scenery - trees, rocks, and the like) a child has
+ * freely placed into their own scene, by instance - not by level or by
+ * right/wrong answer, since this mode has neither. Permanent like every
+ * other saved board, so a scene a child spent time arranging survives a
+ * restart.
+ */
+const DEFAULT_SCENE = { placed: [] };
+
 const GameProgressContext = createContext(null);
 
 const validIds = new Set(animalList.map(a => a.id));
+const validSceneryIds = new Set(sceneryList.map(s => s.id));
 
 /**
  * Reject progress that references animals this build no longer ships.
@@ -135,6 +197,41 @@ const findAnimalIsUsable = findAnimal => {
   return (findAnimal.optionIds || []).every(id => validIds.has(id));
 };
 
+const whoseSoundIsUsable = whoseSound => {
+  if (!whoseSound) return false;
+  if (whoseSound.targetId && !validIds.has(whoseSound.targetId)) return false;
+  return (whoseSound.optionIds || []).every(id => validIds.has(id));
+};
+
+const starsIsUsable = stars =>
+  !!stars &&
+  typeof stars === 'object' &&
+  Object.keys(DEFAULT_STARS).every(
+    key =>
+      Array.isArray(stars[key]) && stars[key].every(n => typeof n === 'number')
+  );
+
+/**
+ * A placed instance is usable only if it still points at a real item (an
+ * animal or a scenery object this build still ships) and has sane
+ * coordinates - a corrupt or out-of-range entry is dropped rather than
+ * rejecting the whole scene, so one bad instance can't erase everything
+ * else a child built.
+ */
+const scenePlacedIsUsable = p =>
+  !!p &&
+  typeof p.instanceId === 'string' &&
+  typeof p.itemId === 'string' &&
+  (p.kind === 'scenery'
+    ? validSceneryIds.has(p.itemId)
+    : validIds.has(p.itemId)) &&
+  typeof p.x === 'number' &&
+  typeof p.y === 'number' &&
+  p.x >= 0 &&
+  p.x <= 1 &&
+  p.y >= 0 &&
+  p.y <= 1;
+
 /**
  * Cards left face up by a comparison that never resolved.
  *
@@ -172,12 +269,20 @@ export const faceDownUnmatched = cards =>
  * this runs a lingering completed state only means the app was killed (or
  * crashed) while still sitting on that screen, never a normal exit.
  */
-const clearTerminalStates = (memory, guess, letter, trace, findAnimal) => ({
+const clearTerminalStates = (
+  memory,
+  guess,
+  letter,
+  trace,
+  findAnimal,
+  whoseSound
+) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,
   guess: guess.showComplete ? DEFAULT_GUESS : guess,
   letter: letter.showComplete ? DEFAULT_LETTER : letter,
   trace: trace.showComplete ? DEFAULT_TRACE : trace,
   findAnimal: findAnimal.showComplete ? DEFAULT_FINDANIMAL : findAnimal,
+  whoseSound: whoseSound.showComplete ? DEFAULT_WHOSESOUND : whoseSound,
 });
 
 /**
@@ -202,9 +307,22 @@ export function GameProgressProvider({ children }) {
   const [letter, setLetterState] = useState(DEFAULT_LETTER);
   const [trace, setTraceState] = useState(DEFAULT_TRACE);
   const [findAnimal, setFindAnimalState] = useState(DEFAULT_FINDANIMAL);
+  const [whoseSound, setWhoseSoundState] = useState(DEFAULT_WHOSESOUND);
   const [met, setMet] = useState(DEFAULT_MET);
+  const [metVia, setMetVia] = useState(DEFAULT_MET_VIA);
+  const [stars, setStars] = useState(DEFAULT_STARS);
+  const [scene, setScene] = useState(DEFAULT_SCENE);
+  const [lastCelebratedDailyAnimal, setLastCelebratedDailyAnimal] =
+    useState(null);
   const persistTimer = useRef(null);
-  const latest = useRef({ memory, guess, letter, trace, findAnimal });
+  const latest = useRef({
+    memory,
+    guess,
+    letter,
+    trace,
+    findAnimal,
+    whoseSound,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -229,15 +347,37 @@ export function GameProgressProvider({ children }) {
             : DEFAULT_TRACE,
           findAnimalIsUsable(stored.findAnimal)
             ? { ...DEFAULT_FINDANIMAL, ...stored.findAnimal }
-            : DEFAULT_FINDANIMAL
+            : DEFAULT_FINDANIMAL,
+          whoseSoundIsUsable(stored.whoseSound)
+            ? { ...DEFAULT_WHOSESOUND, ...stored.whoseSound }
+            : DEFAULT_WHOSESOUND
         );
         setMemoryState(restored.memory);
         setGuessState(restored.guess);
         setLetterState(restored.letter);
         setTraceState(restored.trace);
         setFindAnimalState(restored.findAnimal);
+        setWhoseSoundState(restored.whoseSound);
         if (Array.isArray(stored.met)) {
           setMet(stored.met.filter(id => validIds.has(id)));
+        }
+        if (stored.metVia && typeof stored.metVia === 'object') {
+          const sanitized = {};
+          Object.entries(stored.metVia).forEach(([id, gameKey]) => {
+            if (validIds.has(id) && typeof gameKey === 'string') {
+              sanitized[id] = gameKey;
+            }
+          });
+          setMetVia(sanitized);
+        }
+        if (starsIsUsable(stored.stars)) {
+          setStars({ ...DEFAULT_STARS, ...stored.stars });
+        }
+        if (stored.scene && Array.isArray(stored.scene.placed)) {
+          setScene({ placed: stored.scene.placed.filter(scenePlacedIsUsable) });
+        }
+        if (typeof stored.lastCelebratedDailyAnimal === 'string') {
+          setLastCelebratedDailyAnimal(stored.lastCelebratedDailyAnimal);
         }
       }
       setHydrated(true);
@@ -249,7 +389,20 @@ export function GameProgressProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    latest.current = { memory, guess, letter, trace, findAnimal, met, hydrated };
+    latest.current = {
+      memory,
+      guess,
+      letter,
+      trace,
+      findAnimal,
+      whoseSound,
+      met,
+      metVia,
+      stars,
+      scene,
+      lastCelebratedDailyAnimal,
+      hydrated,
+    };
     // Nothing is written until the stored value has been read, otherwise the
     // initial empty state would overwrite real progress during startup.
     if (!hydrated) return;
@@ -263,14 +416,32 @@ export function GameProgressProvider({ children }) {
         letter,
         trace,
         findAnimal,
+        whoseSound,
         met,
+        metVia,
+        stars,
+        scene,
+        lastCelebratedDailyAnimal,
       });
     }, PERSIST_DEBOUNCE_MS);
 
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
     };
-  }, [memory, guess, letter, trace, findAnimal, met, hydrated]);
+  }, [
+    memory,
+    guess,
+    letter,
+    trace,
+    findAnimal,
+    whoseSound,
+    met,
+    metVia,
+    stars,
+    scene,
+    lastCelebratedDailyAnimal,
+    hydrated,
+  ]);
 
   // Flush on teardown so a fast exit cannot outrun the debounce. Guarded on
   // `hydrated`: a teardown that happens while storage is still being read must
@@ -283,7 +454,12 @@ export function GameProgressProvider({ children }) {
         letter: l,
         trace: tr,
         findAnimal: fa,
+        whoseSound: ws,
         met: k,
+        metVia: mv,
+        stars: st,
+        scene: sc,
+        lastCelebratedDailyAnimal: lc,
         hydrated: isHydrated,
       } = latest.current;
       if (!isHydrated) return;
@@ -294,7 +470,12 @@ export function GameProgressProvider({ children }) {
         letter: l,
         trace: tr,
         findAnimal: fa,
+        whoseSound: ws,
         met: k,
+        metVia: mv,
+        stars: st,
+        scene: sc,
+        lastCelebratedDailyAnimal: lc,
       });
     };
   }, []);
@@ -334,15 +515,90 @@ export function GameProgressProvider({ children }) {
     }));
   }, []);
 
+  const updateWhoseSound = useCallback(patch => {
+    setWhoseSoundState(prev => ({
+      ...prev,
+      ...(typeof patch === 'function' ? patch(prev) : patch),
+    }));
+  }, []);
+
   /**
    * Record that a child has met an animal. Idempotent, and never undone -
    * resetting a game must not take an animal back out of the album.
    * @param {string} id - Animal id from `animalList`.
+   * @param {string} [gameKey] - The game this animal was met through, so the
+   *   Album can show where it was first found. Only the first game to meet
+   *   a given animal gets credit - later encounters in other games don't
+   *   overwrite it.
    */
-  const markAnimalMet = useCallback(id => {
+  const markAnimalMet = useCallback((id, gameKey) => {
     if (!id || !validIds.has(id)) return;
     setMet(prev => (prev.includes(id) ? prev : [...prev, id]));
+    if (gameKey) {
+      setMetVia(prev => (prev[id] ? prev : { ...prev, [id]: gameKey }));
+    }
   }, []);
+
+  /**
+   * Record that a level has been completed, for the main-menu/album star
+   * display. Idempotent and never undone - same permanence as `markAnimalMet`,
+   * so replaying a level already starred just doesn't add a duplicate.
+   * @param {string} gameKey - One of the keys in DEFAULT_STARS.
+   * @param {number} level - The level just completed.
+   */
+  const markLevelStarred = useCallback((gameKey, level) => {
+    if (!gameKey || typeof level !== 'number') return;
+    setStars(prev => {
+      const earned = prev[gameKey] || [];
+      if (earned.includes(level)) return prev;
+      return { ...prev, [gameKey]: [...earned, level] };
+    });
+  }, []);
+
+  /** Gate the once-per-day "today's animal" fanfare on the main menu. */
+  const markDailyAnimalCelebrated = useCallback(() => {
+    setLastCelebratedDailyAnimal(today());
+  }, []);
+
+  /**
+   * Add one item - an animal or a scenery object - to the child's scene at
+   * a normalized position.
+   * @param {string} itemId - An animal id, or a scenery id from sceneryList.
+   * @param {'animal'|'scenery'} kind
+   * @param {number} x - 0-1, relative to the scene area's own width.
+   * @param {number} y - 0-1, relative to the scene area's own height.
+   */
+  const addPlacedItem = useCallback((itemId, kind, x, y) => {
+    const isValid =
+      kind === 'scenery' ? validSceneryIds.has(itemId) : validIds.has(itemId);
+    if (!isValid) return;
+    const instanceId = `${itemId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+    setScene(prev => ({
+      placed: [...prev.placed, { instanceId, itemId, kind, x, y }],
+    }));
+  }, []);
+
+  /** Move one already-placed instance to a new normalized position. */
+  const movePlacedItem = useCallback((instanceId, x, y) => {
+    setScene(prev => ({
+      placed: prev.placed.map(p =>
+        p.instanceId === instanceId ? { ...p, x, y } : p
+      ),
+    }));
+  }, []);
+
+  /** Drop one placed instance - used when it's dragged off the scene. */
+  const removePlacedItem = useCallback(instanceId => {
+    setScene(prev => ({
+      placed: prev.placed.filter(p => p.instanceId !== instanceId),
+    }));
+  }, []);
+
+  // Derived here (rather than exposing `today()` itself) so the main menu
+  // doesn't need its own copy of the calendar-day format just to compare.
+  const hasSeenTodaysAnimal = lastCelebratedDailyAnimal === today();
 
   const resetMemory = useCallback(() => setMemoryState(DEFAULT_MEMORY), []);
   const resetGuess = useCallback(() => setGuessState(DEFAULT_GUESS), []);
@@ -352,6 +608,11 @@ export function GameProgressProvider({ children }) {
     () => setFindAnimalState(DEFAULT_FINDANIMAL),
     []
   );
+  const resetWhoseSound = useCallback(
+    () => setWhoseSoundState(DEFAULT_WHOSESOUND),
+    []
+  );
+  const resetScene = useCallback(() => setScene(DEFAULT_SCENE), []);
 
   const value = useMemo(
     () => ({
@@ -361,18 +622,32 @@ export function GameProgressProvider({ children }) {
       letter,
       trace,
       findAnimal,
+      whoseSound,
       met,
+      metVia,
+      stars,
+      scene,
+      lastCelebratedDailyAnimal,
+      hasSeenTodaysAnimal,
       markAnimalMet,
+      markLevelStarred,
+      markDailyAnimalCelebrated,
+      addPlacedItem,
+      movePlacedItem,
+      removePlacedItem,
       updateMemory,
       updateGuess,
       updateLetter,
       updateTrace,
       updateFindAnimal,
+      updateWhoseSound,
       resetMemory,
       resetGuess,
       resetLetter,
       resetTrace,
       resetFindAnimal,
+      resetWhoseSound,
+      resetScene,
     }),
     [
       hydrated,
@@ -381,18 +656,32 @@ export function GameProgressProvider({ children }) {
       letter,
       trace,
       findAnimal,
+      whoseSound,
       met,
+      metVia,
+      stars,
+      scene,
+      lastCelebratedDailyAnimal,
+      hasSeenTodaysAnimal,
       markAnimalMet,
+      markLevelStarred,
+      markDailyAnimalCelebrated,
+      addPlacedItem,
+      movePlacedItem,
+      removePlacedItem,
       updateMemory,
       updateGuess,
       updateLetter,
       updateTrace,
       updateFindAnimal,
+      updateWhoseSound,
       resetMemory,
       resetGuess,
       resetLetter,
       resetTrace,
       resetFindAnimal,
+      resetWhoseSound,
+      resetScene,
     ]
   );
 
@@ -406,10 +695,18 @@ export function GameProgressProvider({ children }) {
 /**
  * Access saved progress for all games.
  * @returns {{hydrated: boolean, memory: object, guess: object, letter: object,
- *   trace: object, findAnimal: object, updateMemory: Function,
+ *   trace: object, findAnimal: object, whoseSound: object, stars: object,
+ *   scene: {placed: object[]}, met: string[], metVia: Object<string,string>,
+ *   lastCelebratedDailyAnimal: ?string, hasSeenTodaysAnimal: boolean,
+ *   markLevelStarred: Function,
+ *   markDailyAnimalCelebrated: Function, addPlacedItem: Function,
+ *   movePlacedItem: Function, removePlacedItem: Function,
+ *   updateMemory: Function,
  *   updateGuess: Function, updateLetter: Function, updateTrace: Function,
- *   updateFindAnimal: Function, resetMemory: Function, resetGuess: Function,
- *   resetLetter: Function, resetTrace: Function, resetFindAnimal: Function}}
+ *   updateFindAnimal: Function, updateWhoseSound: Function,
+ *   resetMemory: Function, resetGuess: Function, resetLetter: Function,
+ *   resetTrace: Function, resetFindAnimal: Function,
+ *   resetWhoseSound: Function, resetScene: Function}}
  */
 export function useGameProgress() {
   const ctx = useContext(GameProgressContext);
@@ -425,4 +722,6 @@ export {
   DEFAULT_LETTER,
   DEFAULT_TRACE,
   DEFAULT_FINDANIMAL,
+  DEFAULT_WHOSESOUND,
+  DEFAULT_STARS,
 };

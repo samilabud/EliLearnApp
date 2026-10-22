@@ -56,7 +56,7 @@ const AnimalScreen = ({ currentLanguage }) => {
     tapFeedback();
     track(EVENTS.ANIMAL_VIEWED, { animal: animalId });
     // Hearing an animal counts as meeting it, so Learn fills the album too.
-    markAnimalMet(animalId);
+    markAnimalMet(animalId, 'learn');
     if (currentAnimation && typeof currentAnimation.reset === 'function') {
       try {
         currentAnimation.reset();

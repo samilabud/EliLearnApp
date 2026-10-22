@@ -19,7 +19,16 @@ const CONFIRM_WINDOW_MS = 2500;
  * Deliberately not used for the "Play Again" button on the completion
  * screen - that tap is already a considered choice, not an accidental one.
  */
-export function ConfirmResetButton({ currentLanguage, onConfirm, style }) {
+export function ConfirmResetButton({
+  currentLanguage,
+  onConfirm,
+  style,
+  // Overridable for screens where "start this level again" doesn't fit -
+  // Build a Scene has no level, so it passes its own "clear the scene"
+  // strings instead. Every other caller relies on these defaults.
+  labelKey = 'a11yResetButton',
+  confirmLabelKey = 'a11yResetConfirm',
+}) {
   const [confirming, setConfirming] = useState(false);
   const timer = useRef(null);
 
@@ -50,7 +59,7 @@ export function ConfirmResetButton({ currentLanguage, onConfirm, style }) {
       accessibilityRole="button"
       accessibilityLabel={t(
         currentLanguage,
-        confirming ? 'a11yResetConfirm' : 'a11yResetButton'
+        confirming ? confirmLabelKey : labelKey
       )}
     >
       <MaterialIcons name="replay" size={22} color="#0A3D62" />
