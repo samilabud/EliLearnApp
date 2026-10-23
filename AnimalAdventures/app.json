@@ -20,7 +20,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.elilearnapps.animaladventures",
-      "buildNumber": "5.5.0"
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.elilearnapps.animaladventures",

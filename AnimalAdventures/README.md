@@ -150,6 +150,7 @@ npm run bump:dry-run    # show planned changes only
 Notes:
 - The bump script updates `package.json`, `app.json` (`expo.version`, `ios.buildNumber`, `android.versionCode`), and `android/app/build.gradle` (`versionName`, `versionCode`).
 - `android.versionCode` is incremented by +1 unless overridden via `--code N` when running the script directly.
+- `ios.buildNumber` is a separate integer counter from `expo.version` - it also increments by +1 each run (override with `--ios-code N`), because Apple requires the iOS build number to strictly increase on every upload, even repeat uploads of the same marketing version.
 
 ## 🤝 Contributing
 
