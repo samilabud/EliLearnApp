@@ -116,6 +116,13 @@ export const MODES = [
     titleKey: 'modeColoringTitle',
     descriptionKey: 'modeColoringDescription',
   },
+  {
+    key: 'counting',
+    icon: require('../../assets/animations/icons/counting_icon.json'),
+    glyph: 'format-list-numbered',
+    titleKey: 'modeCountingTitle',
+    descriptionKey: 'modeCountingDescription',
+  },
 ];
 
 // The album isn't a game to try once and move past like the cards above -

@@ -37,6 +37,14 @@ const STROKE_WIDTH = 14;
 // touched.
 const ERASE_THRESHOLD = 26;
 
+// How far (canvas px) the finger has to travel while erasing before the
+// next live erase check runs. Erasing on every single move event would
+// mean a context update (and a real re-render) that often - this keeps
+// strokes disappearing smoothly as the eraser passes over them without
+// checking far more often than the finger could possibly have reached a
+// new stroke.
+const ERASE_LIVE_THROTTLE = 14;
+
 const BRUSH_SIZES = [
   { width: 8, key: 'brushSizeSmall' },
   { width: 14, key: 'brushSizeMedium' },
@@ -107,13 +115,24 @@ export default function ColoringGame({
     setCanvasSize({ width, height });
   }, []);
 
-  // The in-progress stroke lives here in component state; finished strokes
-  // live in context via addColorStroke - the same "in flight" vs
-  // "committed" split build-scene's drag ghost uses, so a 60fps-updating
-  // stroke doesn't write to (and re-persist-debounce) context on every
-  // move event.
-  const [currentPoints, setCurrentPoints] = useState([]);
+  // The in-progress stroke is driven almost entirely outside React state.
+  // `isDrawing` only mounts/unmounts the live-preview Path (one render at
+  // the start and end of a stroke); while a gesture is in progress, its
+  // `d` is pushed straight to the native view via setNativeProps on every
+  // move event instead of through setState - going through React/setState
+  // on every touch-move re-rendered this whole screen (strokes already
+  // drawn, the 24-item tray, the palette) dozens of times a second, which
+  // is what made a line visibly lag behind the finger. See livePathRef.
+  const [isDrawing, setIsDrawing] = useState(false);
+  // The live Path's `d` at the moment it mounts - just the single starting
+  // point, read from state (not the ref) because React forbids reading a
+  // ref's value during render. Every point after this one updates the
+  // native node directly via setNativeProps instead.
+  const [startD, setStartD] = useState('');
   const currentPointsRef = useRef([]);
+  const livePathRef = useRef(null);
+  // Throttles live erasing - see ERASE_LIVE_THROTTLE.
+  const lastErasePointRef = useRef(null);
   // Latest-ref set so the PanResponder (built once below) always commits
   // against whatever's on screen *at release time*, not whichever was
   // active when the responder was created - same reasoning as the
@@ -167,7 +186,10 @@ export default function ColoringGame({
     [soundPlayer, voicePlayer, currentLanguage]
   );
 
-  const commitStroke = useCallback(() => {
+  // Finishes a stroke: commits paint (addColorStroke) or does a final
+  // erase pass over the whole gesture as a safety net for anything the
+  // throttled live erasing in onPanResponderMove below might have missed.
+  const finishStroke = useCallback(() => {
     if (currentPointsRef.current.length > 1) {
       if (isErasingRef.current) {
         eraseStrokesNear(
@@ -185,17 +207,18 @@ export default function ColoringGame({
       }
     }
     currentPointsRef.current = [];
-    setCurrentPoints([]);
+    lastErasePointRef.current = null;
+    setIsDrawing(false);
   }, [addColorStroke, eraseStrokesNear]);
 
   // Latest-ref so the PanResponder (built once below) always commits
   // against the current animal/color, not whichever was active when it was
   // created - same "latest ref" dance build-scene.game.component.jsx's
   // DraggableItem uses for its onTap/onDragStart/etc. callbacks.
-  const commitStrokeRef = useRef(commitStroke);
+  const finishStrokeRef = useRef(finishStroke);
   useEffect(() => {
-    commitStrokeRef.current = commitStroke;
-  }, [commitStroke]);
+    finishStrokeRef.current = finishStroke;
+  }, [finishStroke]);
 
   const [panResponder, setPanResponder] = useState(null);
   useEffect(() => {
@@ -207,25 +230,45 @@ export default function ColoringGame({
         onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: evt => {
           const { locationX, locationY } = evt.nativeEvent;
-          const next = [{ x: locationX, y: locationY }];
-          currentPointsRef.current = next;
-          setCurrentPoints(next);
+          const point = { x: locationX, y: locationY };
+          currentPointsRef.current = [point];
+          // Mounts the live-preview Path for this gesture, starting at
+          // this first point - every point after this one is pushed via
+          // setNativeProps in onPanResponderMove instead.
+          setStartD(toPathD([point]));
+          setIsDrawing(true);
+          if (isErasingRef.current) {
+            lastErasePointRef.current = point;
+            eraseStrokesNear(animalIdRef.current, [point], ERASE_THRESHOLD);
+          }
         },
         onPanResponderMove: evt => {
           const { locationX, locationY } = evt.nativeEvent;
-          const next = [
-            ...currentPointsRef.current,
-            { x: locationX, y: locationY },
-          ];
-          currentPointsRef.current = next;
-          setCurrentPoints(next);
+          const point = { x: locationX, y: locationY };
+          currentPointsRef.current = [...currentPointsRef.current, point];
+          // Bypasses React/setState entirely for the hot path - pushing a
+          // new `d` straight to the native SVG node every move event, so
+          // the line tracks the finger with no render-driven lag.
+          livePathRef.current?.setNativeProps({
+            d: toPathD(currentPointsRef.current),
+          });
+          if (isErasingRef.current) {
+            const last = lastErasePointRef.current;
+            if (!last || Math.hypot(point.x - last.x, point.y - last.y) >= ERASE_LIVE_THROTTLE) {
+              lastErasePointRef.current = point;
+              eraseStrokesNear(animalIdRef.current, [point], ERASE_THRESHOLD);
+            }
+          }
         },
-        onPanResponderRelease: () => commitStrokeRef.current(),
-        onPanResponderTerminate: () => commitStrokeRef.current(),
+        onPanResponderRelease: () => finishStrokeRef.current(),
+        onPanResponderTerminate: () => finishStrokeRef.current(),
       })
     );
-    // Built once per mount - the latest-ref above is what keeps its
-    // callbacks fresh, not recreating it.
+    // Built once per mount - the latest-refs above are what keep its
+    // callbacks fresh, not recreating it. eraseStrokesNear is stable
+    // (useCallback with an empty dep array in the context), safe to close
+    // over directly rather than through a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelectAnimal = useCallback(
@@ -355,9 +398,14 @@ export default function ColoringGame({
                 fill="none"
               />
             ))}
-            {currentPoints.length > 1 && (
+            {isDrawing && (
               <Path
-                d={toPathD(currentPoints)}
+                ref={livePathRef}
+                // Only the starting point at mount time - every point
+                // after this is pushed straight to the native node via
+                // setNativeProps in onPanResponderMove, not through this
+                // prop, so re-renders don't gate how fast the line grows.
+                d={startD}
                 stroke={isErasing ? '#999999' : activeColor}
                 strokeWidth={isErasing ? ERASE_THRESHOLD : brushWidth}
                 strokeDasharray={isErasing ? '2,10' : undefined}
