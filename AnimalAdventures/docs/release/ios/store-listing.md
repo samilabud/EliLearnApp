@@ -6,8 +6,8 @@ Note: the current Play Store description (`docs/store-listing/description-en.txt
 
 ## Name (max 30 characters)
 
-**EN:** Animal Adventures (18 chars)
-**ES:** Aventuras de Animales (22 chars) — App Store lets each localization have its own name; keeping the Spanish name consistent with the in-app Spanish branding.
+**EN:** Animal Adventures - EliLearn (28 chars) — "Animal Adventures" alone was already taken by another developer's listing (discovered when creating the app record in App Store Connect on 2026-10-23), so this adds the brand suffix to disambiguate while staying close to the original name.
+**ES:** Aventuras de Animales - EliLearn (32 chars) — **over the 30-char limit, needs shortening before use.** App Store lets each localization have its own name, and this hasn't been tested against Apple's uniqueness check yet. Try `Aventuras Animales EliLearn` (26 chars) or `Aventuras Animales - EliLearn` (29 chars) when you add the Spanish localization.
 
 ## Subtitle (max 30 characters)
 
