@@ -23,6 +23,8 @@ export const STRINGS = {
     modeBuildSceneDescription: 'Drag animals to make your own scene!',
     modeColoringTitle: 'Coloring Book',
     modeColoringDescription: 'Color your favorite animals!',
+    modeCountingTitle: 'Count the Animals',
+    modeCountingDescription: 'How many do you see?',
 
     // Shared navigation
     back: 'Back',
@@ -151,6 +153,9 @@ export const STRINGS = {
     brushSizeSmall: 'small',
     brushSizeMedium: 'medium',
     brushSizeLarge: 'large',
+    howManyDoYouSee: 'How many do you see?',
+    a11yCountOption: '{count}. Tap if this is how many you counted',
+    a11yCountingAnimal: '{animal}. Tap to hear it',
     colorRed: 'red',
     colorOrange: 'orange',
     colorYellow: 'yellow',
@@ -208,6 +213,8 @@ export const STRINGS = {
     modeBuildSceneDescription: '¡Arrastra animales para crear tu escena!',
     modeColoringTitle: 'Libro para Colorear',
     modeColoringDescription: '¡Colorea tus animales favoritos!',
+    modeCountingTitle: 'Cuenta los Animales',
+    modeCountingDescription: '¿Cuántos ves?',
 
     // Navegación común
     back: 'Atrás',
@@ -337,6 +344,9 @@ export const STRINGS = {
     brushSizeSmall: 'pequeño',
     brushSizeMedium: 'mediano',
     brushSizeLarge: 'grande',
+    howManyDoYouSee: '¿Cuántos ves?',
+    a11yCountOption: '{count}. Toca si contaste esta cantidad',
+    a11yCountingAnimal: '{animal}. Toca para escucharlo',
     colorRed: 'rojo',
     colorOrange: 'naranja',
     colorYellow: 'amarillo',

@@ -16,4 +16,5 @@ export const GAME_ORDER = [
   'whoseSound',
   'buildScene',
   'coloring',
+  'counting',
 ];

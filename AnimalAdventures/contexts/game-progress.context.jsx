@@ -107,6 +107,18 @@ const DEFAULT_WHOSESOUND = {
   usedTargetIds: [],
 };
 
+const DEFAULT_COUNTING = {
+  level: 1,
+  targetId: null, // The animal species shown this round.
+  targetCount: null, // How many of it are shown - the correct answer.
+  optionCounts: [], // The number choices offered, e.g. [2, 3, 4].
+  wrongCount: 0,
+  showComplete: false,
+  // Animal ids already asked as the target this match, so the same animal
+  // is not asked about twice before every animal has had a turn.
+  usedTargetIds: [],
+};
+
 /**
  * Animals the child has met, by id.
  *
@@ -141,6 +153,7 @@ const DEFAULT_STARS = {
   memory: [],
   findAnimal: [],
   whoseSound: [],
+  counting: [],
 };
 
 /**
@@ -221,6 +234,15 @@ const whoseSoundIsUsable = whoseSound => {
   if (!whoseSound) return false;
   if (whoseSound.targetId && !validIds.has(whoseSound.targetId)) return false;
   return (whoseSound.optionIds || []).every(id => validIds.has(id));
+};
+
+const countingIsUsable = counting => {
+  if (!counting) return false;
+  if (counting.targetId && !validIds.has(counting.targetId)) return false;
+  if (counting.targetCount != null && typeof counting.targetCount !== 'number') {
+    return false;
+  }
+  return (counting.optionCounts || []).every(n => typeof n === 'number');
 };
 
 const starsIsUsable = stars =>
@@ -320,7 +342,8 @@ const clearTerminalStates = (
   letter,
   trace,
   findAnimal,
-  whoseSound
+  whoseSound,
+  counting
 ) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,
   guess: guess.showComplete ? DEFAULT_GUESS : guess,
@@ -328,6 +351,7 @@ const clearTerminalStates = (
   trace: trace.showComplete ? DEFAULT_TRACE : trace,
   findAnimal: findAnimal.showComplete ? DEFAULT_FINDANIMAL : findAnimal,
   whoseSound: whoseSound.showComplete ? DEFAULT_WHOSESOUND : whoseSound,
+  counting: counting.showComplete ? DEFAULT_COUNTING : counting,
 });
 
 /**
@@ -353,6 +377,7 @@ export function GameProgressProvider({ children }) {
   const [trace, setTraceState] = useState(DEFAULT_TRACE);
   const [findAnimal, setFindAnimalState] = useState(DEFAULT_FINDANIMAL);
   const [whoseSound, setWhoseSoundState] = useState(DEFAULT_WHOSESOUND);
+  const [counting, setCountingState] = useState(DEFAULT_COUNTING);
   const [met, setMet] = useState(DEFAULT_MET);
   const [metVia, setMetVia] = useState(DEFAULT_MET_VIA);
   const [stars, setStars] = useState(DEFAULT_STARS);
@@ -368,6 +393,7 @@ export function GameProgressProvider({ children }) {
     trace,
     findAnimal,
     whoseSound,
+    counting,
   });
 
   useEffect(() => {
@@ -396,7 +422,10 @@ export function GameProgressProvider({ children }) {
             : DEFAULT_FINDANIMAL,
           whoseSoundIsUsable(stored.whoseSound)
             ? { ...DEFAULT_WHOSESOUND, ...stored.whoseSound }
-            : DEFAULT_WHOSESOUND
+            : DEFAULT_WHOSESOUND,
+          countingIsUsable(stored.counting)
+            ? { ...DEFAULT_COUNTING, ...stored.counting }
+            : DEFAULT_COUNTING
         );
         setMemoryState(restored.memory);
         setGuessState(restored.guess);
@@ -404,6 +433,7 @@ export function GameProgressProvider({ children }) {
         setTraceState(restored.trace);
         setFindAnimalState(restored.findAnimal);
         setWhoseSoundState(restored.whoseSound);
+        setCountingState(restored.counting);
         if (Array.isArray(stored.met)) {
           setMet(stored.met.filter(id => validIds.has(id)));
         }
@@ -445,6 +475,7 @@ export function GameProgressProvider({ children }) {
       trace,
       findAnimal,
       whoseSound,
+      counting,
       met,
       metVia,
       stars,
@@ -467,6 +498,7 @@ export function GameProgressProvider({ children }) {
         trace,
         findAnimal,
         whoseSound,
+        counting,
         met,
         metVia,
         stars,
@@ -486,6 +518,7 @@ export function GameProgressProvider({ children }) {
     trace,
     findAnimal,
     whoseSound,
+    counting,
     met,
     metVia,
     stars,
@@ -507,6 +540,7 @@ export function GameProgressProvider({ children }) {
         trace: tr,
         findAnimal: fa,
         whoseSound: ws,
+        counting: ct,
         met: k,
         metVia: mv,
         stars: st,
@@ -524,6 +558,7 @@ export function GameProgressProvider({ children }) {
         trace: tr,
         findAnimal: fa,
         whoseSound: ws,
+        counting: ct,
         met: k,
         metVia: mv,
         stars: st,
@@ -571,6 +606,13 @@ export function GameProgressProvider({ children }) {
 
   const updateWhoseSound = useCallback(patch => {
     setWhoseSoundState(prev => ({
+      ...prev,
+      ...(typeof patch === 'function' ? patch(prev) : patch),
+    }));
+  }, []);
+
+  const updateCounting = useCallback(patch => {
+    setCountingState(prev => ({
       ...prev,
       ...(typeof patch === 'function' ? patch(prev) : patch),
     }));
@@ -755,6 +797,10 @@ export function GameProgressProvider({ children }) {
     () => setWhoseSoundState(DEFAULT_WHOSESOUND),
     []
   );
+  const resetCounting = useCallback(
+    () => setCountingState(DEFAULT_COUNTING),
+    []
+  );
   const resetScene = useCallback(() => setScene(DEFAULT_SCENE), []);
 
   const value = useMemo(
@@ -766,6 +812,7 @@ export function GameProgressProvider({ children }) {
       trace,
       findAnimal,
       whoseSound,
+      counting,
       met,
       metVia,
       stars,
@@ -789,12 +836,14 @@ export function GameProgressProvider({ children }) {
       updateTrace,
       updateFindAnimal,
       updateWhoseSound,
+      updateCounting,
       resetMemory,
       resetGuess,
       resetLetter,
       resetTrace,
       resetFindAnimal,
       resetWhoseSound,
+      resetCounting,
       resetScene,
     }),
     [
@@ -805,6 +854,7 @@ export function GameProgressProvider({ children }) {
       trace,
       findAnimal,
       whoseSound,
+      counting,
       met,
       metVia,
       stars,
@@ -828,12 +878,14 @@ export function GameProgressProvider({ children }) {
       updateTrace,
       updateFindAnimal,
       updateWhoseSound,
+      updateCounting,
       resetMemory,
       resetGuess,
       resetLetter,
       resetTrace,
       resetFindAnimal,
       resetWhoseSound,
+      resetCounting,
       resetScene,
     ]
   );
@@ -848,7 +900,8 @@ export function GameProgressProvider({ children }) {
 /**
  * Access saved progress for all games.
  * @returns {{hydrated: boolean, memory: object, guess: object, letter: object,
- *   trace: object, findAnimal: object, whoseSound: object, stars: object,
+ *   trace: object, findAnimal: object, whoseSound: object, counting: object,
+ *   stars: object,
  *   scene: {placed: object[]}, coloring: {pages: Object<string,object>},
  *   met: string[], metVia: Object<string,string>,
  *   lastCelebratedDailyAnimal: ?string, hasSeenTodaysAnimal: boolean,
@@ -860,9 +913,10 @@ export function GameProgressProvider({ children }) {
  *   updateMemory: Function,
  *   updateGuess: Function, updateLetter: Function, updateTrace: Function,
  *   updateFindAnimal: Function, updateWhoseSound: Function,
+ *   updateCounting: Function,
  *   resetMemory: Function, resetGuess: Function, resetLetter: Function,
  *   resetTrace: Function, resetFindAnimal: Function,
- *   resetWhoseSound: Function, resetScene: Function}}
+ *   resetWhoseSound: Function, resetCounting: Function, resetScene: Function}}
  */
 export function useGameProgress() {
   const ctx = useContext(GameProgressContext);
