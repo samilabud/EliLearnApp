@@ -581,7 +581,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 14,
+    // Matches the 16dp minimum this app settled on everywhere else after
+    // finding smaller gaps risked mis-taps for this audience (see
+    // guess-animal.game.component.jsx's topActions comment) - this row
+    // hadn't been brought in line with that yet.
+    gap: 16,
     paddingTop: 10,
   },
   sizeButton: {
@@ -601,7 +605,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 10,
+    // Same 16dp-minimum reasoning as brushSizes above - 11 adjacent
+    // swatches (eraser + 10 colors) at the old 10dp gap was tighter than
+    // this app's own established standard for small hands.
+    gap: 16,
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 10,

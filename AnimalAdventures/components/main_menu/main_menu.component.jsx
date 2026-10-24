@@ -29,6 +29,11 @@ import { LanguageToggleButton } from '../utility/language-toggle-button.componen
 
 const ICON_SIZE = { width: 90, height: 90 };
 const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
+// Vertical space the always-visible Album pill (see topRightFloating/
+// albumButton below) reserves above the language toggle, so the two
+// top-right floating controls never overlap: the pill's own minHeight
+// (MIN_TOUCH_TARGET) plus a comfortable gap.
+const ALBUM_PILL_CLEARANCE = 58;
 // Matches the source PNG's own 100:85 aspect ratio, so it isn't stretched.
 const MASCOT_SIZE = { width: 110, height: 94 };
 const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 54 };
@@ -568,19 +573,16 @@ function MainMenu({
           to size itself by. Wrapping it in a plain, separately positioned
           View and leaving the button itself in normal flow avoids that
           ambiguity entirely. */}
-      {/* Fades out once scrolled down to the mode cards, so it stops
-          floating over them - `none` while hidden so a faded-out button
-          can't still eat a tap meant for a card underneath it. The album
-          icon rides along with the language toggle: both are top overlay
-          controls that would otherwise sit on top of the cards once
-          scrolled, so they share the same visibility/fade. */}
-      <Animated.View
-        pointerEvents={languageVisible ? 'box-none' : 'none'}
-        style={[
-          styles.topRightFloating,
-          { top: insets.top + 12, opacity: languageOpacity },
-        ]}
-      >
+      {/* The Album, unlike the language toggle below, stays visible and
+          reachable the whole time the menu is open - it's a destination a
+          child comes back to, not a secondary control, so it doesn't fade
+          out once they start scrolling through the games (the opposite
+          would mean a child who's exploring the game list loses the one
+          button that gets them to their own collection). Labeled with
+          text, not just an icon, for the same reason the Parents button
+          below is: a bare icon isn't "clear" for a child who can't yet
+          read icon conventions. */}
+      <View style={[styles.topRightFloating, { top: insets.top + 12 }]}>
         <BouncyButton
           style={styles.albumButton}
           onPress={() => handleModeSelect(ALBUM_MODE.key)}
@@ -591,8 +593,23 @@ function MainMenu({
             description: t(currentLanguage, ALBUM_MODE.descriptionKey),
           })}
         >
-          <MaterialIcons name={ALBUM_MODE.glyph} size={22} color="#0A3D62" />
+          <MaterialIcons name={ALBUM_MODE.glyph} size={18} color="#0A3D62" />
+          <Text style={styles.albumButtonText}>
+            {t(currentLanguage, ALBUM_MODE.titleKey)}
+          </Text>
         </BouncyButton>
+      </View>
+
+      {/* Fades out once scrolled down to the mode cards, so it stops
+          floating over them - `none` while hidden so a faded-out button
+          can't still eat a tap meant for a card underneath it. */}
+      <Animated.View
+        pointerEvents={languageVisible ? 'box-none' : 'none'}
+        style={[
+          styles.languageFloating,
+          { top: insets.top + 12 + ALBUM_PILL_CLEARANCE, opacity: languageOpacity },
+        ]}
+      >
         <LanguageToggleButton
           currentLanguage={currentLanguage}
           onToggle={setCurrentLanguage}
@@ -640,19 +657,34 @@ const styles = StyleSheet.create({
   topRightFloating: {
     position: 'absolute',
     right: 20,
+  },
+  // Same labeled-pill shape as topParentsButton below - icon + text, not
+  // an icon alone, per Google's "clear, consistent interactive elements"
+  // guidance for this age range.
+  albumButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  albumButton: {
-    width: MIN_TOUCH_TARGET,
-    height: MIN_TOUCH_TARGET,
-    borderRadius: MIN_TOUCH_TARGET / 2,
+    gap: 6,
+    minHeight: MIN_TOUCH_TARGET,
     backgroundColor: '#ffffff',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 25,
     borderWidth: 2,
     borderColor: '#FFD700',
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  albumButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0A3D62',
+  },
+  // Positioned below the always-visible Album pill above it (see the
+  // inline `top` offset where this is used), so the two never overlap -
+  // this one still fades out on scroll (see its own comment above), the
+  // Album one no longer does.
+  languageFloating: {
+    position: 'absolute',
+    right: 20,
   },
   topParentsFloating: {
     position: 'absolute',
