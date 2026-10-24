@@ -60,6 +60,21 @@ public-facing change outside the repo.
 
 ## c) iPad support
 
+**Update 2026-10-24: `supportsTablet` was switched to `false`.** The visual
+check this section recommended below did get done — on an actual iPad
+simulator — and found that `whose-sound` and `first-letter` (confirmed) leave
+roughly 60-70% of the screen empty below their content, and likely the other
+four quiz-style screens sharing their layout pattern (`find-animal`,
+`guess-animal`, `memory-animal`, `trace-letter`) have the same issue.
+Main menu, Album, and Build a Scene all looked correct. Rather than delay
+this submission, we're shipping iPhone-only for now and will re-enable
+`supportsTablet` in a follow-up version once that shared layout bug is
+fixed — it looks like a fixable container/centering issue in one place
+rather than a fundamental incompatibility, not a reason to abandon iPad
+long-term.
+
+Original analysis below, kept for context:
+
 `supportsTablet: true` is set, so Apple will require iPad screenshots and
 will review the app running on iPad.
 
