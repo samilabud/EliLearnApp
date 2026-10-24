@@ -1,6 +1,6 @@
 # Privacy Policy — Animal Adventures
 
-**Last updated: 18 September 2026**
+**Last updated: 23 October 2026**
 
 Animal Adventures is made by EliLearn Apps for young children. This policy explains, in plain language, exactly what the app does and does not do with information.
 
@@ -24,7 +24,7 @@ The app saves a small amount of information **on your device only**, so that you
 - Settings you choose, such as language, sound on or off, and the daily play limit
 - Anonymous counts of in-app activity — for example how many times a game was opened — used to understand which parts of the app are used
 
-None of this is sent anywhere. It stays in the app's private storage and is deleted when the app is uninstalled. The anonymous activity counts are not linked to any identity and never leave the device.
+None of this is sent anywhere. It stays in the app's private storage and is deleted when the app is uninstalled. The anonymous activity counts are not linked to any identity and never leave the device. The app contains no third-party analytics.
 
 ## Information that does leave the device
 
@@ -38,17 +38,17 @@ Expo's own privacy policy is at <https://expo.dev/privacy>.
 
 The app shows no advertising of any kind, and contains no advertising SDKs.
 
-## No purchases
+## Purchases
 
-There is nothing to buy in the app. There are no in-app purchases and no subscriptions.
+There is nothing to buy inside the app. On Android it's free; on iOS it's a one-time paid download — either way there are no in-app purchases or subscriptions.
 
 ## No links out of the app
 
-The app contains no links to websites, social media, or other apps. A child cannot navigate out of it.
+The app contains no links to websites, social media, or other apps that a child can reach. (On Android, a parent-only donate link exists behind a parental gate; it does not exist in the iOS version at all.)
 
 ## Children's privacy
 
-Animal Adventures is designed for children and is intended to comply with the Children's Online Privacy Protection Act (COPPA) and Google Play's Families policy. We do not knowingly collect personal information from children, because we do not collect personal information from anyone.
+Animal Adventures is designed for children and is intended to comply with the Children's Online Privacy Protection Act (COPPA), Google Play's Families policy, and the App Store's requirements for apps in the Kids Category. We do not knowingly collect personal information from children, because we do not collect personal information from anyone.
 
 ## Changes to this policy
 
