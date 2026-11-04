@@ -30,7 +30,7 @@ import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
 import { InstructionText } from '../utility/instruction-text.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
-const TRAY_ITEM_SIZE = 64;
+const TRAY_ITEM_SIZE = 56;
 const STROKE_WIDTH = 14;
 
 // How close (canvas px) an eraser pass has to come to a stroke's own points
@@ -458,7 +458,14 @@ export default function ColoringGame({
         ))}
       </View>
 
-      <View style={styles.palette}>
+      {/* One scrolling row (like the animal tray below) instead of wrapping
+          into two rows, so the drawing area keeps that height. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.paletteScroll}
+        contentContainerStyle={styles.palette}
+      >
         <BouncyButton
           style={[styles.swatch, styles.eraserSwatch, isErasing && styles.swatchActive]}
           onPress={handleToggleEraser}
@@ -486,7 +493,7 @@ export default function ColoringGame({
             })}
           />
         ))}
-      </View>
+      </ScrollView>
 
       <ScrollView
         horizontal
@@ -622,17 +629,18 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
+  paletteScroll: {
+    flexGrow: 0,
+  },
   palette: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    alignItems: 'center',
     // Same 16dp-minimum reasoning as brushSizes above - 11 adjacent
     // swatches (eraser + 10 colors) at the old 10dp gap was tighter than
     // this app's own established standard for small hands.
     gap: 16,
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 10,
+    paddingVertical: 6,
   },
   swatch: {
     width: MIN_TOUCH_TARGET,
