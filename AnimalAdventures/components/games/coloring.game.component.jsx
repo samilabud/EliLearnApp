@@ -12,7 +12,7 @@ import LottieView from 'lottie-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
@@ -27,8 +27,10 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
-const TRAY_ITEM_SIZE = 64;
+const TRAY_ITEM_SIZE = 56;
 const STROKE_WIDTH = 14;
 
 // How close (canvas px) an eraser pass has to come to a stroke's own points
@@ -82,6 +84,11 @@ export default function ColoringGame({
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'coloring',
+    currentLanguage
+  );
   const {
     coloring,
     addColorStroke,
@@ -362,6 +369,13 @@ export default function ColoringGame({
         </View>
       </View>
 
+      <InstructionText
+        text={t(currentLanguage, 'modeColoringDescription')}
+        currentLanguage={currentLanguage}
+        onReplay={replayInstruction}
+        textStyle={styles.instructionText}
+      />
+
       <View style={styles.canvasWrapper}>
         <View
           style={styles.canvas}
@@ -444,7 +458,14 @@ export default function ColoringGame({
         ))}
       </View>
 
-      <View style={styles.palette}>
+      {/* One scrolling row (like the animal tray below) instead of wrapping
+          into two rows, so the drawing area keeps that height. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.paletteScroll}
+        contentContainerStyle={styles.palette}
+      >
         <BouncyButton
           style={[styles.swatch, styles.eraserSwatch, isErasing && styles.swatchActive]}
           onPress={handleToggleEraser}
@@ -472,7 +493,7 @@ export default function ColoringGame({
             })}
           />
         ))}
-      </View>
+      </ScrollView>
 
       <ScrollView
         horizontal
@@ -505,7 +526,10 @@ export default function ColoringGame({
               loop={false}
               resizeMode="contain"
               source={a.animation_path}
-              style={{ width: TRAY_ITEM_SIZE, height: TRAY_ITEM_SIZE }}
+              style={[
+                { width: TRAY_ITEM_SIZE, height: TRAY_ITEM_SIZE },
+                iconScaleStyle(a),
+              ]}
             />
           </BouncyButton>
         ))}
@@ -542,6 +566,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
+  },
+  instructionText: {
+    fontSize: 18,
+    lineHeight: 26,
   },
   topActions: {
     flexDirection: 'row',
@@ -601,17 +629,18 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
+  paletteScroll: {
+    flexGrow: 0,
+  },
   palette: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
+    alignItems: 'center',
     // Same 16dp-minimum reasoning as brushSizes above - 11 adjacent
     // swatches (eraser + 10 colors) at the old 10dp gap was tighter than
     // this app's own established standard for small hands.
     gap: 16,
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 10,
+    paddingVertical: 6,
   },
   swatch: {
     width: MIN_TOUCH_TARGET,

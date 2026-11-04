@@ -13,7 +13,7 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { MODES } from '../main_menu/main_menu.component.jsx';
 import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
@@ -236,7 +236,7 @@ export default function AlbumScreen({
                       ref={el => (animRefs.current[animal.id] = el)}
                       resizeMode="contain"
                       source={animal.animation_path}
-                      style={styles.animation}
+                      style={[styles.animation, iconScaleStyle(animal)]}
                     />
                   ) : (
                     <Text style={styles.lockedMark}>?</Text>

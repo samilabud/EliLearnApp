@@ -19,7 +19,7 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t } from '../../constants';
 import {
@@ -43,6 +43,10 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
+import { useSettings } from '../../contexts/settings.context';
+import { getMemoryCardCount } from '../../constants/difficulty';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -69,9 +73,6 @@ const CELEBRATIONS = [
   },
 ];
 
-/** Cards per level: 4, 6, 8, ... capped at 16. */
-const getCardsPerLevel = levelNum => Math.min(2 + levelNum * 2, 16);
-
 export default function MemoryAnimalGame({
   currentLanguage,
   setCurrentLanguage,
@@ -80,6 +81,11 @@ export default function MemoryAnimalGame({
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'memory',
+    currentLanguage
+  );
   // Android 16 ignores the portrait lock on large screens, so the grid has to
   // lay out sensibly at any aspect ratio. Sizing cards from the window keeps
   // them square instead of stretching them into wide slabs in landscape.
@@ -162,9 +168,13 @@ export default function MemoryAnimalGame({
   // third card and the first pick was silently ignored.
   const flippedCards = useMemo(() => unresolvedFlips(cards), [cards]);
 
+  // The age band sets how many cards a level deals (see getMemoryCardCount in
+  // constants/difficulty.js): fewer for under-4, more for 7+.
+  const { childAgeBand } = useSettings();
+
   const dealBoard = useCallback(
     levelNum => {
-      const pairsNeeded = getCardsPerLevel(levelNum) / 2;
+      const pairsNeeded = getMemoryCardCount(childAgeBand, levelNum) / 2;
       const shuffledAnimals = [...animalList].sort(() => Math.random() - 0.5);
       const selectedAnimals = shuffledAnimals.slice(0, pairsNeeded);
       const pairs = [...selectedAnimals, ...selectedAnimals];
@@ -188,13 +198,13 @@ export default function MemoryAnimalGame({
       setConfettiKey(prev => prev + 1);
       levelStartedAt.current = Date.now();
     },
-    [updateMemory]
+    [updateMemory, childAgeBand]
   );
 
   // A board is dealt only when the saved one does not fit the current level,
-  // which covers a first run, a level change and a reset. A saved board that
+  // which covers a first run, a level change, a reset and a change of age band. A saved board that
   // does fit is left exactly as the child left it.
-  const expectedCardCount = getCardsPerLevel(level);
+  const expectedCardCount = getMemoryCardCount(childAgeBand, level);
   useEffect(() => {
     if (memory.cards.length !== expectedCardCount) {
       dealBoard(level);
@@ -496,14 +506,14 @@ export default function MemoryAnimalGame({
 
         {/* Game instructions */}
         <View style={styles.instructionsContainer}>
-          <Text
-            style={[
-              styles.instructionsText,
-              { fontFamily: 'Bangers_400Regular' },
-            ]}
-          >
-            {t(currentLanguage, 'findPairs', { count: expectedCardCount })}
-          </Text>
+          <InstructionText
+            text={t(currentLanguage, 'findPairs', {
+              count: expectedCardCount,
+            })}
+            currentLanguage={currentLanguage}
+            onReplay={replayInstruction}
+            textStyle={styles.instructionsText}
+          />
         </View>
 
         {/* Cards grid */}
@@ -543,7 +553,7 @@ export default function MemoryAnimalGame({
                       ref={el => (cardAnimRefs.current[card.position] = el)}
                       resizeMode="contain"
                       source={card.animation_path}
-                      style={styles.animation}
+                      style={[styles.animation, iconScaleStyle(card)]}
                     />
                   </View>
                 ) : (
@@ -686,7 +696,8 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 18,
-    flexShrink: 1,
+    flex: 1,
+    marginRight: 8,
     lineHeight: 24,
     includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
@@ -712,8 +723,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   instructionsText: {
-    color: 'white',
-    fontSize: 18,
+    fontSize: 20,
+    lineHeight: 28,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 4,

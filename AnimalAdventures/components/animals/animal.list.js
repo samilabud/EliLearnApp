@@ -219,6 +219,8 @@ export const animalList = [
     name: 'Elephant',
     spanish_name: 'Elefante',
     animation_path: require(`${animation_path}elephant.json`),
+    // The artwork sits small in its Lottie canvas; tiles scale it up to match.
+    iconScale: 1.5,
     sound: require(`${sound_path}/Elephant.mp3`),
     voice: require(`${english_folder}/Elephant.mp3`),
     spanish_voice: require(`${spanish_folder}/Elefante.mp3`),
@@ -233,3 +235,45 @@ export const animalList = [
     spanish_voice: require(`${spanish_folder}/Iguana.mp3`),
   },
 ];
+
+// Some artwork sits small in its Lottie canvas (see `iconScale`); every place
+// that draws an animal appends this so it looks the same size everywhere.
+export const iconScaleStyle = animal =>
+  animal?.iconScale ? { transform: [{ scale: animal.iconScale }] } : null;
+
+// Build-a-scene only: how big each animal is placed relative to the standard
+// item size, so an elephant towers over a chicken and a bee is tiny. Scenery
+// shares the table (by id) so a tree dwarfs a flower. Items not listed use 1.
+export const sceneScale = {
+  elephant: 1.9,
+  horse: 1.6,
+  'fitness-cow': 1.6,
+  'bear-walking': 1.6,
+  dolphin: 1.3,
+  'wolf-howling': 1.3,
+  'dog-tail-wag': 1.2,
+  sheep: 1.2,
+  'piggy-bank-laughing': 1.1,
+  koala: 1.0,
+  monkey: 1.0,
+  snake: 1.0,
+  turkey: 1.0,
+  eagle: 1.0,
+  iguana: 0.9,
+  'sleepy-cat': 0.9,
+  'cute-owl': 0.8,
+  duck: 0.8,
+  chicken: 0.8,
+  'just-a-pigeon': 0.7,
+  'little-chicken': 0.65,
+  frog: 0.65,
+  'butterfly-lottie-animation': 0.55,
+  bee: 0.5,
+  // scenery
+  tree: 1.7,
+  cloud: 1.4,
+  sun: 1.2,
+  bush: 1.1,
+  rock: 0.9,
+  flower: 0.6,
+};

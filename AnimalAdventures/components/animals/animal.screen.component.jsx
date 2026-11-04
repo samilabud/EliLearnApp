@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
-import { animalList } from './animal.list';
+import { animalList, iconScaleStyle } from './animal.list';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { t } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
@@ -137,7 +137,7 @@ const AnimalScreen = ({ currentLanguage }) => {
                     resizeMode="contain"
                     loop={false}
                     source={animatedImage.animation_path}
-                    style={styles.animation}
+                    style={[styles.animation, iconScaleStyle(animatedImage)]}
                   />
                 </View>
                 <Text style={styles.animationName} accessible={false}>

@@ -18,7 +18,7 @@ import { useAudioPlayer } from 'expo-audio';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -78,6 +78,13 @@ export const MODES = [
     glyph: 'sort-by-alpha',
     titleKey: 'modeLetterTitle',
     descriptionKey: 'modeLetterDescription',
+  },
+  {
+    key: 'lastLetter',
+    icon: require('../../assets/animations/icons/last_letter_icon.json'),
+    glyph: 'sort-by-alpha',
+    titleKey: 'modeLastLetterTitle',
+    descriptionKey: 'modeLastLetterDescription',
   },
   {
     key: 'trace',
@@ -401,7 +408,7 @@ function MainMenu({
               autoSize={false}
               resizeMode="contain"
               source={todaysAnimal.animation_path}
-              style={styles.dailyAnimation}
+              style={[styles.dailyAnimation, iconScaleStyle(todaysAnimal)]}
             />
             <View>
               <Text style={styles.dailyLabel}>
@@ -607,7 +614,10 @@ function MainMenu({
         pointerEvents={languageVisible ? 'box-none' : 'none'}
         style={[
           styles.languageFloating,
-          { top: insets.top + 12 + ALBUM_PILL_CLEARANCE, opacity: languageOpacity },
+          {
+            top: insets.top + 12 + ALBUM_PILL_CLEARANCE,
+            opacity: languageOpacity,
+          },
         ]}
       >
         <LanguageToggleButton

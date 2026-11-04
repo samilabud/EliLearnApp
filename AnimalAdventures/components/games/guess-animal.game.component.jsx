@@ -21,10 +21,15 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import {
+  getAnimalOptionCount,
+  getHintAfterTries,
+} from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
@@ -41,6 +46,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const GRID_PADDING_H = 16;
 const OPTION_GAP = 12;
@@ -51,10 +58,9 @@ const MIN_OPTION_SIZE = 104;
 
 const MAX_LEVEL = 8;
 
-// After this many wrong tries the right answer starts to glow. Children aged
-// three to six learn by trying the wrong thing, so the game never ends on a
-// mistake - it just gets more helpful.
-const HINT_AFTER_TRIES = 3;
+// How soon the right answer glows after wrong tries is age-based - see
+// getHintAfterTries in constants/difficulty.js. The game never ends on a
+// mistake; it just gets more helpful.
 
 export default function GuessAnimalGame({
   currentLanguage,
@@ -86,6 +92,13 @@ export default function GuessAnimalGame({
   const { level, wrongCount, showComplete } = guess;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // The first round's sound waits for the spoken instruction to finish so
+  // the two never overlap. Later rounds find this already true.
+  const [instructionDone, setInstructionDone] = useState(false);
+  const { replay: replayInstruction, stop: stopInstruction } =
+    useInstructionPrompt('guess', currentLanguage, {
+      onFinished: () => setInstructionDone(true),
+    });
   const promptPlayer = useAudioPlayer(null);
   const [feedbackAnim] = useState(new Animated.Value(0));
   const [promptPulse] = useState(new Animated.Value(0));
@@ -99,7 +112,7 @@ export default function GuessAnimalGame({
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const optionAnimRefs = useRef({});
-  const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
+  const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
@@ -152,10 +165,14 @@ export default function GuessAnimalGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const optionsCount = useMemo(() => {
-    // Level 1 -> 2 options, Level 2 -> 3, ... Level 5 -> 6
-    return Math.min(6, level + 1);
-  }, [level]);
+  // The age band sets how many choices a level shows and how soon the right
+  // answer starts to glow (see constants/difficulty.js).
+  const { childAgeBand } = useSettings();
+  const hintAfterTries = getHintAfterTries(childAgeBand);
+  const optionsCount = useMemo(
+    () => getAnimalOptionCount(childAgeBand, level),
+    [childAgeBand, level]
+  );
 
   const stopAndUnload = useCallback(async () => {
     stopClip(promptPlayer);
@@ -276,15 +293,16 @@ export default function GuessAnimalGame({
   );
 
   useEffect(() => {
-    if (targetAnimal) {
+    if (targetAnimal && instructionDone) {
       playPrompt();
     }
-  }, [targetAnimal, playPrompt]);
+  }, [targetAnimal, instructionDone, playPrompt]);
 
   const onSelect = useCallback(
     async selected => {
       if (showComplete || isCorrect) return;
       const correct = selected.id === targetAnimal.id;
+      stopInstruction();
       if (correct) {
         successFeedback();
         setIsCorrect(true);
@@ -373,6 +391,7 @@ export default function GuessAnimalGame({
       markAnimalMet,
       markLevelStarred,
       playPrompt,
+      stopInstruction,
     ]
   );
 
@@ -448,6 +467,10 @@ export default function GuessAnimalGame({
             // default line-breaking has mismeasured this custom font often
             // enough to clip the tail of the string.
             textBreakStrategy="simple"
+            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
@@ -481,7 +504,10 @@ export default function GuessAnimalGame({
           >
             <BouncyButton
               onPress={handlePlayPrompt}
-              style={styles.promptButton}
+              style={[
+                styles.promptButton,
+                { width: Math.min(windowWidth - 32, 340) },
+              ]}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
@@ -496,15 +522,21 @@ export default function GuessAnimalGame({
                   styles.promptText,
                   { fontFamily: 'Bangers_400Regular' },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
                 {t(currentLanguage, 'playSound')}
               </Text>
             </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
-            <Text style={styles.helperText}>
-              {t(currentLanguage, 'whichAnimal')}
-            </Text>
+            <InstructionText
+              text={t(currentLanguage, 'whichAnimal')}
+              currentLanguage={currentLanguage}
+              onReplay={replayInstruction}
+              textStyle={styles.helperText}
+            />
           )}
         </View>
 
@@ -512,7 +544,7 @@ export default function GuessAnimalGame({
         <View style={styles.optionsContainer}>
           {options.map(opt => {
             const isHinted =
-              wrongCount >= HINT_AFTER_TRIES &&
+              wrongCount >= hintAfterTries &&
               targetAnimal &&
               opt.id === targetAnimal.id;
 
@@ -540,7 +572,7 @@ export default function GuessAnimalGame({
                     ref={el => (optionAnimRefs.current[opt.id] = el)}
                     resizeMode="contain"
                     source={opt.animation_path}
-                    style={styles.animation}
+                    style={[styles.animation, iconScaleStyle(opt)]}
                   />
                 </View>
               </BouncyButton>
@@ -682,7 +714,8 @@ const styles = StyleSheet.create({
     // Without this, a crowded top bar (Reset + Next Game + Language) can
     // squeeze this text to where the level number gets cut off - letting it
     // shrink/wrap instead keeps the whole string visible.
-    flexShrink: 1,
+    flex: 1,
+    marginRight: 8,
     // Bangers clips on Android without both of these - see promptText below.
     lineHeight: 30,
     includeFontPadding: false,
@@ -709,7 +742,7 @@ const styles = StyleSheet.create({
     // promptButtonBackground instead. See the comment at its usage above.
     justifyContent: 'center',
     minHeight: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 36,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   promptButtonBackground: {
@@ -731,13 +764,13 @@ const styles = StyleSheet.create({
     // to our own lineHeight instead of fighting it.
     lineHeight: 32,
     includeFontPadding: false,
+    textAlign: 'center',
     color: '#0A3D62',
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 6,
-    color: 'white',
     fontSize: 20,
+    lineHeight: 28,
   },
   scrollArea: {
     flex: 1,

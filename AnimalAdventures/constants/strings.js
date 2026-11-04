@@ -13,6 +13,8 @@ export const STRINGS = {
     modeMemoryDescription: 'Find matching animal pairs!',
     modeLetterTitle: 'Guess the First Letter',
     modeLetterDescription: 'Match animals to their first letter!',
+    modeLastLetterTitle: 'Guess the Last Letter',
+    modeLastLetterDescription: 'Match animals to their last letter!',
     modeTraceTitle: 'Trace the Letter',
     modeTraceDescription: "Draw each animal's first letter!",
     modeFindAnimalTitle: 'Find the Animal',
@@ -54,6 +56,7 @@ export const STRINGS = {
     // Guess the First Letter
     playName: 'Hear the Name',
     whichLetter: "What letter does this animal's name start with?",
+    whichLastLetter: "What letter does this animal's name end with?",
 
     // Trace the Letter
     traceInstruction: "Trace this animal's first letter!",
@@ -153,7 +156,8 @@ export const STRINGS = {
     brushSizeSmall: 'small',
     brushSizeMedium: 'medium',
     brushSizeLarge: 'large',
-    howManyDoYouSee: 'How many do you see?',
+    howManyDoYouSee: 'How many animals are there?',
+    a11yReplayInstruction: 'Tap to hear the instructions again',
     a11yCountOption: '{count}. Tap if this is how many you counted',
     a11yCountingAnimal: '{animal}. Tap to hear it',
     colorRed: 'red',
@@ -167,6 +171,7 @@ export const STRINGS = {
     colorBlack: 'black',
     colorWhite: 'white',
     a11yLetterOption: 'Letter {letter}. Tap if this is the first letter',
+    a11yLastLetterOption: 'Letter {letter}. Tap if this is the last letter',
     a11yMemoryCard: 'Hidden card {number}. Tap to turn it over',
     a11yMemoryCardRevealed: '{animal}. Already turned over',
     a11yModeCard: '{title}. {description}',
@@ -203,6 +208,8 @@ export const STRINGS = {
     modeMemoryDescription: '¡Encuentra parejas de animales!',
     modeLetterTitle: 'Adivina la Primera Letra',
     modeLetterDescription: '¡Relaciona animales con su primera letra!',
+    modeLastLetterTitle: 'Adivina la Última Letra',
+    modeLastLetterDescription: '¡Relaciona animales con su última letra!',
     modeTraceTitle: 'Traza la Letra',
     modeTraceDescription: '¡Dibuja la primera letra de cada animal!',
     modeFindAnimalTitle: 'Encuentra al Animal',
@@ -244,6 +251,7 @@ export const STRINGS = {
     // Adivina la Primera Letra
     playName: 'Escuchar el Nombre',
     whichLetter: '¿Con qué letra empieza el nombre de este animal?',
+    whichLastLetter: '¿Con qué letra termina el nombre de este animal?',
 
     // Traza la Letra
     traceInstruction: '¡Traza la primera letra de este animal!',
@@ -344,7 +352,8 @@ export const STRINGS = {
     brushSizeSmall: 'pequeño',
     brushSizeMedium: 'mediano',
     brushSizeLarge: 'grande',
-    howManyDoYouSee: '¿Cuántos ves?',
+    howManyDoYouSee: '¿Cuántos animales hay?',
+    a11yReplayInstruction: 'Toca para escuchar las instrucciones otra vez',
     a11yCountOption: '{count}. Toca si contaste esta cantidad',
     a11yCountingAnimal: '{animal}. Toca para escucharlo',
     colorRed: 'rojo',
@@ -358,6 +367,7 @@ export const STRINGS = {
     colorBlack: 'negro',
     colorWhite: 'blanco',
     a11yLetterOption: 'Letra {letter}. Toca si es la primera letra',
+    a11yLastLetterOption: 'Letra {letter}. Toca si es la última letra',
     a11yMemoryCard: 'Carta oculta {number}. Toca para darle la vuelta',
     a11yMemoryCardRevealed: '{animal}. Ya está descubierta',
     a11yModeCard: '{title}. {description}',

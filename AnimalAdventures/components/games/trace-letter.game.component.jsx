@@ -23,10 +23,12 @@ import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import { getTraceTolerance } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
@@ -47,6 +49,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 6;
 
@@ -131,6 +135,20 @@ export default function TraceLetterGame({
   const { level, showComplete, wrongCount } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // How closely the finger must follow the letter depends on the child's age
+  // band (see getTraceTolerance in constants/difficulty.js).
+  const { childAgeBand } = useSettings();
+  const { proximityRatio, minCoverageRatio } = getTraceTolerance(childAgeBand);
+  // The first round's audio waits for the spoken instruction to finish so
+  // the two never overlap. Later rounds find this already true.
+  const [instructionDone, setInstructionDone] = useState(false);
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'trace',
+    currentLanguage,
+    {
+      onFinished: () => setInstructionDone(true),
+    }
+  );
   // Mirrors isCorrect, but settable synchronously. evaluateAttempt can be
   // triggered twice in quick succession for the same completed trace - the
   // debounced timer from onPanResponderRelease and the independent
@@ -160,7 +178,7 @@ export default function TraceLetterGame({
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const targetAnimRef = useRef(null);
-  const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
+  const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
@@ -329,10 +347,10 @@ export default function TraceLetterGame({
   }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
   useEffect(() => {
-    if (targetAnimal) {
+    if (targetAnimal && instructionDone) {
       playPrompt();
     }
-  }, [targetAnimal, currentLanguage, playPrompt]);
+  }, [targetAnimal, currentLanguage, instructionDone, playPrompt]);
 
   const handleCorrect = useCallback(() => {
     successFeedback();
@@ -443,6 +461,8 @@ export default function TraceLetterGame({
       letterStrokes: LETTER_PATHS[correctLetter],
       box: targetBox,
       canvasSize,
+      proximityRatio,
+      minCoverageRatio,
     });
 
     if (passed) {
@@ -456,6 +476,8 @@ export default function TraceLetterGame({
     correctLetter,
     targetBox,
     canvasSize,
+    proximityRatio,
+    minCoverageRatio,
     handleCorrect,
     registerFailedAttempt,
   ]);
@@ -477,6 +499,8 @@ export default function TraceLetterGame({
       letterStrokes: LETTER_PATHS[correctLetter],
       box: targetBox,
       canvasSize,
+      proximityRatio,
+      minCoverageRatio,
     });
 
     if (passed) {
@@ -490,6 +514,8 @@ export default function TraceLetterGame({
     correctLetter,
     targetBox,
     canvasSize,
+    proximityRatio,
+    minCoverageRatio,
     handleCorrect,
     handleIncorrect,
   ]);
@@ -693,6 +719,10 @@ export default function TraceLetterGame({
             // flattening this Text into its parent, another path to the same
             // glitch. Same root cause as the "ESCUCHAR..." button fix.
             textBreakStrategy="simple"
+            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
@@ -728,7 +758,7 @@ export default function TraceLetterGame({
                 ref={el => (targetAnimRef.current = el)}
                 resizeMode="contain"
                 source={targetAnimal.animation_path}
-                style={styles.animalAnimation}
+                style={[styles.animalAnimation, iconScaleStyle(targetAnimal)]}
               />
             )}
           </View>
@@ -745,7 +775,10 @@ export default function TraceLetterGame({
           >
             <BouncyButton
               onPress={handlePlayPrompt}
-              style={styles.promptButton}
+              style={[
+                styles.promptButton,
+                { width: Math.min(windowWidth - 32, 340) },
+              ]}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
@@ -760,15 +793,21 @@ export default function TraceLetterGame({
                   styles.promptText,
                   { fontFamily: 'Bangers_400Regular' },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
                 {t(currentLanguage, 'playName')}
               </Text>
             </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
-            <Text style={styles.helperText}>
-              {t(currentLanguage, 'traceInstruction')}
-            </Text>
+            <InstructionText
+              text={t(currentLanguage, 'traceInstruction')}
+              currentLanguage={currentLanguage}
+              onReplay={replayInstruction}
+              textStyle={styles.helperText}
+            />
           )}
         </View>
 
@@ -964,7 +1003,8 @@ const styles = StyleSheet.create({
     // Without this, a crowded top bar (Reset + Next Game + Language) can
     // squeeze this text to where the level number gets cut off - letting it
     // shrink/wrap instead keeps the whole string visible.
-    flexShrink: 1,
+    flex: 1,
+    marginRight: 8,
     // Bangers clips on Android without both of these - see
     // first-letter.game.component.jsx for the full explanation.
     lineHeight: 30,
@@ -1025,7 +1065,7 @@ const styles = StyleSheet.create({
     // promptButtonBackground instead. See the comment at its usage above.
     justifyContent: 'center',
     minHeight: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 36,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   promptButtonBackground: {
@@ -1043,15 +1083,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 32,
     includeFontPadding: false,
+    textAlign: 'center',
     color: '#0A3D62',
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 14,
-    color: 'white',
     fontSize: 20,
-    textAlign: 'center',
-    paddingHorizontal: 12,
+    lineHeight: 28,
   },
   canvasWrapper: {
     alignItems: 'center',

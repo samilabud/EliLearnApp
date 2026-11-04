@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { t } from '../../constants';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle, sceneScale } from '../animals/animal.list';
 import { sceneryList } from '../scenery/scenery.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
@@ -31,9 +31,13 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const TRAY_ITEM_SIZE = 64;
 const PLACED_ITEM_SIZE = 80;
+
+const placedSizeFor = item => PLACED_ITEM_SIZE * (sceneScale[item.id] ?? 1);
 // How far a touch has to travel before a placed animal's release counts as
 // a drag rather than a tap.
 const TAP_SLOP = 6;
@@ -91,6 +95,7 @@ function DraggableItem({
           ? {
               onStartShouldSetPanResponder: () => true,
               onStartShouldSetPanResponderCapture: () => true,
+              onPanResponderTerminationRequest: () => false,
               onPanResponderGrant: evt => {
                 movedRef.current = false;
                 onDragStartRef.current?.(
@@ -137,6 +142,10 @@ function DraggableItem({
                 Math.abs(gestureState.dy) > Math.abs(gestureState.dx) + 4,
               onMoveShouldSetPanResponderCapture: (evt, gestureState) =>
                 Math.abs(gestureState.dy) > Math.abs(gestureState.dx) + 4,
+              // Once the drag has started, don't let the tray's ScrollView
+              // steal it mid-gesture - that cancelled the drag and lost the
+              // animal.
+              onPanResponderTerminationRequest: () => false,
               onPanResponderGrant: evt => {
                 onDragStartRef.current?.(
                   evt.nativeEvent.pageX,
@@ -195,7 +204,7 @@ function DraggableItem({
         autoSize={false}
         resizeMode="contain"
         source={item.animation_path}
-        style={{ width: size, height: size }}
+        style={[{ width: size, height: size }, iconScaleStyle(item)]}
       />
     </View>
   );
@@ -213,6 +222,11 @@ export default function BuildSceneGame({
   onNextGame,
 }) {
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'buildScene',
+    currentLanguage
+  );
   const {
     scene,
     addPlacedItem,
@@ -420,6 +434,13 @@ export default function BuildSceneGame({
         </View>
       </View>
 
+      <InstructionText
+        text={t(currentLanguage, 'buildSceneEmptyHint')}
+        currentLanguage={currentLanguage}
+        onReplay={replayInstruction}
+        textStyle={styles.instructionText}
+      />
+
       <View
         ref={sceneRef}
         onLayout={handleSceneLayout}
@@ -434,12 +455,6 @@ export default function BuildSceneGame({
         <View style={styles.sky} />
         <View style={styles.ground} />
 
-        {scene.placed.length === 0 && (
-          <Text style={styles.emptyHint}>
-            {t(currentLanguage, 'buildSceneEmptyHint')}
-          </Text>
-        )}
-
         {scene.placed.map(p => {
           const item =
             p.kind === 'scenery' ? sceneryById[p.itemId] : animalsById[p.itemId];
@@ -449,14 +464,14 @@ export default function BuildSceneGame({
               key={p.instanceId}
               item={item}
               currentLanguage={currentLanguage}
-              size={PLACED_ITEM_SIZE}
+              size={placedSizeFor(item)}
               isPlaced
-              left={p.x * sceneSize.width - PLACED_ITEM_SIZE / 2}
-              top={p.y * sceneSize.height - PLACED_ITEM_SIZE / 2}
+              left={p.x * sceneSize.width - placedSizeFor(item) / 2}
+              top={p.y * sceneSize.height - placedSizeFor(item) / 2}
               hidden={drag?.key === p.instanceId}
               onTap={() => handlePlacedTap(item)}
               onDragStart={(pageX, pageY) =>
-                beginDrag(p.instanceId, item, PLACED_ITEM_SIZE, pageX, pageY)
+                beginDrag(p.instanceId, item, placedSizeFor(item), pageX, pageY)
               }
               onDragMove={moveDrag}
               onDragEnd={(pageX, pageY, moved) =>
@@ -470,6 +485,7 @@ export default function BuildSceneGame({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        scrollEnabled={!drag}
         style={[
           styles.tray,
           // Pushes the whole tray bar above the floating BackToMenuButton's
@@ -492,7 +508,7 @@ export default function BuildSceneGame({
                 beginDrag(
                   `tray-animal-${animal.id}`,
                   animal,
-                  TRAY_ITEM_SIZE,
+                  placedSizeFor(animal),
                   pageX,
                   pageY
                 )
@@ -522,7 +538,7 @@ export default function BuildSceneGame({
                 beginDrag(
                   `tray-scenery-${scenery.id}`,
                   scenery,
-                  TRAY_ITEM_SIZE,
+                  placedSizeFor(scenery),
                   pageX,
                   pageY
                 )
@@ -562,7 +578,10 @@ export default function BuildSceneGame({
             autoSize={false}
             resizeMode="contain"
             source={drag.item.animation_path}
-            style={{ width: drag.size, height: drag.size }}
+            style={[
+              { width: drag.size, height: drag.size },
+              iconScaleStyle(drag.item),
+            ]}
           />
         </Animated.View>
       )}
@@ -622,18 +641,11 @@ const styles = StyleSheet.create({
     height: '35%',
     backgroundColor: '#8FCB6B',
   },
-  emptyHint: {
-    position: 'absolute',
-    top: '42%',
-    left: 20,
-    right: 20,
-    textAlign: 'center',
-    color: 'white',
+  // The instruction stays visible (and tappable to hear again) for the whole
+  // session, not just while the scene is empty.
+  instructionText: {
     fontSize: 18,
-    fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 2 },
+    lineHeight: 26,
   },
   tray: {
     maxHeight: TRAY_ITEM_SIZE + 24,

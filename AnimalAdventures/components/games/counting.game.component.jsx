@@ -12,6 +12,7 @@ import {
   Text,
   View,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
@@ -20,9 +21,14 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
-import { t } from '../../constants';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
+import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import {
+  getCountingDifficulty,
+  getHintAfterTries,
+} from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
@@ -39,13 +45,29 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
+import { getNumberSound } from '../../utils/number-sounds';
 
 const MAX_LEVEL = 6;
-const COUNT_ICON_SIZE = 56;
+// Fewer animals get bigger art so a lone animal isn't a tiny speck; the size
+// steps down as the count grows so ten still fit on screen.
+const countIconSizeFor = count => {
+  if (count <= 1) return 180;
+  if (count === 2) return 150;
+  if (count === 3) return 128;
+  if (count === 4) return 112;
+  if (count === 5) return 100;
+  if (count === 6) return 88;
+  if (count <= 8) return 76;
+  return 64;
+};
 
-// After this many wrong tries the right answer starts to glow - same
-// threshold/spirit as guess-animal.game.component.jsx.
-const HINT_AFTER_TRIES = 3;
+// Card size and gap between number cards. Cards shrink (never below the
+// large touch target) so four of them still fit in one row on a small phone.
+const OPTION_CARD_MAX = 100;
+const OPTION_GAP = 20;
+const OPTION_SIDE_PADDING = 16;
 
 export default function CountingGame({
   currentLanguage,
@@ -59,6 +81,23 @@ export default function CountingGame({
   const { counting, updateCounting, resetCounting, markAnimalMet, markLevelStarred } =
     useGameProgress();
   const { level, targetCount, optionCounts, wrongCount, showComplete } = counting;
+  // The age band sets the largest group, how many number cards appear and
+  // how soon the right one glows (see constants/difficulty.js).
+  const { childAgeBand } = useSettings();
+  const hintAfterTries = getHintAfterTries(childAgeBand);
+  const { maxCount, optionCount } = getCountingDifficulty(childAgeBand, level);
+  const { width: windowWidth } = useWindowDimensions();
+  const countIconSize = countIconSizeFor(targetCount || 0);
+  const optionCardSize = Math.max(
+    LARGE_TOUCH_TARGET,
+    Math.min(
+      OPTION_CARD_MAX,
+      Math.floor(
+        (windowWidth - OPTION_SIDE_PADDING * 2 - OPTION_GAP * (optionCount - 1)) /
+          optionCount
+      )
+    )
+  );
 
   const [isCorrect, setIsCorrect] = useState(false);
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
@@ -70,10 +109,24 @@ export default function CountingGame({
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
+  const numberPlayer = useAudioPlayer(null);
   const voiceTimer = useRef(null);
 
+  // The instruction is spoken once when the game opens; tapping it replays.
+  const { replay: replayInstruction, stop: stopInstruction } =
+    useInstructionPrompt('counting', currentLanguage);
+
+  // Say the answer aloud. A missing clip (not recorded yet) is just silence.
+  const sayNumber = useCallback(
+    n => {
+      const clip = getNumberSound(n, currentLanguage);
+      if (clip) playClip(numberPlayer, clip);
+    },
+    [numberPlayer, currentLanguage]
+  );
+
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
-  const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
+  const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
@@ -129,9 +182,17 @@ export default function CountingGame({
       try {
         gameSuccessPlayer.remove();
       } catch {}
+      releasePlayer(numberPlayer);
       if (voiceTimer.current) clearTimeout(voiceTimer.current);
     };
-  }, [soundPlayer, voicePlayer, wrongPlayer, gameWinPlayer, gameSuccessPlayer]);
+  }, [
+    soundPlayer,
+    voicePlayer,
+    wrongPlayer,
+    gameWinPlayer,
+    gameSuccessPlayer,
+    numberPlayer,
+  ]);
 
   useEffect(() => {
     if (showComplete) {
@@ -156,15 +217,17 @@ export default function CountingGame({
     );
     const targetPool = unused.length > 0 ? unused : animalList;
     const nextTarget = shuffle(targetPool)[0];
-    // Grows from 1-3 at level 1 to 1-8 by level 6 - capped at 8 so the
-    // on-screen group never gets too crowded to count on a phone.
-    const maxCount = Math.min(2 + level, 8);
+    // maxCount grows with the level and the child's age band, and is capped
+    // so the on-screen group never gets too crowded to count on a phone.
     const nextCount = 1 + Math.floor(Math.random() * maxCount);
+    // The wrong answers must always be enough to fill every card, even when
+    // maxCount is tiny (under-4 level 1 has only 1-2 to choose from) - a short
+    // round would never match optionCount and be re-dealt forever.
     const distractorPool = [];
-    for (let n = 1; n <= Math.max(maxCount, nextCount + 1); n++) {
+    for (let n = 1; n <= Math.max(maxCount, optionCount, nextCount + 1); n++) {
       if (n !== nextCount) distractorPool.push(n);
     }
-    const distractors = shuffle(distractorPool).slice(0, 2);
+    const distractors = shuffle(distractorPool).slice(0, optionCount - 1);
     const nextOptionCounts = shuffle([nextCount, ...distractors]);
     updateCounting(prev => ({
       targetId: nextTarget.id,
@@ -175,17 +238,18 @@ export default function CountingGame({
     setIsCorrect(false);
     setShowWrongOverlay(false);
     roundStartedAt.current = Date.now();
-  }, [level, shuffle, updateCounting, counting.usedTargetIds]);
+  }, [maxCount, optionCount, shuffle, updateCounting, counting.usedTargetIds]);
 
-  // A round is dealt only when the saved one doesn't have 3 options, which
-  // covers a first run, a level change and a reset - mirrors guess-animal's
+  // A round is dealt only when the saved one doesn't have the right number of
+  // options, which covers a first run, a level change, a reset and a change
+  // of age band - mirrors guess-animal's
   // identical "deal only if the saved round doesn't fit" effect, so
   // resuming or rotating the device resumes the same question.
   useEffect(() => {
-    if (optionCounts.length !== 3) {
+    if (optionCounts.length !== optionCount) {
       pickRound();
     }
-  }, [optionCounts.length, pickRound]);
+  }, [optionCounts.length, optionCount, pickRound]);
 
   const playAnimalSound = useCallback(
     animal => {
@@ -209,6 +273,10 @@ export default function CountingGame({
       const correct = selectedCount === targetCount;
       if (correct) {
         successFeedback();
+        stopInstruction();
+        // Say the number right away; the success jingle follows a second
+        // later so the two never talk over each other.
+        sayNumber(targetCount);
         setIsCorrect(true);
         updateCounting({ wrongCount: 0 });
         markAnimalMet(targetAnimal.id, 'counting');
@@ -263,6 +331,11 @@ export default function CountingGame({
         later(() => setShowWrongOverlay(false), 900);
         playClip(wrongPlayer, wrongSoundFile);
         updateCounting(prev => ({ wrongCount: prev.wrongCount + 1 }));
+        // Once the hint glow appears, also say the right number - extra
+        // help, not a penalty.
+        if (wrongCount + 1 === hintAfterTries) {
+          later(() => sayNumber(targetCount), 1200);
+        }
       }
     },
     [
@@ -280,6 +353,10 @@ export default function CountingGame({
       updateCounting,
       markAnimalMet,
       markLevelStarred,
+      stopInstruction,
+      sayNumber,
+      wrongCount,
+      hintAfterTries,
     ]
   );
 
@@ -364,9 +441,11 @@ export default function CountingGame({
         </View>
 
         <View style={styles.promptContainer}>
-          <Text style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}>
-            {t(currentLanguage, 'howManyDoYouSee')}
-          </Text>
+          <InstructionText
+            text={t(currentLanguage, 'howManyDoYouSee')}
+            currentLanguage={currentLanguage}
+            onReplay={replayInstruction}
+          />
         </View>
 
         {!!targetAnimal && (
@@ -383,7 +462,7 @@ export default function CountingGame({
             {Array.from({ length: targetCount || 0 }).map((_, i) => (
               <BouncyButton
                 key={i}
-                style={styles.countIconWrapper}
+                style={{ width: countIconSize, height: countIconSize }}
                 onPress={() => playAnimalSound(targetAnimal)}
                 accessible={false}
               >
@@ -392,7 +471,10 @@ export default function CountingGame({
                   loop
                   resizeMode="contain"
                   source={targetAnimal.animation_path}
-                  style={{ width: COUNT_ICON_SIZE, height: COUNT_ICON_SIZE }}
+                  style={[
+                    { width: countIconSize, height: countIconSize },
+                    iconScaleStyle(targetAnimal),
+                  ]}
                 />
               </BouncyButton>
             ))}
@@ -401,11 +483,14 @@ export default function CountingGame({
 
         <View style={styles.optionsContainer}>
           {optionCounts.map(count => {
-            const isHinted = wrongCount >= HINT_AFTER_TRIES && count === targetCount;
+            const isHinted = wrongCount >= hintAfterTries && count === targetCount;
             return (
               <BouncyButton
                 key={count}
-                style={styles.optionCard}
+                style={[
+                  styles.optionCard,
+                  { width: optionCardSize, height: optionCardSize },
+                ]}
                 onPress={() => onSelect(count)}
                 accessible={true}
                 accessibilityRole="button"
@@ -419,12 +504,7 @@ export default function CountingGame({
                     isHinted && styles.optionCardBackgroundHinted,
                   ]}
                 />
-                <Text
-                  style={[
-                    styles.optionDigit,
-                    { fontFamily: 'Bangers_400Regular' },
-                  ]}
-                >
+                <Text style={styles.optionDigit}>
                   {count}
                 </Text>
               </BouncyButton>
@@ -546,7 +626,8 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 22,
-    flexShrink: 1,
+    flex: 1,
+    marginRight: 8,
     lineHeight: 30,
     includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
@@ -589,18 +670,14 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 24,
   },
-  countIconWrapper: {
-    width: COUNT_ICON_SIZE,
-    height: COUNT_ICON_SIZE,
-  },
   optionsContainer: {
     flexGrow: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 20,
+    gap: OPTION_GAP,
     paddingTop: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: OPTION_SIDE_PADDING,
   },
   // Plain layout only - no background/border here. Those live on a
   // separate absolutely-positioned sibling (optionCardBackground) instead,
@@ -609,8 +686,6 @@ const styles = StyleSheet.create({
   // a visible rendering glitch at one corner on Android (the transform's
   // hardware layer and the border radius don't composite cleanly together).
   optionCard: {
-    width: 100,
-    height: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -629,10 +704,12 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
   },
+  // System bold, not Bangers: Bangers' slanted digits were clipping at the
+  // edges of their glyph box on some devices.
   optionDigit: {
-    fontSize: 48,
-    lineHeight: 56,
-    includeFontPadding: false,
+    fontSize: 56,
+    lineHeight: 68,
+    fontWeight: '900',
     color: '#0A3D62',
   },
   feedbackOverlay: {

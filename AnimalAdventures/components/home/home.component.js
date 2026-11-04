@@ -9,6 +9,9 @@ import { useBackToMenu } from '../../utils/navigation';
 import { LanguageToggleButton } from '../utility/language-toggle-button.component';
 import { NextGameButton } from '../utility/next-game-button.component';
 import { BackToMenuButton } from '../utility/back-to-menu-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
+import { t } from '../../constants';
 
 const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
@@ -21,6 +24,11 @@ function HomeScreen({
 }) {
   const [fadeAnim] = React.useState(() => new Animated.Value(0));
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'learn',
+    currentLanguage
+  );
 
   const handleBackToMenu = () => {
     tapFeedback();
@@ -58,6 +66,13 @@ function HomeScreen({
           />
         </View>
 
+        <InstructionText
+          text={t(currentLanguage, 'modeLearnDescription')}
+          currentLanguage={currentLanguage}
+          onReplay={replayInstruction}
+          textStyle={styles.instructionText}
+        />
+
         <AnimalScreen currentLanguage={currentLanguage} />
       </Animated.View>
 
@@ -85,6 +100,10 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 16,
     paddingBottom: 12,
+  },
+  instructionText: {
+    fontSize: 20,
+    lineHeight: 28,
   },
 });
 
