@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { t } from '../../constants';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { sceneryList } from '../scenery/scenery.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
