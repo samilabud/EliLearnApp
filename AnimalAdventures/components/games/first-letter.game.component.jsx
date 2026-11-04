@@ -44,6 +44,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 6;
 
@@ -89,6 +91,13 @@ export default function FirstLetterGame({
   const { childAgeBand } = useSettings();
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // The first round's audio waits for the spoken instruction to finish so
+  // the two never overlap. Later rounds find this already true.
+  const [instructionDone, setInstructionDone] = useState(false);
+  const { replay: replayInstruction, stop: stopInstruction } =
+    useInstructionPrompt('letter', currentLanguage, {
+      onFinished: () => setInstructionDone(true),
+    });
   const promptPlayer = useAudioPlayer(null);
   const [feedbackAnim] = useState(new Animated.Value(0));
   const [promptPulse] = useState(new Animated.Value(0));
@@ -305,14 +314,15 @@ export default function FirstLetterGame({
   }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
   useEffect(() => {
-    if (targetAnimal) {
+    if (targetAnimal && instructionDone) {
       playPrompt();
     }
-  }, [targetAnimal, currentLanguage, playPrompt]);
+  }, [targetAnimal, currentLanguage, instructionDone, playPrompt]);
 
   const onSelect = useCallback(
     async selectedLetter => {
       if (showComplete || isCorrect || !targetAnimal) return;
+      stopInstruction();
       const correct = selectedLetter === correctLetter;
       if (correct) {
         successFeedback();
@@ -406,6 +416,7 @@ export default function FirstLetterGame({
       markAnimalMet,
       markLevelStarred,
       playPrompt,
+      stopInstruction,
     ]
   );
 
@@ -556,9 +567,12 @@ export default function FirstLetterGame({
             </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
-            <Text style={styles.helperText}>
-              {t(currentLanguage, 'whichLetter')}
-            </Text>
+            <InstructionText
+              text={t(currentLanguage, 'whichLetter')}
+              currentLanguage={currentLanguage}
+              onReplay={replayInstruction}
+              textStyle={styles.helperText}
+            />
           )}
         </View>
 
@@ -819,11 +833,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 14,
-    color: 'white',
     fontSize: 20,
-    textAlign: 'center',
-    paddingHorizontal: 12,
+    lineHeight: 28,
   },
   optionsContainer: {
     flexGrow: 1,

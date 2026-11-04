@@ -27,6 +27,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const TRAY_ITEM_SIZE = 64;
 const STROKE_WIDTH = 14;
@@ -82,6 +84,11 @@ export default function ColoringGame({
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'coloring',
+    currentLanguage
+  );
   const {
     coloring,
     addColorStroke,
@@ -362,6 +369,13 @@ export default function ColoringGame({
         </View>
       </View>
 
+      <InstructionText
+        text={t(currentLanguage, 'modeColoringDescription')}
+        currentLanguage={currentLanguage}
+        onReplay={replayInstruction}
+        textStyle={styles.instructionText}
+      />
+
       <View style={styles.canvasWrapper}>
         <View
           style={styles.canvas}
@@ -542,6 +556,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
+  },
+  instructionText: {
+    fontSize: 18,
+    lineHeight: 26,
   },
   topActions: {
     flexDirection: 'row',

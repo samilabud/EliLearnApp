@@ -41,6 +41,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const GRID_PADDING_H = 16;
 const OPTION_GAP = 12;
@@ -86,6 +88,13 @@ export default function GuessAnimalGame({
   const { level, wrongCount, showComplete } = guess;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // The first round's sound waits for the spoken instruction to finish so
+  // the two never overlap. Later rounds find this already true.
+  const [instructionDone, setInstructionDone] = useState(false);
+  const { replay: replayInstruction, stop: stopInstruction } =
+    useInstructionPrompt('guess', currentLanguage, {
+      onFinished: () => setInstructionDone(true),
+    });
   const promptPlayer = useAudioPlayer(null);
   const [feedbackAnim] = useState(new Animated.Value(0));
   const [promptPulse] = useState(new Animated.Value(0));
@@ -276,15 +285,16 @@ export default function GuessAnimalGame({
   );
 
   useEffect(() => {
-    if (targetAnimal) {
+    if (targetAnimal && instructionDone) {
       playPrompt();
     }
-  }, [targetAnimal, playPrompt]);
+  }, [targetAnimal, instructionDone, playPrompt]);
 
   const onSelect = useCallback(
     async selected => {
       if (showComplete || isCorrect) return;
       const correct = selected.id === targetAnimal.id;
+      stopInstruction();
       if (correct) {
         successFeedback();
         setIsCorrect(true);
@@ -373,6 +383,7 @@ export default function GuessAnimalGame({
       markAnimalMet,
       markLevelStarred,
       playPrompt,
+      stopInstruction,
     ]
   );
 
@@ -502,9 +513,12 @@ export default function GuessAnimalGame({
             </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
-            <Text style={styles.helperText}>
-              {t(currentLanguage, 'whichAnimal')}
-            </Text>
+            <InstructionText
+              text={t(currentLanguage, 'whichAnimal')}
+              currentLanguage={currentLanguage}
+              onReplay={replayInstruction}
+              textStyle={styles.helperText}
+            />
           )}
         </View>
 
@@ -735,9 +749,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 6,
-    color: 'white',
     fontSize: 20,
+    lineHeight: 28,
   },
   scrollArea: {
     flex: 1,

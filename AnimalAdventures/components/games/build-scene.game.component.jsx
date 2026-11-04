@@ -31,6 +31,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const TRAY_ITEM_SIZE = 64;
 const PLACED_ITEM_SIZE = 80;
@@ -213,6 +215,11 @@ export default function BuildSceneGame({
   onNextGame,
 }) {
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'buildScene',
+    currentLanguage
+  );
   const {
     scene,
     addPlacedItem,
@@ -420,6 +427,13 @@ export default function BuildSceneGame({
         </View>
       </View>
 
+      <InstructionText
+        text={t(currentLanguage, 'buildSceneEmptyHint')}
+        currentLanguage={currentLanguage}
+        onReplay={replayInstruction}
+        textStyle={styles.instructionText}
+      />
+
       <View
         ref={sceneRef}
         onLayout={handleSceneLayout}
@@ -433,12 +447,6 @@ export default function BuildSceneGame({
       >
         <View style={styles.sky} />
         <View style={styles.ground} />
-
-        {scene.placed.length === 0 && (
-          <Text style={styles.emptyHint}>
-            {t(currentLanguage, 'buildSceneEmptyHint')}
-          </Text>
-        )}
 
         {scene.placed.map(p => {
           const item =
@@ -622,18 +630,11 @@ const styles = StyleSheet.create({
     height: '35%',
     backgroundColor: '#8FCB6B',
   },
-  emptyHint: {
-    position: 'absolute',
-    top: '42%',
-    left: 20,
-    right: 20,
-    textAlign: 'center',
-    color: 'white',
+  // The instruction stays visible (and tappable to hear again) for the whole
+  // session, not just while the scene is empty.
+  instructionText: {
     fontSize: 18,
-    fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 2 },
+    lineHeight: 26,
   },
   tray: {
     maxHeight: TRAY_ITEM_SIZE + 24,

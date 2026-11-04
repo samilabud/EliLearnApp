@@ -41,6 +41,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const GRID_PADDING_H = 16;
 const OPTION_GAP = 12;
@@ -101,6 +103,13 @@ export default function WhoseSoundGame({
   const { level, wrongCount, showComplete } = whoseSound;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // The first round's audio waits for the spoken instruction to finish so
+  // the two never overlap. Later rounds find this already true.
+  const [instructionDone, setInstructionDone] = useState(false);
+  const { replay: replayInstruction, stop: stopInstruction } =
+    useInstructionPrompt('whoseSound', currentLanguage, {
+      onFinished: () => setInstructionDone(true),
+    });
   const promptPlayer = useAudioPlayer(null);
   const [feedbackAnim] = useState(new Animated.Value(0));
   const [promptPulse] = useState(new Animated.Value(0));
@@ -289,18 +298,19 @@ export default function WhoseSoundGame({
   const hasPlayedFirstRef = useRef(false);
 
   useEffect(() => {
-    if (!targetAnimal) return;
+    if (!targetAnimal || !instructionDone) return;
     if (!hasPlayedFirstRef.current) {
       hasPlayedFirstRef.current = true;
       later(() => playPrompt(), FIRST_ROUND_DELAY_MS);
     } else {
       playPrompt();
     }
-  }, [targetAnimal, playPrompt, later]);
+  }, [targetAnimal, instructionDone, playPrompt, later]);
 
   const onSelect = useCallback(
     async selected => {
       if (showComplete || isCorrect) return;
+      stopInstruction();
       const correct = selected.id === targetAnimal.id;
       if (correct) {
         successFeedback();
@@ -398,6 +408,7 @@ export default function WhoseSoundGame({
       markAnimalMet,
       markLevelStarred,
       playPrompt,
+      stopInstruction,
     ]
   );
 
@@ -527,9 +538,12 @@ export default function WhoseSoundGame({
             </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
-            <Text style={styles.helperText}>
-              {t(currentLanguage, 'whoseSoundHelperText')}
-            </Text>
+            <InstructionText
+              text={t(currentLanguage, 'whoseSoundHelperText')}
+              currentLanguage={currentLanguage}
+              onReplay={replayInstruction}
+              textStyle={styles.helperText}
+            />
           )}
         </View>
 
@@ -760,9 +774,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 6,
-    color: 'white',
     fontSize: 20,
+    lineHeight: 28,
   },
   scrollArea: {
     flex: 1,

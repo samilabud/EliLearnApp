@@ -47,6 +47,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 6;
 
@@ -131,6 +133,13 @@ export default function TraceLetterGame({
   const { level, showComplete, wrongCount } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // The first round's audio waits for the spoken instruction to finish so
+  // the two never overlap. Later rounds find this already true.
+  const [instructionDone, setInstructionDone] = useState(false);
+  const { replay: replayInstruction } =
+    useInstructionPrompt('trace', currentLanguage, {
+      onFinished: () => setInstructionDone(true),
+    });
   // Mirrors isCorrect, but settable synchronously. evaluateAttempt can be
   // triggered twice in quick succession for the same completed trace - the
   // debounced timer from onPanResponderRelease and the independent
@@ -329,10 +338,10 @@ export default function TraceLetterGame({
   }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
   useEffect(() => {
-    if (targetAnimal) {
+    if (targetAnimal && instructionDone) {
       playPrompt();
     }
-  }, [targetAnimal, currentLanguage, playPrompt]);
+  }, [targetAnimal, currentLanguage, instructionDone, playPrompt]);
 
   const handleCorrect = useCallback(() => {
     successFeedback();
@@ -766,9 +775,12 @@ export default function TraceLetterGame({
             </BouncyButton>
           </Animated.View>
           {!!targetAnimal && (
-            <Text style={styles.helperText}>
-              {t(currentLanguage, 'traceInstruction')}
-            </Text>
+            <InstructionText
+              text={t(currentLanguage, 'traceInstruction')}
+              currentLanguage={currentLanguage}
+              onReplay={replayInstruction}
+              textStyle={styles.helperText}
+            />
           )}
         </View>
 
@@ -1047,11 +1059,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   helperText: {
-    marginTop: 14,
-    color: 'white',
     fontSize: 20,
-    textAlign: 'center',
-    paddingHorizontal: 12,
+    lineHeight: 28,
   },
   canvasWrapper: {
     alignItems: 'center',

@@ -43,6 +43,8 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -80,6 +82,11 @@ export default function MemoryAnimalGame({
   ambientEnabled,
 }) {
   const insets = useSafeAreaInsets();
+  // Spoken once when the mode opens; tapping the instruction replays it.
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'memory',
+    currentLanguage
+  );
   // Android 16 ignores the portrait lock on large screens, so the grid has to
   // lay out sensibly at any aspect ratio. Sizing cards from the window keeps
   // them square instead of stretching them into wide slabs in landscape.
@@ -496,14 +503,14 @@ export default function MemoryAnimalGame({
 
         {/* Game instructions */}
         <View style={styles.instructionsContainer}>
-          <Text
-            style={[
-              styles.instructionsText,
-              { fontFamily: 'Bangers_400Regular' },
-            ]}
-          >
-            {t(currentLanguage, 'findPairs', { count: expectedCardCount })}
-          </Text>
+          <InstructionText
+            text={t(currentLanguage, 'findPairs', {
+              count: expectedCardCount,
+            })}
+            currentLanguage={currentLanguage}
+            onReplay={replayInstruction}
+            textStyle={styles.instructionsText}
+          />
         </View>
 
         {/* Cards grid */}
@@ -712,8 +719,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   instructionsText: {
-    color: 'white',
-    fontSize: 18,
+    fontSize: 20,
+    lineHeight: 28,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 4,

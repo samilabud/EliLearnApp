@@ -39,6 +39,9 @@ import {
   BACK_TO_MENU_CLEARANCE,
 } from '../utility/back-to-menu-button.component';
 import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
+import { InstructionText } from '../utility/instruction-text.component';
+import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
+import { getNumberSound } from '../../utils/number-sounds';
 
 const MAX_LEVEL = 6;
 const COUNT_ICON_SIZE = 56;
@@ -70,7 +73,21 @@ export default function CountingGame({
   const wrongPlayer = useAudioPlayer(null);
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
+  const numberPlayer = useAudioPlayer(null);
   const voiceTimer = useRef(null);
+
+  // The instruction is spoken once when the game opens; tapping it replays.
+  const { replay: replayInstruction, stop: stopInstruction } =
+    useInstructionPrompt('counting', currentLanguage);
+
+  // Say the answer aloud. A missing clip (not recorded yet) is just silence.
+  const sayNumber = useCallback(
+    n => {
+      const clip = getNumberSound(n, currentLanguage);
+      if (clip) playClip(numberPlayer, clip);
+    },
+    [numberPlayer, currentLanguage]
+  );
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
@@ -129,9 +146,17 @@ export default function CountingGame({
       try {
         gameSuccessPlayer.remove();
       } catch {}
+      releasePlayer(numberPlayer);
       if (voiceTimer.current) clearTimeout(voiceTimer.current);
     };
-  }, [soundPlayer, voicePlayer, wrongPlayer, gameWinPlayer, gameSuccessPlayer]);
+  }, [
+    soundPlayer,
+    voicePlayer,
+    wrongPlayer,
+    gameWinPlayer,
+    gameSuccessPlayer,
+    numberPlayer,
+  ]);
 
   useEffect(() => {
     if (showComplete) {
@@ -209,6 +234,10 @@ export default function CountingGame({
       const correct = selectedCount === targetCount;
       if (correct) {
         successFeedback();
+        stopInstruction();
+        // Say the number right away; the success jingle follows a second
+        // later so the two never talk over each other.
+        sayNumber(targetCount);
         setIsCorrect(true);
         updateCounting({ wrongCount: 0 });
         markAnimalMet(targetAnimal.id, 'counting');
@@ -263,6 +292,11 @@ export default function CountingGame({
         later(() => setShowWrongOverlay(false), 900);
         playClip(wrongPlayer, wrongSoundFile);
         updateCounting(prev => ({ wrongCount: prev.wrongCount + 1 }));
+        // Once the hint glow appears, also say the right number - extra
+        // help, not a penalty.
+        if (wrongCount + 1 === HINT_AFTER_TRIES) {
+          later(() => sayNumber(targetCount), 1200);
+        }
       }
     },
     [
@@ -280,6 +314,9 @@ export default function CountingGame({
       updateCounting,
       markAnimalMet,
       markLevelStarred,
+      stopInstruction,
+      sayNumber,
+      wrongCount,
     ]
   );
 
@@ -364,9 +401,11 @@ export default function CountingGame({
         </View>
 
         <View style={styles.promptContainer}>
-          <Text style={[styles.promptText, { fontFamily: 'Bangers_400Regular' }]}>
-            {t(currentLanguage, 'howManyDoYouSee')}
-          </Text>
+          <InstructionText
+            text={t(currentLanguage, 'howManyDoYouSee')}
+            currentLanguage={currentLanguage}
+            onReplay={replayInstruction}
+          />
         </View>
 
         {!!targetAnimal && (
