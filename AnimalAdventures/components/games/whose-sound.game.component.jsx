@@ -529,7 +529,10 @@ export default function WhoseSoundGame({
           >
             <BouncyButton
               onPress={handlePlayPrompt}
-              style={styles.promptButton}
+              style={[
+                styles.promptButton,
+                { width: Math.min(windowWidth - 32, 340) },
+              ]}
               accessible={true}
               accessibilityRole="button"
               accessibilityLabel={t(currentLanguage, 'a11yPlaySound')}
@@ -736,7 +739,8 @@ const styles = StyleSheet.create({
     // Without this, a crowded top bar (Reset + Next Game + Language) can
     // squeeze this text to where the level number gets cut off - letting it
     // shrink/wrap instead keeps the whole string visible.
-    flexShrink: 1,
+    flex: 1,
+    marginRight: 8,
     // Bangers clips on Android without both of these - see promptText below.
     lineHeight: 30,
     includeFontPadding: false,
@@ -763,7 +767,7 @@ const styles = StyleSheet.create({
     // promptButtonBackground instead. See the comment at its usage above.
     justifyContent: 'center',
     minHeight: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 36,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   promptButtonBackground: {
@@ -785,6 +789,7 @@ const styles = StyleSheet.create({
     // to our own lineHeight instead of fighting it.
     lineHeight: 32,
     includeFontPadding: false,
+    textAlign: 'center',
     color: '#0A3D62',
     letterSpacing: 1,
   },

@@ -696,7 +696,8 @@ const styles = StyleSheet.create({
   levelText: {
     color: 'white',
     fontSize: 18,
-    flexShrink: 1,
+    flex: 1,
+    marginRight: 8,
     lineHeight: 24,
     includeFontPadding: false,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
