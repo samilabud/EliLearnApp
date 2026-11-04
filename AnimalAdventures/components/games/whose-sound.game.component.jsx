@@ -21,7 +21,7 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -492,6 +492,10 @@ export default function WhoseSoundGame({
             // default line-breaking has mismeasured this custom font often
             // enough to clip the tail of the string.
             textBreakStrategy="simple"
+            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
@@ -540,6 +544,9 @@ export default function WhoseSoundGame({
                   styles.promptText,
                   { fontFamily: 'Bangers_400Regular' },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
                 {t(currentLanguage, 'playSound')}
               </Text>
@@ -587,7 +594,7 @@ export default function WhoseSoundGame({
                     ref={el => (optionAnimRefs.current[opt.id] = el)}
                     resizeMode="contain"
                     source={opt.animation_path}
-                    style={styles.animation}
+                    style={[styles.animation, iconScaleStyle(opt)]}
                   />
                 </View>
               </BouncyButton>

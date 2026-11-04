@@ -21,7 +21,7 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -138,7 +138,9 @@ export default function FirstLetterGame({
   const progress = useGameProgress();
   const { markAnimalMet, markLevelStarred } = progress;
   const letter = isLast ? progress.lastLetter : progress.letter;
-  const updateLetter = isLast ? progress.updateLastLetter : progress.updateLetter;
+  const updateLetter = isLast
+    ? progress.updateLastLetter
+    : progress.updateLetter;
   const resetLetter = isLast ? progress.resetLastLetter : progress.resetLetter;
   const { level, wrongCount, showComplete } = letter;
   const { childAgeBand } = useSettings();
@@ -571,6 +573,10 @@ export default function FirstLetterGame({
             // default line-breaking has mismeasured this custom font often
             // enough to clip the tail of the string.
             textBreakStrategy="simple"
+            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
@@ -606,7 +612,7 @@ export default function FirstLetterGame({
                 ref={el => (targetAnimRef.current = el)}
                 resizeMode="contain"
                 source={targetAnimal.animation_path}
-                style={styles.animalAnimation}
+                style={[styles.animalAnimation, iconScaleStyle(targetAnimal)]}
               />
             )}
           </View>
@@ -640,6 +646,9 @@ export default function FirstLetterGame({
                   styles.promptText,
                   { fontFamily: 'Bangers_400Regular' },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
                 {t(currentLanguage, 'playName')}
               </Text>

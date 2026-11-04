@@ -21,7 +21,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
@@ -459,7 +459,10 @@ export default function CountingGame({
                   loop
                   resizeMode="contain"
                   source={targetAnimal.animation_path}
-                  style={{ width: COUNT_ICON_SIZE, height: COUNT_ICON_SIZE }}
+                  style={[
+                    { width: COUNT_ICON_SIZE, height: COUNT_ICON_SIZE },
+                    iconScaleStyle(targetAnimal),
+                  ]}
                 />
               </BouncyButton>
             ))}

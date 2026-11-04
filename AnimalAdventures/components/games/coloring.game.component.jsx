@@ -12,7 +12,7 @@ import LottieView from 'lottie-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
@@ -519,7 +519,10 @@ export default function ColoringGame({
               loop={false}
               resizeMode="contain"
               source={a.animation_path}
-              style={{ width: TRAY_ITEM_SIZE, height: TRAY_ITEM_SIZE }}
+              style={[
+                { width: TRAY_ITEM_SIZE, height: TRAY_ITEM_SIZE },
+                iconScaleStyle(a),
+              ]}
             />
           </BouncyButton>
         ))}

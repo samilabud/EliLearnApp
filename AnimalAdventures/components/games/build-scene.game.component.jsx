@@ -197,7 +197,7 @@ function DraggableItem({
         autoSize={false}
         resizeMode="contain"
         source={item.animation_path}
-        style={{ width: size, height: size }}
+        style={[{ width: size, height: size }, iconScaleStyle(item)]}
       />
     </View>
   );
@@ -570,7 +570,10 @@ export default function BuildSceneGame({
             autoSize={false}
             resizeMode="contain"
             source={drag.item.animation_path}
-            style={{ width: drag.size, height: drag.size }}
+            style={[
+              { width: drag.size, height: drag.size },
+              iconScaleStyle(drag.item),
+            ]}
           />
         </Animated.View>
       )}

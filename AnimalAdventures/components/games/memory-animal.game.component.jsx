@@ -19,7 +19,7 @@ import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t } from '../../constants';
 import {
@@ -72,7 +72,6 @@ const CELEBRATIONS = [
     origin: { x: -20, y: 40 },
   },
 ];
-
 
 export default function MemoryAnimalGame({
   currentLanguage,
@@ -554,7 +553,7 @@ export default function MemoryAnimalGame({
                       ref={el => (cardAnimRefs.current[card.position] = el)}
                       resizeMode="contain"
                       source={card.animation_path}
-                      style={styles.animation}
+                      style={[styles.animation, iconScaleStyle(card)]}
                     />
                   </View>
                 ) : (

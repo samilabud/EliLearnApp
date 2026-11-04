@@ -23,7 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
-import { animalList } from '../animals/animal.list';
+import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -142,10 +142,13 @@ export default function TraceLetterGame({
   // The first round's audio waits for the spoken instruction to finish so
   // the two never overlap. Later rounds find this already true.
   const [instructionDone, setInstructionDone] = useState(false);
-  const { replay: replayInstruction } =
-    useInstructionPrompt('trace', currentLanguage, {
+  const { replay: replayInstruction } = useInstructionPrompt(
+    'trace',
+    currentLanguage,
+    {
       onFinished: () => setInstructionDone(true),
-    });
+    }
+  );
   // Mirrors isCorrect, but settable synchronously. evaluateAttempt can be
   // triggered twice in quick succession for the same completed trace - the
   // debounced timer from onPanResponderRelease and the independent
@@ -716,6 +719,10 @@ export default function TraceLetterGame({
             // flattening this Text into its parent, another path to the same
             // glitch. Same root cause as the "ESCUCHAR..." button fix.
             textBreakStrategy="simple"
+            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
             collapsable={false}
             accessibilityRole="header"
             accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
@@ -751,7 +758,7 @@ export default function TraceLetterGame({
                 ref={el => (targetAnimRef.current = el)}
                 resizeMode="contain"
                 source={targetAnimal.animation_path}
-                style={styles.animalAnimation}
+                style={[styles.animalAnimation, iconScaleStyle(targetAnimal)]}
               />
             )}
           </View>
@@ -783,6 +790,9 @@ export default function TraceLetterGame({
                   styles.promptText,
                   { fontFamily: 'Bangers_400Regular' },
                 ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.6}
               >
                 {t(currentLanguage, 'playName')}
               </Text>

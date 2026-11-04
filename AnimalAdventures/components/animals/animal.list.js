@@ -219,6 +219,8 @@ export const animalList = [
     name: 'Elephant',
     spanish_name: 'Elefante',
     animation_path: require(`${animation_path}elephant.json`),
+    // The artwork sits small in its Lottie canvas; tiles scale it up to match.
+    iconScale: 1.5,
     sound: require(`${sound_path}/Elephant.mp3`),
     voice: require(`${english_folder}/Elephant.mp3`),
     spanish_voice: require(`${spanish_folder}/Elefante.mp3`),
@@ -233,3 +235,8 @@ export const animalList = [
     spanish_voice: require(`${spanish_folder}/Iguana.mp3`),
   },
 ];
+
+// Some artwork sits small in its Lottie canvas (see `iconScale`); every place
+// that draws an animal appends this so it looks the same size everywhere.
+export const iconScaleStyle = animal =>
+  animal?.iconScale ? { transform: [{ scale: animal.iconScale }] } : null;
