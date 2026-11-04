@@ -12,6 +12,7 @@ import {
   Text,
   View,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
@@ -21,8 +22,13 @@ import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList } from '../animals/animal.list';
-import { t } from '../../constants';
+import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import {
+  getCountingDifficulty,
+  getHintAfterTries,
+} from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
@@ -46,9 +52,11 @@ import { getNumberSound } from '../../utils/number-sounds';
 const MAX_LEVEL = 6;
 const COUNT_ICON_SIZE = 56;
 
-// After this many wrong tries the right answer starts to glow - same
-// threshold/spirit as guess-animal.game.component.jsx.
-const HINT_AFTER_TRIES = 3;
+// Card size and gap between number cards. Cards shrink (never below the
+// large touch target) so four of them still fit in one row on a small phone.
+const OPTION_CARD_MAX = 100;
+const OPTION_GAP = 20;
+const OPTION_SIDE_PADDING = 16;
 
 export default function CountingGame({
   currentLanguage,
@@ -62,6 +70,22 @@ export default function CountingGame({
   const { counting, updateCounting, resetCounting, markAnimalMet, markLevelStarred } =
     useGameProgress();
   const { level, targetCount, optionCounts, wrongCount, showComplete } = counting;
+  // The age band sets the largest group, how many number cards appear and
+  // how soon the right one glows (see constants/difficulty.js).
+  const { childAgeBand } = useSettings();
+  const hintAfterTries = getHintAfterTries(childAgeBand);
+  const { maxCount, optionCount } = getCountingDifficulty(childAgeBand, level);
+  const { width: windowWidth } = useWindowDimensions();
+  const optionCardSize = Math.max(
+    LARGE_TOUCH_TARGET,
+    Math.min(
+      OPTION_CARD_MAX,
+      Math.floor(
+        (windowWidth - OPTION_SIDE_PADDING * 2 - OPTION_GAP * (optionCount - 1)) /
+          optionCount
+      )
+    )
+  );
 
   const [isCorrect, setIsCorrect] = useState(false);
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
@@ -181,15 +205,17 @@ export default function CountingGame({
     );
     const targetPool = unused.length > 0 ? unused : animalList;
     const nextTarget = shuffle(targetPool)[0];
-    // Grows from 1-3 at level 1 to 1-8 by level 6 - capped at 8 so the
-    // on-screen group never gets too crowded to count on a phone.
-    const maxCount = Math.min(2 + level, 8);
+    // maxCount grows with the level and the child's age band, and is capped
+    // so the on-screen group never gets too crowded to count on a phone.
     const nextCount = 1 + Math.floor(Math.random() * maxCount);
+    // The wrong answers must always be enough to fill every card, even when
+    // maxCount is tiny (under-4 level 1 has only 1-2 to choose from) - a short
+    // round would never match optionCount and be re-dealt forever.
     const distractorPool = [];
-    for (let n = 1; n <= Math.max(maxCount, nextCount + 1); n++) {
+    for (let n = 1; n <= Math.max(maxCount, optionCount, nextCount + 1); n++) {
       if (n !== nextCount) distractorPool.push(n);
     }
-    const distractors = shuffle(distractorPool).slice(0, 2);
+    const distractors = shuffle(distractorPool).slice(0, optionCount - 1);
     const nextOptionCounts = shuffle([nextCount, ...distractors]);
     updateCounting(prev => ({
       targetId: nextTarget.id,
@@ -200,17 +226,18 @@ export default function CountingGame({
     setIsCorrect(false);
     setShowWrongOverlay(false);
     roundStartedAt.current = Date.now();
-  }, [level, shuffle, updateCounting, counting.usedTargetIds]);
+  }, [maxCount, optionCount, shuffle, updateCounting, counting.usedTargetIds]);
 
-  // A round is dealt only when the saved one doesn't have 3 options, which
-  // covers a first run, a level change and a reset - mirrors guess-animal's
+  // A round is dealt only when the saved one doesn't have the right number of
+  // options, which covers a first run, a level change, a reset and a change
+  // of age band - mirrors guess-animal's
   // identical "deal only if the saved round doesn't fit" effect, so
   // resuming or rotating the device resumes the same question.
   useEffect(() => {
-    if (optionCounts.length !== 3) {
+    if (optionCounts.length !== optionCount) {
       pickRound();
     }
-  }, [optionCounts.length, pickRound]);
+  }, [optionCounts.length, optionCount, pickRound]);
 
   const playAnimalSound = useCallback(
     animal => {
@@ -294,7 +321,7 @@ export default function CountingGame({
         updateCounting(prev => ({ wrongCount: prev.wrongCount + 1 }));
         // Once the hint glow appears, also say the right number - extra
         // help, not a penalty.
-        if (wrongCount + 1 === HINT_AFTER_TRIES) {
+        if (wrongCount + 1 === hintAfterTries) {
           later(() => sayNumber(targetCount), 1200);
         }
       }
@@ -317,6 +344,7 @@ export default function CountingGame({
       stopInstruction,
       sayNumber,
       wrongCount,
+      hintAfterTries,
     ]
   );
 
@@ -440,11 +468,14 @@ export default function CountingGame({
 
         <View style={styles.optionsContainer}>
           {optionCounts.map(count => {
-            const isHinted = wrongCount >= HINT_AFTER_TRIES && count === targetCount;
+            const isHinted = wrongCount >= hintAfterTries && count === targetCount;
             return (
               <BouncyButton
                 key={count}
-                style={styles.optionCard}
+                style={[
+                  styles.optionCard,
+                  { width: optionCardSize, height: optionCardSize },
+                ]}
                 onPress={() => onSelect(count)}
                 accessible={true}
                 accessibilityRole="button"
@@ -637,9 +668,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    gap: 20,
+    gap: OPTION_GAP,
     paddingTop: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: OPTION_SIDE_PADDING,
   },
   // Plain layout only - no background/border here. Those live on a
   // separate absolutely-positioned sibling (optionCardBackground) instead,
@@ -648,8 +679,6 @@ const styles = StyleSheet.create({
   // a visible rendering glitch at one corner on Android (the transform's
   // hardware layer and the border radius don't composite cleanly together).
   optionCard: {
-    width: 100,
-    height: 100,
     alignItems: 'center',
     justifyContent: 'center',
   },

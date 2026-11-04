@@ -27,6 +27,8 @@ import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import { getTraceTolerance } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
@@ -133,6 +135,10 @@ export default function TraceLetterGame({
   const { level, showComplete, wrongCount } = trace;
 
   const [isCorrect, setIsCorrect] = useState(false);
+  // How closely the finger must follow the letter depends on the child's age
+  // band (see getTraceTolerance in constants/difficulty.js).
+  const { childAgeBand } = useSettings();
+  const { proximityRatio, minCoverageRatio } = getTraceTolerance(childAgeBand);
   // The first round's audio waits for the spoken instruction to finish so
   // the two never overlap. Later rounds find this already true.
   const [instructionDone, setInstructionDone] = useState(false);
@@ -452,6 +458,8 @@ export default function TraceLetterGame({
       letterStrokes: LETTER_PATHS[correctLetter],
       box: targetBox,
       canvasSize,
+      proximityRatio,
+      minCoverageRatio,
     });
 
     if (passed) {
@@ -465,6 +473,8 @@ export default function TraceLetterGame({
     correctLetter,
     targetBox,
     canvasSize,
+    proximityRatio,
+    minCoverageRatio,
     handleCorrect,
     registerFailedAttempt,
   ]);
@@ -486,6 +496,8 @@ export default function TraceLetterGame({
       letterStrokes: LETTER_PATHS[correctLetter],
       box: targetBox,
       canvasSize,
+      proximityRatio,
+      minCoverageRatio,
     });
 
     if (passed) {
@@ -499,6 +511,8 @@ export default function TraceLetterGame({
     correctLetter,
     targetBox,
     canvasSize,
+    proximityRatio,
+    minCoverageRatio,
     handleCorrect,
     handleIncorrect,
   ]);

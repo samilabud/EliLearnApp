@@ -94,6 +94,18 @@ export const firstLetterOf = (animal, lang) => {
 };
 
 /**
+ * The letter an animal's name ends with, in the given language.
+ * Accents are stripped for the same reason as `firstLetterOf`.
+ * @param {{name: string, spanish_name: string}} animal
+ * @param {'en'|'es'} lang
+ * @returns {string} A single uppercase letter.
+ */
+export const lastLetterOf = (animal, lang) => {
+  const name = lang === 'en' ? animal.name : animal.spanish_name;
+  return stripAccents(name).trim().slice(-1).toUpperCase();
+};
+
+/**
  * Debounce function to limit function calls
  * @param {Function} func - The function to debounce
  * @param {number} wait - The delay in milliseconds

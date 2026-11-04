@@ -10,6 +10,7 @@ export const GAME_ORDER = [
   'learn',
   'guess',
   'letter',
+  'lastLetter',
   'trace',
   'memory',
   'findAnimal',

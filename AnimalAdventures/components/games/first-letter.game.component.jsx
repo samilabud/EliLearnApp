@@ -26,9 +26,13 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
+import {
+  getHintAfterTries,
+  getLetterDifficulty,
+} from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
-import { firstLetterOf } from '../../utils/helpers';
+import { firstLetterOf, lastLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
 import { EVENTS, track } from '../../utils/analytics';
 import {
@@ -49,18 +53,64 @@ import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 6;
 
-// Levels at or below this teach vowels in isolation: both the animal shown
-// and the two wrong letters come only from {A, E, I, O, U}. Levels above it
-// draw from the whole alphabet, consonants included.
-const VOWEL_LEVELS = 2;
-
+// Levels teach vowels in isolation first: both the animal shown and the
+// wrong letters come only from {A, E, I, O, U}. How many levels do that, and
+// how many letter cards appear, depends on the child's age band - see
+// getLetterDifficulty in constants/difficulty.js.
 const VOWELS = ['A', 'E', 'I', 'O', 'U'];
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-// After this many wrong taps the right letter starts to glow. Children aged
-// three to six learn by trying the wrong thing, so the game never ends on a
-// mistake - it just gets more helpful. Matches Guess the Animal's threshold.
-const HINT_AFTER_TRIES = 3;
+// This screen serves two games: "Guess the First Letter" and "Guess the Last
+// Letter". They are the same game asked about opposite ends of the animal's
+// name, so everything that differs lives in this table - which letter counts,
+// which saved slice and reward key to use, and which text to show.
+const POSITIONS = {
+  first: {
+    gameKey: 'letter',
+    instructionKey: 'whichLetter',
+    optionLabelKey: 'a11yLetterOption',
+    letterOf: firstLetterOf,
+  },
+  last: {
+    gameKey: 'lastLetter',
+    instructionKey: 'whichLastLetter',
+    optionLabelKey: 'a11yLastLetterOption',
+    letterOf: lastLetterOf,
+  },
+};
+
+// Wrong answers for the last-letter game. Names mostly end in a vowel (nearly
+// all Spanish ones in A or O), so drawing wrong answers from the whole
+// alphabet would make the right one obvious, and offering only A and O would
+// make it a coin flip. Early levels draw from letters names commonly end in;
+// from level 3 the whole alphabet is in play. In Spanish the "other" one of
+// A/O is always offered, so the child has to listen for which it is.
+const LAST_LETTER_EASY_POOL = {
+  en: [...VOWELS, 'Y', 'N', 'S', 'T'],
+  es: [...VOWELS, 'N', 'S'],
+};
+const LAST_LETTER_FULL_POOL_LEVEL = 3;
+
+const lastLetterDistractors = (correct, lang, level, count, shuffle) => {
+  const pool =
+    level >= LAST_LETTER_FULL_POOL_LEVEL
+      ? ALPHABET
+      : LAST_LETTER_EASY_POOL[lang] || LAST_LETTER_EASY_POOL.en;
+  const required =
+    lang === 'es' && correct === 'A'
+      ? ['O']
+      : lang === 'es' && correct === 'O'
+        ? ['A']
+        : [];
+  const rest = shuffle(
+    pool.filter(l => l !== correct && !required.includes(l))
+  );
+  return [...required, ...rest].slice(0, count);
+};
+
+// How soon the right letter glows after wrong taps is age-based - see
+// getHintAfterTries in constants/difficulty.js. The game never ends on a
+// mistake; it just gets more helpful.
 
 const OPTION_GAP = 20;
 const MIN_OPTION_SIZE = 96;
@@ -74,28 +124,43 @@ export default function FirstLetterGame({
   onBackToMenu,
   onNextGame,
   ambientEnabled,
+  position = 'first',
 }) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-  const optionSize = Math.min(
-    MAX_OPTION_SIZE,
-    Math.max(MIN_OPTION_SIZE, Math.floor((windowWidth - OPTION_GAP * 4) / 3))
-  );
+  const isLast = position === 'last';
+  const { gameKey, instructionKey, optionLabelKey, letterOf } =
+    POSITIONS[isLast ? 'last' : 'first'];
   const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Level and the current round are saved progress and live in the context,
   // so they survive a trip to the menu, a rotation, or the app being killed.
   // Only state meaningless outside the current round stays local.
-  const { letter, updateLetter, resetLetter, markAnimalMet, markLevelStarred } =
-    useGameProgress();
+  const progress = useGameProgress();
+  const { markAnimalMet, markLevelStarred } = progress;
+  const letter = isLast ? progress.lastLetter : progress.letter;
+  const updateLetter = isLast ? progress.updateLastLetter : progress.updateLetter;
+  const resetLetter = isLast ? progress.resetLastLetter : progress.resetLetter;
   const { level, wrongCount, showComplete } = letter;
   const { childAgeBand } = useSettings();
+  const hintAfterTries = getHintAfterTries(childAgeBand);
+  const { optionCount, vowelLevels } = getLetterDifficulty(childAgeBand);
+  // Cards share the row width; four cards sit in a 2x2 grid so they stay
+  // large enough to tap on a small phone.
+  const columns = optionCount >= 4 ? 2 : optionCount;
+  const optionSize = Math.min(
+    MAX_OPTION_SIZE,
+    Math.max(
+      MIN_OPTION_SIZE,
+      Math.floor((windowWidth - OPTION_GAP * (columns + 1)) / columns)
+    )
+  );
 
   const [isCorrect, setIsCorrect] = useState(false);
   // The first round's audio waits for the spoken instruction to finish so
   // the two never overlap. Later rounds find this already true.
   const [instructionDone, setInstructionDone] = useState(false);
   const { replay: replayInstruction, stop: stopInstruction } =
-    useInstructionPrompt('letter', currentLanguage, {
+    useInstructionPrompt(gameKey, currentLanguage, {
       onFinished: () => setInstructionDone(true),
     });
   const promptPlayer = useAudioPlayer(null);
@@ -142,8 +207,8 @@ export default function FirstLetterGame({
     [animalsById, letter.targetId]
   );
   const correctLetter = useMemo(
-    () => (targetAnimal ? firstLetterOf(targetAnimal, currentLanguage) : null),
-    [targetAnimal, currentLanguage]
+    () => (targetAnimal ? letterOf(targetAnimal, currentLanguage) : null),
+    [targetAnimal, currentLanguage, letterOf]
   );
 
   // Every delayed action is registered here so unmounting cancels it. Without
@@ -168,7 +233,7 @@ export default function FirstLetterGame({
   useEffect(() => {
     roundStartedAt.current = Date.now();
     track(letter.targetId ? EVENTS.GAME_RESUMED : EVENTS.GAME_STARTED, {
-      game: 'letter',
+      game: gameKey,
       level,
     });
     // Fires once per visit to the game, not once per round.
@@ -245,9 +310,11 @@ export default function FirstLetterGame({
   }, []);
 
   const pickRound = useCallback(() => {
-    // A parent who has marked their child as under 4 keeps every level
-    // vowels-only, rather than switching to consonants after level 2.
-    const isVowelLevel = childAgeBand === 'under4' || level <= VOWEL_LEVELS;
+    // Under-4 keeps every level vowels-only (vowelLevels is Infinity), rather
+    // than switching to consonants after the first few levels.
+    // The last-letter game has no vowel-only phase: names mostly end in
+    // vowels already, so it uses its own wrong-answer pool instead.
+    const isVowelLevel = !isLast && level <= vowelLevels;
     const basePool =
       isVowelLevel && vowelAnimals.length > 0 ? vowelAnimals : animalList;
     // Every eligible animal gets a turn as the target before any repeats,
@@ -257,11 +324,19 @@ export default function FirstLetterGame({
     const unused = basePool.filter(a => !letter.usedTargetIds.includes(a.id));
     const pool = unused.length > 0 ? unused : basePool;
     const nextTarget = pool[Math.floor(Math.random() * pool.length)];
-    const correct = firstLetterOf(nextTarget, currentLanguage);
+    const correct = letterOf(nextTarget, currentLanguage);
     const distractorAlphabet = isVowelLevel ? VOWELS : ALPHABET;
-    const distractors = shuffle(
-      distractorAlphabet.filter(letterOption => letterOption !== correct)
-    ).slice(0, 2);
+    const distractors = isLast
+      ? lastLetterDistractors(
+          correct,
+          currentLanguage,
+          level,
+          optionCount - 1,
+          shuffle
+        )
+      : shuffle(
+          distractorAlphabet.filter(letterOption => letterOption !== correct)
+        ).slice(0, optionCount - 1);
     updateLetter(prev => ({
       targetId: nextTarget.id,
       optionLetters: shuffle([correct, ...distractors]),
@@ -272,8 +347,11 @@ export default function FirstLetterGame({
     setShowWrongOverlay(false);
     roundStartedAt.current = Date.now();
   }, [
+    isLast,
+    letterOf,
     level,
-    childAgeBand,
+    optionCount,
+    vowelLevels,
     vowelAnimals,
     currentLanguage,
     shuffle,
@@ -282,15 +360,15 @@ export default function FirstLetterGame({
   ]);
 
   // A round is dealt only when the saved one is missing, which covers a
-  // first run, a level change and a reset. A saved round that already has
-  // its three letters is restored untouched, so returning from the menu or
+  // first run, a level change, a reset or a change of age band. A saved round
+  // that already has the right number of letters is restored untouched, so returning from the menu or
   // rotating the device resumes the same question rather than silently
   // replacing it.
   useEffect(() => {
-    if (letter.optionLetters.length !== 3) {
+    if (letter.optionLetters.length !== optionCount) {
       pickRound();
     }
-  }, [letter.optionLetters.length, pickRound]);
+  }, [letter.optionLetters.length, optionCount, pickRound]);
 
   // Toggling the language can change which letter is correct for the
   // animal already on screen (e.g. "Owl" -> "Buho"). When the saved letters
@@ -328,10 +406,10 @@ export default function FirstLetterGame({
         successFeedback();
         setIsCorrect(true);
         updateLetter({ wrongCount: 0 });
-        markAnimalMet(targetAnimal.id, 'letter');
-        markLevelStarred('letter', level);
+        markAnimalMet(targetAnimal.id, gameKey);
+        markLevelStarred(gameKey, level);
         track(EVENTS.LEVEL_COMPLETED, {
-          game: 'letter',
+          game: gameKey,
           level,
           duration_ms: Date.now() - roundStartedAt.current,
         });
@@ -382,7 +460,7 @@ export default function FirstLetterGame({
                 optionLetters: [],
               };
             }
-            track(EVENTS.GAME_COMPLETED, { game: 'letter', level: prev.level });
+            track(EVENTS.GAME_COMPLETED, { game: gameKey, level: prev.level });
             return { showComplete: true };
           });
         }, 2500);
@@ -399,6 +477,7 @@ export default function FirstLetterGame({
       }
     },
     [
+      gameKey,
       targetAnimal,
       correctLetter,
       currentLanguage,
@@ -421,12 +500,12 @@ export default function FirstLetterGame({
   );
 
   const onReset = useCallback(() => {
-    track(EVENTS.GAME_RESET, { game: 'letter', level });
+    track(EVENTS.GAME_RESET, { game: gameKey, level });
     setIsCorrect(false);
     setShowWrongOverlay(false);
     // Clearing progress empties the round, which re-deals via the effect above.
     resetLetter();
-  }, [resetLetter, level]);
+  }, [resetLetter, level, gameKey]);
 
   const handleReset = useCallback(() => {
     tapFeedback();
@@ -441,10 +520,10 @@ export default function FirstLetterGame({
       // open this game - only an in-progress level is worth resuming.
       resetLetter();
     } else {
-      track(EVENTS.GAME_ABANDONED, { game: 'letter', level, wrongCount });
+      track(EVENTS.GAME_ABANDONED, { game: gameKey, level, wrongCount });
     }
     onBackToMenu();
-  }, [onBackToMenu, showComplete, level, wrongCount, resetLetter]);
+  }, [onBackToMenu, showComplete, level, wrongCount, resetLetter, gameKey]);
 
   useBackToMenu(handleBackToMenu);
 
@@ -453,10 +532,10 @@ export default function FirstLetterGame({
     if (showComplete) {
       resetLetter();
     } else {
-      track(EVENTS.GAME_ABANDONED, { game: 'letter', level, wrongCount });
+      track(EVENTS.GAME_ABANDONED, { game: gameKey, level, wrongCount });
     }
     onNextGame();
-  }, [onNextGame, showComplete, level, wrongCount, resetLetter]);
+  }, [onNextGame, showComplete, level, wrongCount, resetLetter, gameKey]);
 
   const handlePlayPrompt = useCallback(() => {
     tapFeedback();
@@ -568,7 +647,7 @@ export default function FirstLetterGame({
           </Animated.View>
           {!!targetAnimal && (
             <InstructionText
-              text={t(currentLanguage, 'whichLetter')}
+              text={t(currentLanguage, instructionKey)}
               currentLanguage={currentLanguage}
               onReplay={replayInstruction}
               textStyle={styles.helperText}
@@ -580,7 +659,7 @@ export default function FirstLetterGame({
         <View style={styles.optionsContainer}>
           {letter.optionLetters.map(letterOption => {
             const isHinted =
-              wrongCount >= HINT_AFTER_TRIES &&
+              wrongCount >= hintAfterTries &&
               targetAnimal &&
               letterOption === correctLetter;
 
@@ -594,7 +673,7 @@ export default function FirstLetterGame({
                 onPress={() => onSelect(letterOption)}
                 accessible={true}
                 accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yLetterOption', {
+                accessibilityLabel={t(currentLanguage, optionLabelKey, {
                   letter: letterOption,
                 })}
               >

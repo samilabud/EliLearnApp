@@ -25,6 +25,11 @@ import { animalList } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
 import { useGameProgress } from '../../contexts/game-progress.context';
+import { useSettings } from '../../contexts/settings.context';
+import {
+  getAnimalOptionCount,
+  getHintAfterTries,
+} from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, stopClip } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
@@ -53,10 +58,9 @@ const MIN_OPTION_SIZE = 104;
 
 const MAX_LEVEL = 8;
 
-// After this many wrong tries the right answer starts to glow. Children aged
-// three to six learn by trying the wrong thing, so the game never ends on a
-// mistake - it just gets more helpful.
-const HINT_AFTER_TRIES = 3;
+// How soon the right answer glows after wrong tries is age-based - see
+// getHintAfterTries in constants/difficulty.js. The game never ends on a
+// mistake; it just gets more helpful.
 
 // Short settle time before the very first prompt of a screen visit plays, so
 // it doesn't fire while the screen transition is still animating in. There
@@ -172,10 +176,14 @@ export default function FindAnimalGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const optionsCount = useMemo(() => {
-    // Level 1 -> 2 options, Level 2 -> 3, ... Level 5 -> 6
-    return Math.min(6, level + 1);
-  }, [level]);
+  // The age band sets how many choices a level shows and how soon the right
+  // answer starts to glow (see constants/difficulty.js).
+  const { childAgeBand } = useSettings();
+  const hintAfterTries = getHintAfterTries(childAgeBand);
+  const optionsCount = useMemo(
+    () => getAnimalOptionCount(childAgeBand, level),
+    [childAgeBand, level]
+  );
 
   const stopAndUnload = useCallback(async () => {
     stopClip(promptPlayer);
@@ -548,7 +556,7 @@ export default function FindAnimalGame({
         <View style={styles.optionsContainer}>
           {options.map(opt => {
             const isHinted =
-              wrongCount >= HINT_AFTER_TRIES &&
+              wrongCount >= hintAfterTries &&
               targetAnimal &&
               opt.id === targetAnimal.id;
 

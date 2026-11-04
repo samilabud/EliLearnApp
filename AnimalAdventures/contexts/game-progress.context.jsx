@@ -75,6 +75,17 @@ const DEFAULT_LETTER = {
   usedTargetIds: [],
 };
 
+// Same shape as DEFAULT_LETTER: the last-letter game is the first-letter game
+// asked about the other end of the name, so it saves and restores the same way.
+const DEFAULT_LAST_LETTER = {
+  level: 1,
+  targetId: null,
+  optionLetters: [],
+  wrongCount: 0,
+  showComplete: false,
+  usedTargetIds: [],
+};
+
 const DEFAULT_TRACE = {
   level: 1,
   targetId: null,
@@ -149,6 +160,7 @@ const DEFAULT_MET_VIA = {};
 const DEFAULT_STARS = {
   guess: [],
   letter: [],
+  lastLetter: [],
   trace: [],
   memory: [],
   findAnimal: [],
@@ -343,7 +355,8 @@ const clearTerminalStates = (
   trace,
   findAnimal,
   whoseSound,
-  counting
+  counting,
+  lastLetter
 ) => ({
   memory: memory.gameComplete ? DEFAULT_MEMORY : memory,
   guess: guess.showComplete ? DEFAULT_GUESS : guess,
@@ -352,6 +365,7 @@ const clearTerminalStates = (
   findAnimal: findAnimal.showComplete ? DEFAULT_FINDANIMAL : findAnimal,
   whoseSound: whoseSound.showComplete ? DEFAULT_WHOSESOUND : whoseSound,
   counting: counting.showComplete ? DEFAULT_COUNTING : counting,
+  lastLetter: lastLetter.showComplete ? DEFAULT_LAST_LETTER : lastLetter,
 });
 
 /**
@@ -378,6 +392,7 @@ export function GameProgressProvider({ children }) {
   const [findAnimal, setFindAnimalState] = useState(DEFAULT_FINDANIMAL);
   const [whoseSound, setWhoseSoundState] = useState(DEFAULT_WHOSESOUND);
   const [counting, setCountingState] = useState(DEFAULT_COUNTING);
+  const [lastLetter, setLastLetterState] = useState(DEFAULT_LAST_LETTER);
   const [met, setMet] = useState(DEFAULT_MET);
   const [metVia, setMetVia] = useState(DEFAULT_MET_VIA);
   const [stars, setStars] = useState(DEFAULT_STARS);
@@ -394,6 +409,7 @@ export function GameProgressProvider({ children }) {
     findAnimal,
     whoseSound,
     counting,
+    lastLetter,
   });
 
   useEffect(() => {
@@ -425,7 +441,11 @@ export function GameProgressProvider({ children }) {
             : DEFAULT_WHOSESOUND,
           countingIsUsable(stored.counting)
             ? { ...DEFAULT_COUNTING, ...stored.counting }
-            : DEFAULT_COUNTING
+            : DEFAULT_COUNTING,
+          // Saves from before this game existed have no lastLetter key.
+          letterIsUsable(stored.lastLetter)
+            ? { ...DEFAULT_LAST_LETTER, ...stored.lastLetter }
+            : DEFAULT_LAST_LETTER
         );
         setMemoryState(restored.memory);
         setGuessState(restored.guess);
@@ -434,6 +454,7 @@ export function GameProgressProvider({ children }) {
         setFindAnimalState(restored.findAnimal);
         setWhoseSoundState(restored.whoseSound);
         setCountingState(restored.counting);
+        setLastLetterState(restored.lastLetter);
         if (Array.isArray(stored.met)) {
           setMet(stored.met.filter(id => validIds.has(id)));
         }
@@ -476,6 +497,7 @@ export function GameProgressProvider({ children }) {
       findAnimal,
       whoseSound,
       counting,
+      lastLetter,
       met,
       metVia,
       stars,
@@ -499,6 +521,7 @@ export function GameProgressProvider({ children }) {
         findAnimal,
         whoseSound,
         counting,
+        lastLetter,
         met,
         metVia,
         stars,
@@ -519,6 +542,7 @@ export function GameProgressProvider({ children }) {
     findAnimal,
     whoseSound,
     counting,
+    lastLetter,
     met,
     metVia,
     stars,
@@ -541,6 +565,7 @@ export function GameProgressProvider({ children }) {
         findAnimal: fa,
         whoseSound: ws,
         counting: ct,
+        lastLetter: ll,
         met: k,
         metVia: mv,
         stars: st,
@@ -559,6 +584,7 @@ export function GameProgressProvider({ children }) {
         findAnimal: fa,
         whoseSound: ws,
         counting: ct,
+        lastLetter: ll,
         met: k,
         metVia: mv,
         stars: st,
@@ -585,6 +611,13 @@ export function GameProgressProvider({ children }) {
 
   const updateLetter = useCallback(patch => {
     setLetterState(prev => ({
+      ...prev,
+      ...(typeof patch === 'function' ? patch(prev) : patch),
+    }));
+  }, []);
+
+  const updateLastLetter = useCallback(patch => {
+    setLastLetterState(prev => ({
       ...prev,
       ...(typeof patch === 'function' ? patch(prev) : patch),
     }));
@@ -788,6 +821,10 @@ export function GameProgressProvider({ children }) {
   const resetMemory = useCallback(() => setMemoryState(DEFAULT_MEMORY), []);
   const resetGuess = useCallback(() => setGuessState(DEFAULT_GUESS), []);
   const resetLetter = useCallback(() => setLetterState(DEFAULT_LETTER), []);
+  const resetLastLetter = useCallback(
+    () => setLastLetterState(DEFAULT_LAST_LETTER),
+    []
+  );
   const resetTrace = useCallback(() => setTraceState(DEFAULT_TRACE), []);
   const resetFindAnimal = useCallback(
     () => setFindAnimalState(DEFAULT_FINDANIMAL),
@@ -813,6 +850,7 @@ export function GameProgressProvider({ children }) {
       findAnimal,
       whoseSound,
       counting,
+      lastLetter,
       met,
       metVia,
       stars,
@@ -833,6 +871,7 @@ export function GameProgressProvider({ children }) {
       updateMemory,
       updateGuess,
       updateLetter,
+      updateLastLetter,
       updateTrace,
       updateFindAnimal,
       updateWhoseSound,
@@ -840,6 +879,7 @@ export function GameProgressProvider({ children }) {
       resetMemory,
       resetGuess,
       resetLetter,
+      resetLastLetter,
       resetTrace,
       resetFindAnimal,
       resetWhoseSound,
@@ -855,6 +895,7 @@ export function GameProgressProvider({ children }) {
       findAnimal,
       whoseSound,
       counting,
+      lastLetter,
       met,
       metVia,
       stars,
@@ -875,6 +916,7 @@ export function GameProgressProvider({ children }) {
       updateMemory,
       updateGuess,
       updateLetter,
+      updateLastLetter,
       updateTrace,
       updateFindAnimal,
       updateWhoseSound,
@@ -882,6 +924,7 @@ export function GameProgressProvider({ children }) {
       resetMemory,
       resetGuess,
       resetLetter,
+      resetLastLetter,
       resetTrace,
       resetFindAnimal,
       resetWhoseSound,
@@ -900,7 +943,8 @@ export function GameProgressProvider({ children }) {
 /**
  * Access saved progress for all games.
  * @returns {{hydrated: boolean, memory: object, guess: object, letter: object,
- *   trace: object, findAnimal: object, whoseSound: object, counting: object,
+ *   lastLetter: object, trace: object, findAnimal: object,
+ *   whoseSound: object, counting: object,
  *   stars: object,
  *   scene: {placed: object[]}, coloring: {pages: Object<string,object>},
  *   met: string[], metVia: Object<string,string>,
@@ -913,9 +957,9 @@ export function GameProgressProvider({ children }) {
  *   updateMemory: Function,
  *   updateGuess: Function, updateLetter: Function, updateTrace: Function,
  *   updateFindAnimal: Function, updateWhoseSound: Function,
- *   updateCounting: Function,
+ *   updateCounting: Function, updateLastLetter: Function,
  *   resetMemory: Function, resetGuess: Function, resetLetter: Function,
- *   resetTrace: Function, resetFindAnimal: Function,
+ *   resetLastLetter: Function, resetTrace: Function, resetFindAnimal: Function,
  *   resetWhoseSound: Function, resetCounting: Function, resetScene: Function}}
  */
 export function useGameProgress() {
@@ -930,6 +974,7 @@ export {
   DEFAULT_MEMORY,
   DEFAULT_GUESS,
   DEFAULT_LETTER,
+  DEFAULT_LAST_LETTER,
   DEFAULT_TRACE,
   DEFAULT_FINDANIMAL,
   DEFAULT_WHOSESOUND,

@@ -54,9 +54,19 @@ const nearestDistance = (point, candidates) => {
  *   - The same box the guide is drawn into (see buildGuidePath).
  * @param {number} params.canvasSize - Used to scale the proximity
  *   tolerance to the actual on-screen canvas size.
+ * @param {number} [params.proximityRatio] - Override PROXIMITY_RATIO (the
+ *   age band's tolerance, see getTraceTolerance in constants/difficulty).
+ * @param {number} [params.minCoverageRatio] - Override MIN_COVERAGE_RATIO.
  * @returns {boolean}
  */
-export function gradeTrace({ tracePoints, letterStrokes, box, canvasSize }) {
+export function gradeTrace({
+  tracePoints,
+  letterStrokes,
+  box,
+  canvasSize,
+  proximityRatio = PROXIMITY_RATIO,
+  minCoverageRatio = MIN_COVERAGE_RATIO,
+}) {
   if (!letterStrokes || !tracePoints || tracePoints.length < MIN_POINTS) {
     return false;
   }
@@ -64,7 +74,7 @@ export function gradeTrace({ tracePoints, letterStrokes, box, canvasSize }) {
   const guidePoints = densifyScaledStrokes(letterStrokes, box).flat();
   if (guidePoints.length === 0) return false;
 
-  const tolerance = canvasSize * PROXIMITY_RATIO;
+  const tolerance = canvasSize * proximityRatio;
 
   const closeTraceCount = tracePoints.filter(
     p => nearestDistance(p, guidePoints) <= tolerance
@@ -77,5 +87,5 @@ export function gradeTrace({ tracePoints, letterStrokes, box, canvasSize }) {
   ).length;
   const coverage = coveredGuideCount / guidePoints.length;
 
-  return coverage >= MIN_COVERAGE_RATIO;
+  return coverage >= minCoverageRatio;
 }

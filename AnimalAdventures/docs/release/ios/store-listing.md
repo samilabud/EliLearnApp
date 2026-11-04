@@ -2,7 +2,7 @@
 
 Written 2026-10-23. Pricing model: **paid download, no in-app purchases** (per your decision — see `docs/release/ios-readiness.md`).
 
-Note: the current Play Store description (`docs/store-listing/description-en.txt` / `-es.txt`) says "8 different games" — the app actually has **10** now (Coloring Book and Count the Animals were added later and the Play listing was never updated). The text below reflects the current app. You may want to refresh the Play listing too, separately.
+Note: the current Play Store description (`docs/store-listing/description-en.txt` / `-es.txt`) says "8 different games" — the app actually has **11** now (Coloring Book, Count the Animals and Guess the Last Letter were added later). The Play listing text in `docs/store-listing/` has since been brought up to date too; the text below reflects the current app.
 
 ## Name (max 30 characters)
 
@@ -34,18 +34,19 @@ niños,infantil,preescolar,ingles,sonidos,abecedario,alfabeto,memoria,colorear,n
 ```
 Animal Adventures is a safe, screen-friendly way for young children to learn about animals - no ads, no accounts, no in-app purchases, just play.
 
-Meet 24+ animals through 10 different games, each teaching something different:
+Meet 24+ animals through 11 different games, each teaching something different:
 
 - Learn Animal Sounds & Names - discover animals and their sounds
 - Guess the Animal - test your knowledge
 - Guess the First Letter - match animals to their first letter
+- Guess the Last Letter - match animals to their last letter
 - Trace the Letter - draw each animal's first letter
 - Train Your Memory - find matching animal pairs
 - Find the Animal - listen for the name and tap it
 - Whose Sound Is It? - listen and tap the matching animal
 - Build a Scene - drag animals and scenery to create your own free-play scene, no right or wrong way
 - Coloring Book - color your favorite animals
-- Count the Animals - how many do you see?
+- Count the Animals - how many animals are there?
 
 Kids earn stars as they play, meet a different Today's Animal highlight every day, and fill up their own Animal Album with every animal they've discovered - so there's always a reason to come back.
 
@@ -57,7 +58,7 @@ Built for parents, too:
 - No in-app purchases or subscriptions - everything is unlocked with your one-time purchase
 - No links leading kids out of the app
 - No personal information collected
-- A parent area with a daily play-time limit, sound controls, and age-based settings, protected behind a simple parental gate
+- A parent area with a daily play-time limit, sound controls, and age-based settings that adapt each game's difficulty to your child's age, protected behind a simple parental gate
 
 Animal Adventures is designed for early learners (around ages 2-7) and works great on iPhone and iPad.
 ```
@@ -66,18 +67,19 @@ Animal Adventures is designed for early learners (around ages 2-7) and works gre
 ```
 Aventuras de Animales es una forma segura y pensada para niños pequeños de aprender sobre los animales - sin anuncios, sin cuentas, sin compras dentro de la app, solo diversión.
 
-Conoce a más de 24 animales a través de 10 juegos diferentes, cada uno enseña algo distinto:
+Conoce a más de 24 animales a través de 11 juegos diferentes, cada uno enseña algo distinto:
 
 - Aprende Sonidos y Nombres - descubre animales y sus sonidos
 - Adivina el Animal - pon a prueba tu conocimiento
 - Adivina la Primera Letra - relaciona animales con su primera letra
+- Adivina la Última Letra - relaciona animales con su última letra
 - Traza la Letra - dibuja la primera letra de cada animal
 - Entrena tu Memoria - encuentra parejas de animales
 - Encuentra al Animal - escucha el nombre y tócalo
 - ¿De Quién es Este Sonido? - escucha y toca el animal correspondiente
 - Crea una Escena - arrastra animales y elementos del paisaje para crear tu propia escena libre, sin una forma correcta o incorrecta
 - Libro para Colorear - colorea tus animales favoritos
-- Cuenta los Animales - ¿cuántos ves?
+- Cuenta los Animales - ¿cuántos animales hay?
 
 Los niños ganan estrellas mientras juegan, descubren un Animal del Día distinto cada día, y completan su propio Álbum de Animales con cada animal que han conocido - siempre hay un motivo para volver.
 
@@ -89,7 +91,7 @@ Pensada también para los padres:
 - Sin compras ni suscripciones dentro de la app - todo está disponible desde tu compra única
 - Sin enlaces que saquen a los niños de la app
 - No recopilamos información personal
-- Una sección para padres con límite de tiempo de juego diario, controles de sonido y ajustes según la edad, protegida por una sencilla verificación parental
+- Una sección para padres con límite de tiempo de juego diario, controles de sonido y ajustes según la edad que adaptan la dificultad de cada juego, protegida por una sencilla verificación parental
 
 Aventuras de Animales está diseñada para niños pequeños (entre 2 y 7 años aproximadamente) y funciona muy bien en iPhone y iPad.
 ```
@@ -98,10 +100,10 @@ Aventuras de Animales está diseñada para niños pequeños (entre 2 y 7 años a
 
 **EN:**
 ```
-Welcome to Animal Adventures on iOS! 10 bilingual games, 24+ animals, and a parent area with play-time limits - all in one safe, ad-free app for young children.
+Welcome to Animal Adventures on iOS! 11 bilingual games, 24+ animals, and a parent area with play-time limits - all in one safe, ad-free app for young children.
 ```
 
 **ES:**
 ```
-¡Bienvenido a Aventuras de Animales en iOS! 10 juegos bilingües, más de 24 animales y una sección para padres con límites de tiempo de juego - todo en una app segura y sin anuncios para niños pequeños.
+¡Bienvenido a Aventuras de Animales en iOS! 11 juegos bilingües, más de 24 animales y una sección para padres con límites de tiempo de juego - todo en una app segura y sin anuncios para niños pequeños.
 ```

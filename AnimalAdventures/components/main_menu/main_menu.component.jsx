@@ -80,6 +80,13 @@ export const MODES = [
     descriptionKey: 'modeLetterDescription',
   },
   {
+    key: 'lastLetter',
+    icon: require('../../assets/animations/icons/last_letter_icon.json'),
+    glyph: 'sort-by-alpha',
+    titleKey: 'modeLastLetterTitle',
+    descriptionKey: 'modeLastLetterDescription',
+  },
+  {
     key: 'trace',
     icon: require('../../assets/animations/icons/trace_icon.json'),
     glyph: 'gesture',
