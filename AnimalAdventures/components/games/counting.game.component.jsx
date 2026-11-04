@@ -50,7 +50,18 @@ import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 import { getNumberSound } from '../../utils/number-sounds';
 
 const MAX_LEVEL = 6;
-const COUNT_ICON_SIZE = 56;
+// Fewer animals get bigger art so a lone animal isn't a tiny speck; the size
+// steps down as the count grows so ten still fit on screen.
+const countIconSizeFor = count => {
+  if (count <= 1) return 180;
+  if (count === 2) return 150;
+  if (count === 3) return 128;
+  if (count === 4) return 112;
+  if (count === 5) return 100;
+  if (count === 6) return 88;
+  if (count <= 8) return 76;
+  return 64;
+};
 
 // Card size and gap between number cards. Cards shrink (never below the
 // large touch target) so four of them still fit in one row on a small phone.
@@ -76,6 +87,7 @@ export default function CountingGame({
   const hintAfterTries = getHintAfterTries(childAgeBand);
   const { maxCount, optionCount } = getCountingDifficulty(childAgeBand, level);
   const { width: windowWidth } = useWindowDimensions();
+  const countIconSize = countIconSizeFor(targetCount || 0);
   const optionCardSize = Math.max(
     LARGE_TOUCH_TARGET,
     Math.min(
@@ -114,7 +126,7 @@ export default function CountingGame({
   );
 
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
-  const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
+  const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
@@ -450,7 +462,7 @@ export default function CountingGame({
             {Array.from({ length: targetCount || 0 }).map((_, i) => (
               <BouncyButton
                 key={i}
-                style={styles.countIconWrapper}
+                style={{ width: countIconSize, height: countIconSize }}
                 onPress={() => playAnimalSound(targetAnimal)}
                 accessible={false}
               >
@@ -460,7 +472,7 @@ export default function CountingGame({
                   resizeMode="contain"
                   source={targetAnimal.animation_path}
                   style={[
-                    { width: COUNT_ICON_SIZE, height: COUNT_ICON_SIZE },
+                    { width: countIconSize, height: countIconSize },
                     iconScaleStyle(targetAnimal),
                   ]}
                 />
@@ -492,12 +504,7 @@ export default function CountingGame({
                     isHinted && styles.optionCardBackgroundHinted,
                   ]}
                 />
-                <Text
-                  style={[
-                    styles.optionDigit,
-                    { fontFamily: 'Bangers_400Regular' },
-                  ]}
-                >
+                <Text style={styles.optionDigit}>
                   {count}
                 </Text>
               </BouncyButton>
@@ -662,10 +669,6 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
     paddingHorizontal: 24,
   },
-  countIconWrapper: {
-    width: COUNT_ICON_SIZE,
-    height: COUNT_ICON_SIZE,
-  },
   optionsContainer: {
     flexGrow: 1,
     flexDirection: 'row',
@@ -700,10 +703,12 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     backgroundColor: 'rgba(255, 215, 0, 0.3)',
   },
+  // System bold, not Bangers: Bangers' slanted digits were clipping at the
+  // edges of their glyph box on some devices.
   optionDigit: {
-    fontSize: 48,
-    lineHeight: 56,
-    includeFontPadding: false,
+    fontSize: 56,
+    lineHeight: 68,
+    fontWeight: '900',
     color: '#0A3D62',
   },
   feedbackOverlay: {

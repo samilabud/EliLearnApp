@@ -127,7 +127,7 @@ export default function WhoseSoundGame({
   const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const optionAnimRefs = useRef({});
-  const wrongSoundFile = require('../../assets/sounds/background/animals/mixkit-creaking-cartoon-bird-calling-11 (online-audio-converter.com).mp3');
+  const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
 
