@@ -545,7 +545,10 @@ export default function BuildSceneGame({
           <View style={styles.trayDivider} />
 
           {sceneryList.map(scenery => (
-            <View key={scenery.id} style={styles.trayItemWrapper}>
+            <View
+              key={scenery.id}
+              style={[styles.trayItemWrapper, styles.scenerySlot]}
+            >
               <DraggableItem
                 item={scenery}
                 currentLanguage={currentLanguage}
@@ -616,6 +619,11 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: CATEGORY_COLORS.create.fill,
     padding: 4,
+  },
+  // Scenery art includes a white cloud, which vanishes on a white tile -
+  // the same sky blue as the scene keeps every piece visible.
+  scenerySlot: {
+    backgroundColor: '#CFE8F8',
   },
   trayDivider: {
     width: 3,

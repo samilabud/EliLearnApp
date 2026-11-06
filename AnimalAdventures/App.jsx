@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Animated, Pressable, View } from 'react-native';
+import { Animated, Platform, Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
@@ -68,8 +68,12 @@ function AppContent() {
   useEffect(() => {
     initAnalytics();
     // Respect the iPhone/iPad ring/silent switch: a device a parent has
-    // silenced stays silent. Volume buttons still control everything else.
-    setAudioModeAsync({ playsInSilentMode: false }).catch(() => {});
+    // silenced stays silent. iOS only - on Android the same flag pauses
+    // playback whenever the ringer is on vibrate, which many phones sit on
+    // with the media volume up, so the whole app would go quiet.
+    if (Platform.OS === 'ios') {
+      setAudioModeAsync({ playsInSilentMode: false }).catch(() => {});
+    }
   }, []);
 
   const handleModeSelect = mode => {
