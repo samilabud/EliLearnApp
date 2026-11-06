@@ -58,6 +58,10 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     setSoundEnabled,
     playLimitMinutes,
     setPlayLimitMinutes,
+    voiceEnabled,
+    setVoiceEnabled,
+    slowVoice,
+    setSlowVoice,
     ambientEffectsEnabled,
     setAmbientEffectsEnabled,
     childAgeBand,
@@ -67,6 +71,16 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
   const handleSound = value => {
     tapFeedback();
     setSoundEnabled(value);
+  };
+
+  const handleVoice = value => {
+    tapFeedback();
+    setVoiceEnabled(value);
+  };
+
+  const handleSlowVoice = value => {
+    tapFeedback();
+    setSlowVoice(value);
   };
 
   const handleAmbientEffects = value => {
@@ -134,6 +148,49 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
                 thumbColor="#ffffff"
                 accessibilityLabel={t(currentLanguage, 'a11ySoundToggle', {
                   state: soundEnabled
+                    ? t(currentLanguage, 'off')
+                    : t(currentLanguage, 'on'),
+                })}
+              />
+            </View>
+
+            {/* Voice - separate from effects, so a parent can keep the
+                spoken instructions and names and drop the noises, or the
+                other way round. */}
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>
+                {t(currentLanguage, 'voiceLabel')}
+              </Text>
+              <Switch
+                value={voiceEnabled}
+                onValueChange={handleVoice}
+                trackColor={{ false: '#C8D6DE', true: '#BD0000' }}
+                thumbColor="#ffffff"
+                accessibilityLabel={t(currentLanguage, 'a11yVoiceToggle', {
+                  state: voiceEnabled
+                    ? t(currentLanguage, 'off')
+                    : t(currentLanguage, 'on'),
+                })}
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={styles.rowTextGroup}>
+                <Text style={styles.rowLabel}>
+                  {t(currentLanguage, 'slowVoiceLabel')}
+                </Text>
+                <Text style={styles.rowHint}>
+                  {t(currentLanguage, 'slowVoiceHint')}
+                </Text>
+              </View>
+              <Switch
+                value={slowVoice}
+                onValueChange={handleSlowVoice}
+                disabled={!voiceEnabled}
+                trackColor={{ false: '#C8D6DE', true: '#BD0000' }}
+                thumbColor="#ffffff"
+                accessibilityLabel={t(currentLanguage, 'a11ySlowVoiceToggle', {
+                  state: slowVoice
                     ? t(currentLanguage, 'off')
                     : t(currentLanguage, 'on'),
                 })}
@@ -292,6 +349,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 4,
     borderColor: '#FFD700',
     maxHeight: '88%',
+    // A full-width sheet of settings rows is hard to scan on a tablet;
+    // centered at a readable width instead.
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',

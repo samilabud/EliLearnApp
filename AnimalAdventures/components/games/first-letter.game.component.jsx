@@ -5,25 +5,19 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ImageBackground,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  Animated,
-  Easing,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View, Animated, Easing } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
-import ConfettiCannon from 'react-native-confetti-cannon';
-import { t, LARGE_TOUCH_TARGET } from '../../constants';
+import { t } from '../../constants';
+import {
+  CARD_SHADOW,
+  CATEGORY_COLORS,
+  FONTS,
+  PALETTE,
+  RADIUS,
+} from '../../constants/theme';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
 import {
@@ -31,7 +25,7 @@ import {
   getLetterDifficulty,
 } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, stopClip } from '../../utils/sound';
+import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { firstLetterOf, lastLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
 import { EVENTS, track } from '../../utils/analytics';
@@ -40,15 +34,17 @@ import {
   successFeedback,
   errorFeedback,
 } from '../../utils/haptics';
+import { useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
+import { GameScreen } from '../utility/game-screen.component';
+import { FitGrid } from '../utility/fit-grid.component';
+import { AnswerCard } from '../utility/answer-card.component';
+import { useWiggles } from '../utility/wiggle.component';
 import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
-import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+  CompletionOverlay,
+  CorrectBurst,
+  TryAgainBanner,
+} from '../utility/feedback-overlays.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 6;
@@ -112,9 +108,10 @@ const lastLetterDistractors = (correct, lang, level, count, shuffle) => {
 // getHintAfterTries in constants/difficulty.js. The game never ends on a
 // mistake; it just gets more helpful.
 
-const OPTION_GAP = 20;
 const MIN_OPTION_SIZE = 96;
-const MAX_OPTION_SIZE = 140;
+// Phone-size ceilings, grown by the device scale on tablets.
+const MAX_OPTION_SIZE = 180;
+const MAX_ANIMAL_CARD = 180;
 
 const isVowel = letter => VOWELS.includes(letter);
 
@@ -123,15 +120,13 @@ export default function FirstLetterGame({
   setCurrentLanguage,
   onBackToMenu,
   onNextGame,
-  ambientEnabled,
   position = 'first',
 }) {
-  const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
+  const { height, isLandscape, scale, touchTarget } = useResponsive();
+  const { wiggle, triggerFor } = useWiggles();
   const isLast = position === 'last';
   const { gameKey, instructionKey, optionLabelKey, letterOf } =
     POSITIONS[isLast ? 'last' : 'first'];
-  const [fontsLoaded] = useFonts({ Bangers_400Regular });
   // Level and the current round are saved progress and live in the context,
   // so they survive a trip to the menu, a rotation, or the app being killed.
   // Only state meaningless outside the current round stays local.
@@ -146,16 +141,6 @@ export default function FirstLetterGame({
   const { childAgeBand } = useSettings();
   const hintAfterTries = getHintAfterTries(childAgeBand);
   const { optionCount, vowelLevels } = getLetterDifficulty(childAgeBand);
-  // Cards share the row width; four cards sit in a 2x2 grid so they stay
-  // large enough to tap on a small phone.
-  const columns = optionCount >= 4 ? 2 : optionCount;
-  const optionSize = Math.min(
-    MAX_OPTION_SIZE,
-    Math.max(
-      MIN_OPTION_SIZE,
-      Math.floor((windowWidth - OPTION_GAP * (columns + 1)) / columns)
-    )
-  );
 
   const [isCorrect, setIsCorrect] = useState(false);
   // The first round's audio waits for the spoken instruction to finish so
@@ -174,8 +159,6 @@ export default function FirstLetterGame({
   const gameSuccessPlayer = useAudioPlayer(null);
   const letterNamePlayer = useAudioPlayer(null);
   const [confettiKey, setConfettiKey] = useState(0);
-
-  const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const targetAnimRef = useRef(null);
   const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
@@ -390,7 +373,7 @@ export default function FirstLetterGame({
       currentLanguage === 'en'
         ? targetAnimal.voice
         : targetAnimal.spanish_voice;
-    playClip(promptPlayer, voice);
+    playVoice(promptPlayer, voice);
   }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
   useEffect(() => {
@@ -422,7 +405,7 @@ export default function FirstLetterGame({
         // still leaves clear room before the success jingle below.
         const letterSound = getLetterSound(correctLetter, currentLanguage);
         if (letterSound) {
-          playClip(letterNamePlayer, letterSound);
+          playVoice(letterNamePlayer, letterSound);
         }
 
         later(() => {
@@ -471,6 +454,7 @@ export default function FirstLetterGame({
         // The child gets a gentle noise, the name again to compare against,
         // and after a few tries the right letter starts to glow.
         errorFeedback();
+        wiggle(selectedLetter);
         setShowWrongOverlay(true);
         later(() => setShowWrongOverlay(false), 900);
         playClip(wrongPlayer, wrongSoundFile);
@@ -498,6 +482,7 @@ export default function FirstLetterGame({
       markLevelStarred,
       playPrompt,
       stopInstruction,
+      wiggle,
     ]
   );
 
@@ -544,367 +529,182 @@ export default function FirstLetterGame({
     playPrompt();
   }, [playPrompt]);
 
-  if (!fontsLoaded) return null;
   const promptScale = promptPulse.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.06],
   });
 
-  return (
-    <ImageBackground
-      source={backgroundImage}
-      resizeMode="cover"
-      style={styles.backgroundImage}
-    >
-      {ambientEnabled && <AmbientBackground />}
+  // The animal card grows with the device but leaves room for the name and
+  // the button under it: on a landscape phone the pane is short, on an iPad
+  // it is large.
+  const animalCardSize = Math.round(
+    Math.min(
+      MAX_ANIMAL_CARD * scale,
+      isLandscape ? height * 0.3 : height * 0.22
+    )
+  );
 
-      <ScrollView
-        style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
+  const prompt = (
+    <View style={styles.promptColumn}>
+      <View
+        style={[
+          styles.animalCard,
+          { width: animalCardSize, height: animalCardSize },
         ]}
       >
-        {/* Top controls */}
-        <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+        {!!targetAnimal && (
+          <LottieView
+            autoPlay={false}
+            loop={false}
+            ref={el => (targetAnimRef.current = el)}
+            resizeMode="contain"
+            source={targetAnimal.animation_path}
+            style={[
+              { width: animalCardSize * 0.88, height: animalCardSize * 0.88 },
+              iconScaleStyle(targetAnimal),
+            ]}
+          />
+        )}
+      </View>
+      {!!targetAnimal && (
+        <Text style={[styles.animalNameText, { fontSize: 24 * scale }]}>
+          {currentLanguage === 'en'
+            ? targetAnimal.name
+            : targetAnimal.spanish_name}
+        </Text>
+      )}
+      <Animated.View
+        renderToHardwareTextureAndroid
+        style={{ transform: [{ scale: promptScale }] }}
+      >
+        <BouncyButton
+          onPress={handlePlayPrompt}
+          style={[
+            styles.promptButton,
+            { minHeight: touchTarget, paddingHorizontal: 24 * scale },
+          ]}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
+        >
+          {/* Fill lives on a sibling, not the animated view - see AnswerCard. */}
+          <View style={styles.promptButtonBackground} />
+          <MaterialIcons
+            name="volume-up"
+            size={30 * scale}
+            color={PALETTE.ink}
+          />
           <Text
-            style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
-            // See the same fix in trace-letter.game.component.jsx - Android's
-            // default line-breaking has mismeasured this custom font often
-            // enough to clip the tail of the string.
-            textBreakStrategy="simple"
-            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
+            style={[
+              styles.promptText,
+              { fontSize: 24 * scale, lineHeight: 32 * scale },
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.6}
-            collapsable={false}
-            accessibilityRole="header"
-            accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
-              level,
-              max: MAX_LEVEL,
+          >
+            {t(currentLanguage, 'playName')}
+          </Text>
+        </BouncyButton>
+      </Animated.View>
+    </View>
+  );
+
+  return (
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      onNextGame={handleNextGame}
+      onReset={onReset}
+      level={level}
+      maxLevel={MAX_LEVEL}
+      instruction={targetAnimal ? t(currentLanguage, instructionKey) : null}
+      onReplayInstruction={replayInstruction}
+      prompt={prompt}
+      overlay={
+        <>
+          <CorrectBurst
+            visible={isCorrect}
+            opacity={feedbackAnim}
+            confettiKey={confettiKey}
+          />
+          <TryAgainBanner
+            visible={showWrongOverlay}
+            currentLanguage={currentLanguage}
+          />
+          <CompletionOverlay
+            visible={showComplete}
+            currentLanguage={currentLanguage}
+            confettiKey={confettiKey}
+            onRestart={handleReset}
+            onNextGame={handleNextGame}
+            onHome={handleBackToMenu}
+          />
+        </>
+      }
+    >
+      <FitGrid
+        items={letter.optionLetters}
+        keyExtractor={l => l}
+        gap={20}
+        minSize={MIN_OPTION_SIZE}
+        maxSize={MAX_OPTION_SIZE * scale}
+        renderItem={(letterOption, size) => (
+          <AnswerCard
+            category="letters"
+            hinted={
+              wrongCount >= hintAfterTries &&
+              !!targetAnimal &&
+              letterOption === correctLetter
+            }
+            wiggleTrigger={triggerFor(letterOption)}
+            onPress={() => onSelect(letterOption)}
+            accessibilityLabel={t(currentLanguage, optionLabelKey, {
+              letter: letterOption,
             })}
           >
-            {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
-          </Text>
-          <View style={styles.topActions}>
-            <ConfirmResetButton
-              currentLanguage={currentLanguage}
-              onConfirm={onReset}
-            />
-            <NextGameButton
-              currentLanguage={currentLanguage}
-              onPress={handleNextGame}
-            />
-            <LanguageToggleButton
-              currentLanguage={currentLanguage}
-              onToggle={setCurrentLanguage}
-            />
-          </View>
-        </View>
-
-        {/* The animal, shown and named */}
-        <View style={styles.animalContainer}>
-          <View style={styles.animalCard}>
-            {!!targetAnimal && (
-              <LottieView
-                autoPlay={false}
-                loop={false}
-                ref={el => (targetAnimRef.current = el)}
-                resizeMode="contain"
-                source={targetAnimal.animation_path}
-                style={[styles.animalAnimation, iconScaleStyle(targetAnimal)]}
-              />
-            )}
-          </View>
-          {!!targetAnimal && (
-            <Text style={styles.animalNameText}>
-              {currentLanguage === 'en'
-                ? targetAnimal.name
-                : targetAnimal.spanish_name}
-            </Text>
-          )}
-          <Animated.View
-            renderToHardwareTextureAndroid
-            style={{ transform: [{ scale: promptScale }] }}
-          >
-            <BouncyButton
-              onPress={handlePlayPrompt}
+            <Text
+              allowFontScaling={false}
               style={[
-                styles.promptButton,
-                { width: Math.min(windowWidth - 32, 340) },
+                styles.letterText,
+                { fontSize: size * 0.5, lineHeight: size * 0.64 },
               ]}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
             >
-              {/* A rounded View with a background clips its children on
-                  Android regardless of `overflow`, cropping a 2nd line if
-                  this ever wraps (long translations, e.g. "Escuchar el
-                  Nombre"). Keeping the rounded fill as an absolutely
-                  positioned sibling behind the Text avoids that - same
-                  trick as the letter option cards below. */}
-              <View style={styles.promptButtonBackground} />
-              <Text
-                style={[
-                  styles.promptText,
-                  { fontFamily: 'Bangers_400Regular' },
-                ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
-              >
-                {t(currentLanguage, 'playName')}
-              </Text>
-            </BouncyButton>
-          </Animated.View>
-          {!!targetAnimal && (
-            <InstructionText
-              text={t(currentLanguage, instructionKey)}
-              currentLanguage={currentLanguage}
-              onReplay={replayInstruction}
-              textStyle={styles.helperText}
-            />
-          )}
-        </View>
-
-        {/* Letter options */}
-        <View style={styles.optionsContainer}>
-          {letter.optionLetters.map(letterOption => {
-            const isHinted =
-              wrongCount >= hintAfterTries &&
-              targetAnimal &&
-              letterOption === correctLetter;
-
-            return (
-              <BouncyButton
-                key={letterOption}
-                style={[
-                  styles.letterCard,
-                  { width: optionSize, height: optionSize },
-                ]}
-                onPress={() => onSelect(letterOption)}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, optionLabelKey, {
-                  letter: letterOption,
-                })}
-              >
-                {/* A rounded View with a background clips its children on
-                    Android regardless of `overflow`, which was cropping the
-                    big letter. Keeping the rounded card as an absolutely
-                    positioned sibling behind the Text (same trick as the
-                    animal option cards in guess-animal) avoids that. */}
-                <View
-                  style={[
-                    styles.letterCardBackground,
-                    isHinted && styles.letterCardHinted,
-                  ]}
-                />
-                <Text allowFontScaling={false} style={styles.letterText}>
-                  {letterOption}
-                </Text>
-              </BouncyButton>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      {!showComplete && (
-        <BackToMenuButton
-          currentLanguage={currentLanguage}
-          onPress={handleBackToMenu}
-        />
-      )}
-
-      {/* Correct feedback + confetti */}
-      {isCorrect && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.feedbackOverlay, { opacity: feedbackAnim }]}
-        >
-          <Text
-            style={[styles.feedbackText, { fontFamily: 'Bangers_400Regular' }]}
-          >
-            ✅
-          </Text>
-          <ConfettiCannon
-            key={`confetti-${confettiKey}`}
-            count={80}
-            fadeOut={true}
-            explosionSpeed={350}
-            fallSpeed={3000}
-            origin={{ x: 0, y: 0 }}
-          />
-        </Animated.View>
-      )}
-
-      {/* Encouragement, not a failure mark */}
-      {showWrongOverlay && (
-        <View pointerEvents="none" style={styles.feedbackOverlay}>
-          <Text
-            style={[styles.tryAgainText, { fontFamily: 'Bangers_400Regular' }]}
-          >
-            {t(currentLanguage, 'tryOnceMore')}
-          </Text>
-        </View>
-      )}
-
-      {/* Completion overlay */}
-      {showComplete && (
-        <View style={styles.completionOverlay}>
-          <Text
-            style={[
-              styles.completionTitle,
-              { fontFamily: 'Bangers_400Regular' },
-            ]}
-          >
-            {t(currentLanguage, 'amazing')}
-          </Text>
-          <Text style={styles.completionSubtitle}>
-            {t(currentLanguage, 'finishedAllLevels')}
-          </Text>
-          <ConfettiCannon
-            key={`final-${confettiKey}-final`}
-            count={200}
-            fadeOut={true}
-            explosionSpeed={300}
-            fallSpeed={3500}
-            origin={{ x: 0, y: 0 }}
-          />
-          <View style={styles.completionActions}>
-            <Animated.View
-              renderToHardwareTextureAndroid
-              style={{ transform: [{ scale: promptScale }] }}
-            >
-              <BouncyButton
-                onPress={handleReset}
-                style={styles.bigButton}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-              >
-                <View style={styles.bigButtonBackground} />
-                <MaterialIcons name="replay" size={20} color="#0A3D62" />
-                <Text style={styles.bigButtonText}>
-                  {t(currentLanguage, 'restart')}
-                </Text>
-              </BouncyButton>
-            </Animated.View>
-            <BouncyButton
-              onPress={handleNextGame}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'nextGame')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="home" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'mainMenuFull')}
-              </Text>
-            </BouncyButton>
-          </View>
-        </View>
-      )}
-    </ImageBackground>
+              {letterOption}
+            </Text>
+          </AnswerCard>
+        )}
+      />
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
-  topBar: {
-    width: '100%',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  promptColumn: {
     alignItems: 'center',
-  },
-  levelText: {
-    color: 'white',
-    fontSize: 22,
-    // Without this, a crowded top bar (Reset + Next Game + Language) can
-    // squeeze this text to where the level number gets cut off - letting it
-    // shrink/wrap instead keeps the whole string visible.
-    flex: 1,
-    marginRight: 8,
-    // Bangers clips on Android without both of these - see letterText below.
-    lineHeight: 30,
-    includeFontPadding: false,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-    paddingBottom: 34,
-  },
-  topActions: {
-    flexDirection: 'row',
-    // Wider than the 10dp this used to be - three adjacent small controls
-    // this close together risked a mis-tap between neighbors for a child
-    // still developing fine motor precision.
-    gap: 16,
-    paddingBottom: 34,
-  },
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  animalContainer: {
-    paddingTop: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
+    gap: 10,
   },
   animalCard: {
-    width: 170,
-    height: 170,
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    backgroundColor: PALETTE.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 4,
+    borderColor: CATEGORY_COLORS.letters.ring,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    ...CARD_SHADOW,
   },
-  animalAnimation: {
-    width: 150,
-    height: 150,
-  },
-  // The written word next to the letter options, so a child connects the
-  // animal, its name and the letter rather than guessing blind.
   animalNameText: {
-    marginBottom: 10,
-    color: 'white',
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.ink,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
-    // Plain on purpose - the filled rounded look lives in
-    // promptButtonBackground instead. See the comment at its usage above.
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    minHeight: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 10,
+    paddingVertical: 10,
   },
   promptButtonBackground: {
     position: 'absolute',
@@ -912,55 +712,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FFD700',
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: '#ffffff',
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
+    borderWidth: 4,
+    borderColor: PALETTE.white,
+    ...CARD_SHADOW,
   },
   promptText: {
-    fontSize: 24,
-    lineHeight: 32,
+    fontFamily: FONTS.title,
     includeFontPadding: false,
     textAlign: 'center',
-    color: '#0A3D62',
+    color: PALETTE.ink,
     letterSpacing: 1,
   },
-  helperText: {
-    fontSize: 20,
-    lineHeight: 28,
-  },
-  optionsContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: OPTION_GAP,
-    paddingTop: 28,
-    paddingHorizontal: 16,
-  },
-  letterCard: {
-    // Plain on purpose: the rounded, filled look lives in
-    // letterCardBackground instead, so this container never combines
-    // borderRadius + backgroundColor with the Text as a child - see the
-    // comment at its usage above for why.
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letterCardBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
   letterText: {
-    fontSize: 56,
-    lineHeight: 72,
     includeFontPadding: false,
     // Deliberately the plain system font, not Bangers, and deliberately
     // not italic/decorative: a child learning to recognize a letter needs
@@ -968,121 +733,7 @@ const styles = StyleSheet.create({
     // rough comic-marker style Bangers draws for a bare capital O/E/I -
     // which reads as "broken" in isolation even though it renders fine.
     fontWeight: '800',
-    color: '#0A3D62',
+    color: PALETTE.ink,
     textAlign: 'center',
-  },
-  // Shown only after several tries, so it reads as help rather than an
-  // answer key.
-  letterCardHinted: {
-    borderWidth: 4,
-    borderColor: '#FFD700',
-    backgroundColor: 'rgba(255, 215, 0, 0.22)',
-  },
-  feedbackOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  feedbackText: {
-    fontSize: 80,
-    color: 'white',
-    paddingBottom: 34,
-  },
-  tryAgainText: {
-    fontSize: 46,
-    lineHeight: 58,
-    includeFontPadding: false,
-    color: '#FFD700',
-    textAlign: 'center',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowRadius: 10,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  completionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  completionTitle: {
-    fontSize: 48,
-    lineHeight: 60,
-    includeFontPadding: false,
-    color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  completionSubtitle: {
-    marginTop: 8,
-    fontSize: 20,
-    color: '#FFD700',
-  },
-  completionActions: {
-    marginTop: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  bigButton: {
-    // Plain on purpose - see promptButton above for why the fill lives in
-    // a separate absolutely positioned sibling instead of on this View.
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  bigButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#FFD700',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-  },
-  bigButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  secondaryButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  secondaryButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

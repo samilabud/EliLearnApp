@@ -67,6 +67,14 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
+  // Undoes the floating placement for the header-bar variant.
+  inline: {
+    position: 'relative',
+    alignSelf: 'auto',
+    paddingHorizontal: 16,
+    shadowOpacity: 0.2,
+    elevation: 3,
+  },
   text: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -75,3 +83,24 @@ const styles = StyleSheet.create({
 });
 
 export default BackToMenuButton;
+
+/**
+ * The same "Main Menu" control, but sitting in a screen's header bar rather
+ * than floating over its content - the spot `GameScreen` reserves for it on
+ * every screen, so a child always finds the way home in the same corner.
+ * Keeps its text label: an icon alone is not enough for this audience.
+ */
+export function HomeButton({ currentLanguage, onPress, style }) {
+  return (
+    <BouncyButton
+      style={[styles.button, styles.inline, style]}
+      onPress={onPress}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
+    >
+      <MaterialIcons name="home" size={24} color="#0A3D62" />
+      <Text style={styles.text}>{t(currentLanguage, 'mainMenu')}</Text>
+    </BouncyButton>
+  );
+}

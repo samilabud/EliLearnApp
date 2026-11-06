@@ -5,23 +5,19 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ImageBackground,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { t } from '../../constants';
+import {
+  CATEGORY_COLORS,
+  FONTS,
+  PALETTE,
+  RADIUS,
+  titleText,
+} from '../../constants/theme';
 import {
   tapFeedback,
   successFeedback,
@@ -34,26 +30,20 @@ import {
 } from '../../contexts/game-progress.context';
 import { EVENTS, track } from '../../utils/analytics';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, releasePlayer } from '../../utils/sound';
-import { BouncyButton } from '../utility/bouncy-button.component';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
-import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
-import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+import { playClip, releasePlayer, playVoice } from '../../utils/sound';
+import { useResponsive } from '../../utils/use-responsive';
+import { GameScreen } from '../utility/game-screen.component';
+import { FitGrid } from '../utility/fit-grid.component';
+import { AnswerCard } from '../utility/answer-card.component';
+import { CompletionOverlay } from '../utility/feedback-overlays.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 import { useSettings } from '../../contexts/settings.context';
 import { getMemoryCardCount } from '../../constants/difficulty';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
-const GRID_PADDING_H = 16;
-const CARD_GAP = 8;
-const PORTRAIT_COLUMNS = 4;
-const LANDSCAPE_COLUMNS = 8;
+// Phone-size ceiling, grown by the device scale on tablets.
+const CARD_MAX = 170;
 
 // Children habituate to a repeated reward quickly, so the celebration is
 // varied by level rather than firing the identical burst every time.
@@ -78,24 +68,13 @@ export default function MemoryAnimalGame({
   setCurrentLanguage,
   onBackToMenu,
   onNextGame,
-  ambientEnabled,
 }) {
-  const insets = useSafeAreaInsets();
+  const { scale } = useResponsive();
   // Spoken once when the mode opens; tapping the instruction replays it.
   const { replay: replayInstruction } = useInstructionPrompt(
     'memory',
     currentLanguage
   );
-  // Android 16 ignores the portrait lock on large screens, so the grid has to
-  // lay out sensibly at any aspect ratio. Sizing cards from the window keeps
-  // them square instead of stretching them into wide slabs in landscape.
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const columns =
-    windowWidth > windowHeight ? LANDSCAPE_COLUMNS : PORTRAIT_COLUMNS;
-  const cardSize = Math.floor(
-    (windowWidth - GRID_PADDING_H * 2 - CARD_GAP * columns) / columns
-  );
-  const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
   // Level, board and score are saved progress and live in the context so they
   // survive a trip to the menu, a rotation, or the app being killed. Only
@@ -139,8 +118,6 @@ export default function MemoryAnimalGame({
   // Sound files
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
-
-  const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const animalsById = useMemo(() => {
     const lookup = {};
@@ -306,7 +283,7 @@ export default function MemoryAnimalGame({
 
   const playAnimalNameSound = useCallback(
     async animal => {
-      playClip(
+      playVoice(
         matchPlayer,
         currentLanguage === 'en' ? animal.voice : animal.spanish_voice
       );
@@ -456,82 +433,69 @@ export default function MemoryAnimalGame({
     resetMemory,
   ]);
 
-  if (!fontsLoaded) return null;
-
   return (
-    <ImageBackground
-      source={backgroundImage}
-      resizeMode="cover"
-      style={styles.backgroundImage}
-    >
-      {ambientEnabled && <AmbientBackground />}
-
-      <ScrollView
-        style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
-        ]}
-      >
-        {/* Top controls */}
-        <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-          <View style={styles.gameInfo}>
-            <Text
-              style={[styles.infoText, { fontFamily: 'Bangers_400Regular' }]}
-            >
-              {t(currentLanguage, 'memoryGame')}
-            </Text>
-            <Text style={styles.levelText}>
-              {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
-            </Text>
-            <Text style={styles.movesText}>
-              {t(currentLanguage, 'moves')}: {moves}
-            </Text>
-          </View>
-          <View style={styles.topActions}>
-            <ConfirmResetButton
-              currentLanguage={currentLanguage}
-              onConfirm={onReset}
-            />
-            <NextGameButton
-              currentLanguage={currentLanguage}
-              onPress={handleNextGame}
-            />
-            <LanguageToggleButton
-              currentLanguage={currentLanguage}
-              onToggle={setCurrentLanguage}
-            />
-          </View>
-        </View>
-
-        {/* Game instructions */}
-        <View style={styles.instructionsContainer}>
-          <InstructionText
-            text={t(currentLanguage, 'findPairs', {
-              count: expectedCardCount,
-            })}
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      onNextGame={handleNextGame}
+      onReset={onReset}
+      level={level}
+      maxLevel={MAX_LEVEL}
+      instruction={t(currentLanguage, 'findPairs', {
+        count: expectedCardCount,
+      })}
+      onReplayInstruction={replayInstruction}
+      overlay={
+        <>
+          {showLevelComplete && (
+            <View style={styles.levelCompleteOverlay}>
+              <View style={styles.levelCompleteCard}>
+                <Text style={styles.levelCompleteTitle}>
+                  {t(currentLanguage, 'levelComplete')}
+                </Text>
+                <Text style={styles.levelCompleteSubtitle}>
+                  {t(currentLanguage, 'movingToLevel', { level: level + 1 })}
+                </Text>
+              </View>
+              <ConfettiCannon
+                key={`level-${level}-complete`}
+                fadeOut={true}
+                {...CELEBRATIONS[level % CELEBRATIONS.length]}
+              />
+            </View>
+          )}
+          <CompletionOverlay
+            visible={gameComplete}
             currentLanguage={currentLanguage}
-            onReplay={replayInstruction}
-            textStyle={styles.instructionsText}
+            confettiKey={confettiKey}
+            subtitle={t(currentLanguage, 'completedAllMemoryLevels')}
+            onRestart={handleReset}
+            onNextGame={handleNextGame}
+            onHome={handleBackToMenu}
           />
-        </View>
-
-        {/* Cards grid */}
-        <View style={styles.gridContainer}>
-          {cards.map(card => (
-            <BouncyButton
-              key={card.position}
-              style={[
-                styles.cardContainer,
-                { width: cardSize, height: cardSize },
-              ]}
+        </>
+      }
+    >
+      {/* Square cards sized from the space they actually get, so 16 cards
+          fit a landscape phone and 4 cards fill an iPad. */}
+      <FitGrid
+        items={cards}
+        keyExtractor={card => `card-${card.position}`}
+        gap={12}
+        minSize={64}
+        maxSize={CARD_MAX * scale}
+        renderItem={(card, size) => {
+          const faceUp = card.isFlipped || card.isMatched;
+          return (
+            <AnswerCard
+              category="memory"
+              fill={faceUp ? undefined : CATEGORY_COLORS.memory.ring}
               onPress={() => handleCardPress(card)}
               disabled={isProcessing}
-              accessible={true}
-              accessibilityRole="button"
               accessibilityState={{ disabled: isProcessing }}
               accessibilityLabel={
-                card.isFlipped || card.isMatched
+                faceUp
                   ? t(currentLanguage, 'a11yMemoryCardRevealed', {
                       animal:
                         currentLanguage === 'en'
@@ -543,252 +507,43 @@ export default function MemoryAnimalGame({
                     })
               }
             >
-              <View style={styles.card}>
-                {card.isFlipped || card.isMatched ? (
-                  <View style={styles.cardInner}>
-                    <View style={styles.animationBackground} />
-                    <LottieView
-                      autoPlay={false}
-                      loop={false}
-                      ref={el => (cardAnimRefs.current[card.position] = el)}
-                      resizeMode="contain"
-                      source={card.animation_path}
-                      style={[styles.animation, iconScaleStyle(card)]}
-                    />
-                  </View>
-                ) : (
-                  <View style={styles.cardBack}>
-                    <Text style={styles.cardBackText}>?</Text>
-                  </View>
-                )}
-              </View>
-            </BouncyButton>
-          ))}
-        </View>
-      </ScrollView>
-
-      {!showLevelComplete && !gameComplete && (
-        <BackToMenuButton
-          currentLanguage={currentLanguage}
-          onPress={handleBackToMenu}
-        />
-      )}
-
-      {/* Level completion overlay */}
-      {showLevelComplete && (
-        <View style={styles.levelCompleteOverlay}>
-          <Text
-            style={[
-              styles.levelCompleteTitle,
-              { fontFamily: 'Bangers_400Regular' },
-            ]}
-          >
-            {t(currentLanguage, 'levelComplete')}
-          </Text>
-          <Text style={styles.levelCompleteSubtitle}>
-            {t(currentLanguage, 'movingToLevel', { level: level + 1 })}
-          </Text>
-          <ConfettiCannon
-            key={`level-${level}-complete`}
-            fadeOut={true}
-            {...CELEBRATIONS[level % CELEBRATIONS.length]}
-          />
-        </View>
-      )}
-
-      {/* Game completion overlay */}
-      {gameComplete && (
-        <View style={styles.completionOverlay}>
-          <Text
-            style={[
-              styles.completionTitle,
-              { fontFamily: 'Bangers_400Regular' },
-            ]}
-          >
-            {t(currentLanguage, 'amazing')}
-          </Text>
-          <Text style={styles.completionSubtitle}>
-            {t(currentLanguage, 'completedAllMemoryLevels')}
-          </Text>
-          <ConfettiCannon
-            key={`memory-${confettiKey}-complete`}
-            count={200}
-            fadeOut={true}
-            explosionSpeed={300}
-            fallSpeed={3500}
-            origin={{ x: 0, y: 0 }}
-          />
-          <View style={styles.completionActions}>
-            <BouncyButton
-              onPress={handleReset}
-              style={styles.bigButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-            >
-              <View style={styles.bigButtonBackground} />
-              <MaterialIcons name="replay" size={20} color="#0A3D62" />
-              <Text style={styles.bigButtonText}>
-                {t(currentLanguage, 'playAgain')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleNextGame}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'nextGame')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="home" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'mainMenuFull')}
-              </Text>
-            </BouncyButton>
-          </View>
-        </View>
-      )}
-    </ImageBackground>
+              {faceUp ? (
+                <LottieView
+                  autoPlay={false}
+                  loop={false}
+                  ref={el => (cardAnimRefs.current[card.position] = el)}
+                  resizeMode="contain"
+                  source={card.animation_path}
+                  style={[
+                    { width: size * 0.86, height: size * 0.86 },
+                    iconScaleStyle(card),
+                  ]}
+                />
+              ) : (
+                <Text
+                  allowFontScaling={false}
+                  style={[
+                    styles.cardBackText,
+                    { fontSize: size * 0.45, lineHeight: size * 0.58 },
+                  ]}
+                >
+                  ?
+                </Text>
+              )}
+            </AnswerCard>
+          );
+        }}
+      />
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
-  topBar: {
-    width: '100%',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  gameInfo: {
-    flex: 1,
-  },
-  infoText: {
-    color: 'white',
-    fontSize: 20,
-    // Bangers clips on Android without both of these - see
-    // first-letter.game.component.jsx for the full explanation.
-    lineHeight: 26,
-    includeFontPadding: false,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-    paddingBottom: 4,
-  },
-  levelText: {
-    color: 'white',
-    fontSize: 18,
-    flex: 1,
-    marginRight: 8,
-    lineHeight: 24,
-    includeFontPadding: false,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 2 },
-    paddingBottom: 4,
-  },
-  movesText: {
-    color: '#FFD700',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  topActions: {
-    flexDirection: 'row',
-    // Wider than the 10dp this used to be - three adjacent small controls
-    // this close together risked a mis-tap between neighbors for a child
-    // still developing fine motor precision.
-    gap: 16,
-  },
-  instructionsContainer: {
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  instructionsText: {
-    fontSize: 20,
-    lineHeight: 28,
-    textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 2 },
-  },
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  gridContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-evenly',
-    alignContent: 'space-around',
-    paddingTop: 20,
-    paddingHorizontal: GRID_PADDING_H,
-  },
-  cardContainer: {
-    marginBottom: CARD_GAP,
-  },
-  card: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  cardInner: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  animationBackground: {
-    backgroundColor: '#ffffff',
-    height: '100%',
-    width: '100%',
-    borderRadius: 12,
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  animation: {
-    width: '100%',
-    height: '100%',
-    zIndex: 2,
-  },
-  cardBack: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#FFD700',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    borderRadius: 12,
-  },
   cardBackText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#0A3D62',
+    fontWeight: '900',
+    color: PALETTE.white,
+    includeFontPadding: false,
+    textAlign: 'center',
   },
   levelCompleteOverlay: {
     position: 'absolute',
@@ -796,111 +551,29 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(10, 61, 98, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  levelCompleteCard: {
+    alignItems: 'center',
+    backgroundColor: PALETTE.cream,
+    borderRadius: RADIUS.lg,
+    borderWidth: 4,
+    borderColor: PALETTE.gold,
+    paddingHorizontal: 28,
+    paddingVertical: 20,
   },
   levelCompleteTitle: {
-    fontSize: 42,
-    color: '#FFD700',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
+    ...titleText(42, PALETTE.red),
     textAlign: 'center',
-    marginBottom: 16,
   },
   levelCompleteSubtitle: {
-    fontSize: 18,
-    color: 'white',
+    marginTop: 6,
+    fontFamily: FONTS.body,
+    fontSize: 20,
+    color: PALETTE.ink,
     textAlign: 'center',
-    lineHeight: 24,
-  },
-  completionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  completionTitle: {
-    fontSize: 48,
-    lineHeight: 60,
-    includeFontPadding: false,
-    color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
-    textAlign: 'center',
-  },
-  completionSubtitle: {
-    marginTop: 8,
-    fontSize: 18,
-    color: '#FFD700',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  completionActions: {
-    marginTop: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  bigButton: {
-    // Plain on purpose - the filled rounded look lives in
-    // bigButtonBackground instead. A rounded View with a background clips
-    // its children on Android regardless of `overflow`, which would crop a
-    // 2nd line if this ever wraps.
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  bigButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#FFD700',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-  },
-  bigButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  secondaryButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  secondaryButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

@@ -5,24 +5,12 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ImageBackground,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  Animated,
-  useWindowDimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View, Animated } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import ConfettiCannon from 'react-native-confetti-cannon';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
-import { t, LARGE_TOUCH_TARGET } from '../../constants';
+import { t } from '../../constants';
+import { CATEGORY_COLORS, PALETTE, RADIUS } from '../../constants/theme';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
 import {
@@ -30,74 +18,56 @@ import {
   getHintAfterTries,
 } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, releasePlayer } from '../../utils/sound';
+import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import {
   tapFeedback,
   successFeedback,
   errorFeedback,
 } from '../../utils/haptics';
+import { useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
+import { GameScreen } from '../utility/game-screen.component';
+import { FitGrid } from '../utility/fit-grid.component';
+import { AnswerCard } from '../utility/answer-card.component';
+import { useWiggles } from '../utility/wiggle.component';
 import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
-import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+  CompletionOverlay,
+  CorrectBurst,
+  TryAgainBanner,
+} from '../utility/feedback-overlays.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 import { getNumberSound } from '../../utils/number-sounds';
 
 const MAX_LEVEL = 6;
-// Fewer animals get bigger art so a lone animal isn't a tiny speck; the size
-// steps down as the count grows so ten still fit on screen.
-const countIconSizeFor = count => {
-  if (count <= 1) return 180;
-  if (count === 2) return 150;
-  if (count === 3) return 128;
-  if (count === 4) return 112;
-  if (count === 5) return 100;
-  if (count === 6) return 88;
-  if (count <= 8) return 76;
-  return 64;
-};
-
-// Card size and gap between number cards. Cards shrink (never below the
-// large touch target) so four of them still fit in one row on a small phone.
-const OPTION_CARD_MAX = 100;
-const OPTION_GAP = 20;
-const OPTION_SIDE_PADDING = 16;
+// Phone-size ceilings, grown by the device scale on tablets. Below them,
+// FitGrid sizes the animals and number cards from the space they get, so a
+// lone animal is big and ten still fit.
+const COUNT_ICON_MAX = 200;
+const OPTION_CARD_MAX = 130;
 
 export default function CountingGame({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
   onNextGame,
-  ambientEnabled,
 }) {
-  const insets = useSafeAreaInsets();
-  const [fontsLoaded] = useFonts({ Bangers_400Regular });
-  const { counting, updateCounting, resetCounting, markAnimalMet, markLevelStarred } =
-    useGameProgress();
-  const { level, targetCount, optionCounts, wrongCount, showComplete } = counting;
+  const { isLandscape, scale, touchTarget } = useResponsive();
+  const { wiggle, triggerFor } = useWiggles();
+  const {
+    counting,
+    updateCounting,
+    resetCounting,
+    markAnimalMet,
+    markLevelStarred,
+  } = useGameProgress();
+  const { level, targetCount, optionCounts, wrongCount, showComplete } =
+    counting;
   // The age band sets the largest group, how many number cards appear and
   // how soon the right one glows (see constants/difficulty.js).
   const { childAgeBand } = useSettings();
   const hintAfterTries = getHintAfterTries(childAgeBand);
   const { maxCount, optionCount } = getCountingDifficulty(childAgeBand, level);
-  const { width: windowWidth } = useWindowDimensions();
-  const countIconSize = countIconSizeFor(targetCount || 0);
-  const optionCardSize = Math.max(
-    LARGE_TOUCH_TARGET,
-    Math.min(
-      OPTION_CARD_MAX,
-      Math.floor(
-        (windowWidth - OPTION_SIDE_PADDING * 2 - OPTION_GAP * (optionCount - 1)) /
-          optionCount
-      )
-    )
-  );
 
   const [isCorrect, setIsCorrect] = useState(false);
   const [showWrongOverlay, setShowWrongOverlay] = useState(false);
@@ -120,12 +90,11 @@ export default function CountingGame({
   const sayNumber = useCallback(
     n => {
       const clip = getNumberSound(n, currentLanguage);
-      if (clip) playClip(numberPlayer, clip);
+      if (clip) playVoice(numberPlayer, clip);
     },
     [numberPlayer, currentLanguage]
   );
 
-  const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
   const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
   const gameWinSoundFile = require('../../assets/sounds/game/game_win.mp3');
   const gameSuccessSoundFile = require('../../assets/sounds/game/game_success.mp3');
@@ -258,7 +227,7 @@ export default function CountingGame({
       playClip(soundPlayer, animal.sound);
       if (voiceTimer.current) clearTimeout(voiceTimer.current);
       voiceTimer.current = setTimeout(() => {
-        playClip(
+        playVoice(
           voicePlayer,
           currentLanguage === 'en' ? animal.voice : animal.spanish_voice
         );
@@ -318,7 +287,10 @@ export default function CountingGame({
                 optionCounts: [],
               };
             }
-            track(EVENTS.GAME_COMPLETED, { game: 'counting', level: prev.level });
+            track(EVENTS.GAME_COMPLETED, {
+              game: 'counting',
+              level: prev.level,
+            });
             return { showComplete: true };
           });
         }, 2500);
@@ -327,6 +299,7 @@ export default function CountingGame({
         // same "gentle noise, help kicks in after a few tries" approach as
         // every other quiz mode.
         errorFeedback();
+        wiggle(selectedCount);
         setShowWrongOverlay(true);
         later(() => setShowWrongOverlay(false), 900);
         playClip(wrongPlayer, wrongSoundFile);
@@ -357,6 +330,7 @@ export default function CountingGame({
       sayNumber,
       wrongCount,
       hintAfterTries,
+      wiggle,
     ]
   );
 
@@ -394,427 +368,144 @@ export default function CountingGame({
     onNextGame();
   }, [onNextGame, showComplete, level, wrongCount, resetCounting]);
 
-  if (!fontsLoaded) return null;
+  const countItems = Array.from({ length: targetCount || 0 }, (_, i) => i);
 
   return (
-    <ImageBackground
-      source={backgroundImage}
-      resizeMode="cover"
-      style={styles.backgroundImage}
-    >
-      {ambientEnabled && <AmbientBackground />}
-
-      <ScrollView
-        style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
-        ]}
-      >
-        <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-          <Text
-            style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
-            textBreakStrategy="simple"
-            collapsable={false}
-            accessibilityRole="header"
-            accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
-              level,
-              max: MAX_LEVEL,
-            })}
-          >
-            {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
-          </Text>
-          <View style={styles.topActions}>
-            <ConfirmResetButton
-              currentLanguage={currentLanguage}
-              onConfirm={onReset}
-            />
-            <NextGameButton
-              currentLanguage={currentLanguage}
-              onPress={handleNextGame}
-            />
-            <LanguageToggleButton
-              currentLanguage={currentLanguage}
-              onToggle={setCurrentLanguage}
-            />
-          </View>
-        </View>
-
-        <View style={styles.promptContainer}>
-          <InstructionText
-            text={t(currentLanguage, 'howManyDoYouSee')}
-            currentLanguage={currentLanguage}
-            onReplay={replayInstruction}
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      onNextGame={handleNextGame}
+      onReset={onReset}
+      level={level}
+      maxLevel={MAX_LEVEL}
+      instruction={t(currentLanguage, 'howManyDoYouSee')}
+      onReplayInstruction={replayInstruction}
+      overlay={
+        <>
+          <CorrectBurst
+            visible={isCorrect}
+            opacity={feedbackAnim}
+            confettiKey={confettiKey}
           />
+          <TryAgainBanner
+            visible={showWrongOverlay}
+            currentLanguage={currentLanguage}
+          />
+          <CompletionOverlay
+            visible={showComplete}
+            currentLanguage={currentLanguage}
+            confettiKey={confettiKey}
+            onRestart={handleReset}
+            onNextGame={handleNextGame}
+            onHome={handleBackToMenu}
+          />
+        </>
+      }
+    >
+      {/* The animals to count get most of the space - stacked over the
+          number cards in portrait, beside them in landscape - and size
+          themselves to it, so one lone animal is big and ten still fit. */}
+      <View style={isLandscape ? styles.splitRow : styles.splitColumn}>
+        <View
+          style={[styles.countArea, { flex: 3 }]}
+          accessible={!!targetAnimal}
+          accessibilityLabel={
+            targetAnimal
+              ? t(currentLanguage, 'a11yCountingAnimal', {
+                  animal:
+                    currentLanguage === 'en'
+                      ? targetAnimal.name
+                      : targetAnimal.spanish_name,
+                })
+              : undefined
+          }
+        >
+          {!!targetAnimal && (
+            <FitGrid
+              items={countItems}
+              keyExtractor={i => `count-${i}`}
+              gap={6}
+              minSize={48}
+              maxSize={COUNT_ICON_MAX * scale}
+              renderItem={(_, size) => (
+                <BouncyButton
+                  style={{ width: size, height: size }}
+                  onPress={() => playAnimalSound(targetAnimal)}
+                  accessible={false}
+                >
+                  <LottieView
+                    autoPlay
+                    loop
+                    resizeMode="contain"
+                    source={targetAnimal.animation_path}
+                    style={[
+                      { width: size, height: size },
+                      iconScaleStyle(targetAnimal),
+                    ]}
+                  />
+                </BouncyButton>
+              )}
+            />
+          )}
         </View>
-
-        {!!targetAnimal && (
-          <View
-            style={styles.countArea}
-            accessible={true}
-            accessibilityLabel={t(currentLanguage, 'a11yCountingAnimal', {
-              animal:
-                currentLanguage === 'en'
-                  ? targetAnimal.name
-                  : targetAnimal.spanish_name,
-            })}
-          >
-            {Array.from({ length: targetCount || 0 }).map((_, i) => (
-              <BouncyButton
-                key={i}
-                style={{ width: countIconSize, height: countIconSize }}
-                onPress={() => playAnimalSound(targetAnimal)}
-                accessible={false}
-              >
-                <LottieView
-                  autoPlay
-                  loop
-                  resizeMode="contain"
-                  source={targetAnimal.animation_path}
-                  style={[
-                    { width: countIconSize, height: countIconSize },
-                    iconScaleStyle(targetAnimal),
-                  ]}
-                />
-              </BouncyButton>
-            ))}
-          </View>
-        )}
-
-        <View style={styles.optionsContainer}>
-          {optionCounts.map(count => {
-            const isHinted = wrongCount >= hintAfterTries && count === targetCount;
-            return (
-              <BouncyButton
-                key={count}
-                style={[
-                  styles.optionCard,
-                  { width: optionCardSize, height: optionCardSize },
-                ]}
+        <View style={{ flex: 2 }}>
+          <FitGrid
+            items={optionCounts}
+            keyExtractor={count => `option-${count}`}
+            gap={20}
+            minSize={touchTarget}
+            maxSize={OPTION_CARD_MAX * scale}
+            renderItem={(count, size) => (
+              <AnswerCard
+                category="letters"
+                hinted={wrongCount >= hintAfterTries && count === targetCount}
+                wiggleTrigger={triggerFor(count)}
                 onPress={() => onSelect(count)}
-                accessible={true}
-                accessibilityRole="button"
                 accessibilityLabel={t(currentLanguage, 'a11yCountOption', {
                   count,
                 })}
               >
-                <View
+                <Text
+                  allowFontScaling={false}
                   style={[
-                    styles.optionCardBackground,
-                    isHinted && styles.optionCardBackgroundHinted,
+                    styles.optionDigit,
+                    { fontSize: size * 0.5, lineHeight: size * 0.62 },
                   ]}
-                />
-                <Text style={styles.optionDigit}>
+                >
                   {count}
                 </Text>
-              </BouncyButton>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      {!showComplete && (
-        <BackToMenuButton
-          currentLanguage={currentLanguage}
-          onPress={handleBackToMenu}
-        />
-      )}
-
-      {isCorrect && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.feedbackOverlay, { opacity: feedbackAnim }]}
-        >
-          <Text style={[styles.feedbackText, { fontFamily: 'Bangers_400Regular' }]}>
-            ✅
-          </Text>
-          <ConfettiCannon
-            key={`confetti-${confettiKey}`}
-            count={80}
-            fadeOut={true}
-            explosionSpeed={350}
-            fallSpeed={3000}
-            origin={{ x: 0, y: 0 }}
+              </AnswerCard>
+            )}
           />
-        </Animated.View>
-      )}
-
-      {showWrongOverlay && (
-        <View pointerEvents="none" style={styles.feedbackOverlay}>
-          <Text style={[styles.tryAgainText, { fontFamily: 'Bangers_400Regular' }]}>
-            {t(currentLanguage, 'tryOnceMore')}
-          </Text>
         </View>
-      )}
-
-      {showComplete && (
-        <View style={styles.completionOverlay}>
-          <Text style={[styles.completionTitle, { fontFamily: 'Bangers_400Regular' }]}>
-            {t(currentLanguage, 'amazing')}
-          </Text>
-          <Text style={styles.completionSubtitle}>
-            {t(currentLanguage, 'finishedAllLevels')}
-          </Text>
-          <ConfettiCannon
-            key={`final-${confettiKey}-final`}
-            count={200}
-            fadeOut={true}
-            explosionSpeed={300}
-            fallSpeed={3500}
-            origin={{ x: 0, y: 0 }}
-          />
-          <View style={styles.completionActions}>
-            <BouncyButton
-              onPress={handleReset}
-              style={styles.bigButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-            >
-              <View style={styles.bigButtonBackground} />
-              <MaterialIcons name="replay" size={20} color="#0A3D62" />
-              <Text style={styles.bigButtonText}>
-                {t(currentLanguage, 'restart')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleNextGame}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'nextGame')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="home" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'mainMenuFull')}
-              </Text>
-            </BouncyButton>
-          </View>
-        </View>
-      )}
-    </ImageBackground>
+      </View>
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
-  topBar: {
-    width: '100%',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  levelText: {
-    color: 'white',
-    fontSize: 22,
+  splitColumn: {
     flex: 1,
-    marginRight: 8,
-    lineHeight: 30,
-    includeFontPadding: false,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-    paddingBottom: 34,
-  },
-  topActions: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 16,
-    paddingBottom: 34,
   },
-  promptContainer: {
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  promptText: {
-    fontSize: 26,
-    lineHeight: 34,
-    includeFontPadding: false,
-    color: 'white',
-    textAlign: 'center',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-  },
-  scrollArea: {
+  splitRow: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    flexDirection: 'row',
+    gap: 24,
   },
   countArea: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 24,
-    paddingHorizontal: 24,
-  },
-  optionsContainer: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    gap: OPTION_GAP,
-    paddingTop: 10,
-    paddingHorizontal: OPTION_SIDE_PADDING,
-  },
-  // Plain layout only - no background/border here. Those live on a
-  // separate absolutely-positioned sibling (optionCardBackground) instead,
-  // same reasoning as promptButton/promptButtonBackground above: a rounded
-  // border+fill applied directly to the view BouncyButton animates produces
-  // a visible rendering glitch at one corner on Android (the transform's
-  // hardware layer and the border radius don't composite cleanly together).
-  optionCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionCardBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 18,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  optionCardBackgroundHinted: {
-    borderWidth: 4,
-    backgroundColor: 'rgba(255, 215, 0, 0.3)',
+    backgroundColor: CATEGORY_COLORS.letters.fill,
+    borderRadius: RADIUS.lg,
+    padding: 12,
   },
   // System bold, not Bangers: Bangers' slanted digits were clipping at the
   // edges of their glyph box on some devices.
   optionDigit: {
-    fontSize: 56,
-    lineHeight: 68,
     fontWeight: '900',
-    color: '#0A3D62',
-  },
-  feedbackOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  feedbackText: {
-    fontSize: 80,
-    color: 'white',
-    paddingBottom: 34,
-  },
-  tryAgainText: {
-    fontSize: 46,
-    lineHeight: 58,
+    color: PALETTE.ink,
     includeFontPadding: false,
-    color: '#FFD700',
     textAlign: 'center',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowRadius: 10,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  completionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  completionTitle: {
-    fontSize: 48,
-    lineHeight: 60,
-    includeFontPadding: false,
-    color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  completionSubtitle: {
-    marginTop: 8,
-    fontSize: 20,
-    color: '#FFD700',
-  },
-  completionActions: {
-    marginTop: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  bigButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  bigButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#FFD700',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-  },
-  bigButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  secondaryButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  secondaryButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
 });

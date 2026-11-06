@@ -13,6 +13,9 @@ export function BouncyButton({
   onPressIn,
   onPressOut,
   style,
+  // Lands on the outer Pressable rather than the animated inner view - for
+  // when the button itself must stretch to fill a parent (a grid cell).
+  containerStyle,
   children,
   pressedScale = 0.93,
   ...rest
@@ -43,6 +46,7 @@ export function BouncyButton({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      style={containerStyle}
       {...rest}
     >
       {/* Android can clip/truncate a child Text (showing only its first

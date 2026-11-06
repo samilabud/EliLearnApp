@@ -60,6 +60,18 @@ public-facing change outside the repo.
 
 ## c) iPad support
 
+**Update 2026-11-06: iPad support is back on in 5.7.0 (`supportsTablet: true`,
+`requireFullScreen: true`).** The shared quiz-screen layout bug described
+below is fixed: every game now sizes its cards from the space it actually
+gets (width *and* height) via `FitGrid`, inside a shared `GameScreen` frame,
+so nothing is capped at phone sizes. Verified on an Android tablet emulator
+(Pixel Tablet, portrait and landscape) and phone landscape, but **not yet on
+an actual iPad or iPad simulator**: the machine only had Xcode 26.2, which
+cannot build this project's Expo modules (they need a newer Swift
+compiler). Before submitting 5.7.0 to the App Store, run it on an iPad
+simulator or device (portrait and landscape, rotating mid-game) and capture
+the iPad screenshots.
+
 **Update 2026-10-24: `supportsTablet` was switched to `false`.** The visual
 check this section recommended below did get done — on an actual iPad
 simulator — and found that `whose-sound` and `first-letter` (confirmed) leave

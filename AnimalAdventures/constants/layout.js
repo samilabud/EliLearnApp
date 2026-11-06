@@ -23,3 +23,23 @@ export const TOUCH_SLOP = { top: 12, bottom: 12, left: 12, right: 12 };
  * should be at least this large; below it, pair the text with an icon.
  */
 export const MIN_FONT_SIZE = 18;
+
+/**
+ * Shortest screen side, in points, from which a device is treated as a
+ * tablet. 600 is the usual Android "sw600dp" breakpoint and every iPad
+ * clears it in either orientation, while the largest phones stay below it.
+ */
+export const TABLET_MIN_SIDE = 600;
+
+/** Primary touch target on tablets, where small hands reach further. */
+export const TABLET_TOUCH_TARGET = 72;
+
+/**
+ * Widest a column of reading content gets on a large screen. Past this a
+ * line of text or a row of buttons stretches too far for a child's eye to
+ * follow, so content centers inside it instead.
+ */
+export const CONTENT_MAX_WIDTH = 960;
+
+/** Scale a phone-tuned size by the factor from `useResponsive`. */
+export const scaled = (size, scale) => Math.round(size * scale);
