@@ -6,31 +6,31 @@ import React, {
   useState,
 } from 'react';
 import {
-  ImageBackground,
   PanResponder,
-  ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
   Animated,
   Easing,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
-import ConfettiCannon from 'react-native-confetti-cannon';
 import { t, LARGE_TOUCH_TARGET } from '../../constants';
+import {
+  CARD_SHADOW,
+  CATEGORY_COLORS,
+  FONTS,
+  PALETTE,
+  RADIUS,
+} from '../../constants/theme';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
 import { getTraceTolerance } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, stopClip } from '../../utils/sound';
+import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
 import { LETTER_PATHS, buildGuidePath } from '../../utils/letter-paths';
@@ -41,23 +41,23 @@ import {
   successFeedback,
   errorFeedback,
 } from '../../utils/haptics';
+import { useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
+import { GameScreen } from '../utility/game-screen.component';
 import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
-import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+  CompletionOverlay,
+  CorrectBurst,
+  TryAgainBanner,
+} from '../utility/feedback-overlays.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const MAX_LEVEL = 6;
 
-// Square drawing area, clamped so it never outgrows a small phone or
-// dominates a tablet.
-const MIN_CANVAS_SIZE = 220;
-const MAX_CANVAS_SIZE = 320;
+// Square drawing area: as large as the space below the prompt allows, so it
+// fills a tablet, but never smaller than a phone can comfortably trace on.
+const MIN_CANVAS_SIZE = 180;
+// Space reserved under the canvas for the Clear button.
+const CLEAR_ROW_HEIGHT = LARGE_TOUCH_TARGET + 8;
 
 // How far in from each edge of the canvas the guide letter's target box
 // sits. Both the dashed guide drawn on screen and the grading in
@@ -109,14 +109,18 @@ export default function TraceLetterGame({
   setCurrentLanguage,
   onBackToMenu,
   onNextGame,
-  ambientEnabled,
 }) {
-  const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
-  const canvasSize = Math.min(
-    MAX_CANVAS_SIZE,
-    Math.max(MIN_CANVAS_SIZE, windowWidth - 64)
-  );
+  const { height, isLandscape, scale, touchTarget } = useResponsive();
+  const [canvasArea, setCanvasArea] = useState(null);
+  const canvasAreaRef = useRef(null);
+  const canvasSize = canvasArea
+    ? Math.max(
+        MIN_CANVAS_SIZE,
+        Math.floor(
+          Math.min(canvasArea.width, canvasArea.height - CLEAR_ROW_HEIGHT)
+        )
+      )
+    : MIN_CANVAS_SIZE;
   // The square the guide letter is drawn into and graded against - see
   // CANVAS_INSET_RATIO above.
   const targetBox = useMemo(() => {
@@ -128,7 +132,6 @@ export default function TraceLetterGame({
       height: canvasSize - inset * 2,
     };
   }, [canvasSize]);
-  const [fontsLoaded] = useFonts({ Bangers_400Regular });
 
   const { trace, updateTrace, resetTrace, markAnimalMet, markLevelStarred } =
     useGameProgress();
@@ -174,8 +177,6 @@ export default function TraceLetterGame({
   const gameWinPlayer = useAudioPlayer(null);
   const gameSuccessPlayer = useAudioPlayer(null);
   const letterNamePlayer = useAudioPlayer(null);
-
-  const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
   const targetAnimRef = useRef(null);
   const wrongSoundFile = require('../../assets/sounds/background/animals/wrong-answer-bird-call.mp3');
@@ -343,7 +344,7 @@ export default function TraceLetterGame({
       currentLanguage === 'en'
         ? targetAnimal.voice
         : targetAnimal.spanish_voice;
-    playClip(promptPlayer, voice);
+    playVoice(promptPlayer, voice);
   }, [targetAnimal, currentLanguage, stopAndUnload, promptPlayer]);
 
   useEffect(() => {
@@ -370,7 +371,7 @@ export default function TraceLetterGame({
     // still leaves clear room before the success jingle below.
     const letterSound = getLetterSound(correctLetter, currentLanguage);
     if (letterSound) {
-      playClip(letterNamePlayer, letterSound);
+      playVoice(letterNamePlayer, letterSound);
     }
 
     later(() => {
@@ -559,15 +560,6 @@ export default function TraceLetterGame({
     forceEvaluateAttemptRef.current = forceEvaluateAttempt;
   }, [forceEvaluateAttempt]);
 
-  // The canvas sits inside a ScrollView. On iOS, the ScrollView's own
-  // native pan gesture can still win a touch away from the PanResponder
-  // mid-stroke even with capture set below - it shows up as the whole
-  // screen dragging instead of the line being drawn. Disabling the
-  // ScrollView for the duration of a stroke (grant to release/terminate)
-  // removes that competing recognizer entirely. Android isn't affected,
-  // but toggling this there is harmless.
-  const [scrollEnabled, setScrollEnabled] = useState(true);
-
   const [panResponder, setPanResponder] = useState(null);
   useEffect(() => {
     setPanResponder(
@@ -577,7 +569,6 @@ export default function TraceLetterGame({
         onMoveShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponderCapture: () => true,
         onPanResponderGrant: evt => {
-          setScrollEnabled(false);
           if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
           // Started only on the first stroke of a burst and never reset by
           // later ones (unlike evaluateTimer above) - see MAX_BURST_MS.
@@ -615,11 +606,9 @@ export default function TraceLetterGame({
           setPoints(next);
         },
         onPanResponderRelease: () => {
-          setScrollEnabled(true);
           scheduleEvaluateRef.current();
         },
         onPanResponderTerminate: () => {
-          setScrollEnabled(true);
           scheduleEvaluateRef.current();
         },
       })
@@ -645,6 +634,24 @@ export default function TraceLetterGame({
     if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
     clearCanvas();
   }, [clearCanvas]);
+
+  // Strokes are stored in canvas pixels, so a canvas that changes size (the
+  // device rotated) would leave a half-drawn letter misaligned with its
+  // guide. Starting that attempt over is kinder than grading a wrong shape.
+  const handleCanvasAreaLayout = useCallback(
+    event => {
+      const { width, height: areaHeight } = event.nativeEvent.layout;
+      const prev = canvasAreaRef.current;
+      if (prev && prev.width === width && prev.height === areaHeight) return;
+      if (prev && pointsRef.current.length > 0) {
+        if (evaluateTimer.current) clearTimeout(evaluateTimer.current);
+        clearCanvas();
+      }
+      canvasAreaRef.current = { width, height: areaHeight };
+      setCanvasArea(canvasAreaRef.current);
+    },
+    [clearCanvas]
+  );
 
   const handleBackToMenu = useCallback(() => {
     tapFeedback();
@@ -676,14 +683,11 @@ export default function TraceLetterGame({
     playPrompt();
   }, [playPrompt]);
 
-  if (!fontsLoaded) return null;
   const promptScale = promptPulse.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 1.06],
   });
 
-  // Drives the Clear/Menu swap at the bottom of the canvas - see the comment
-  // there for why they're mutually exclusive rather than both shown.
   const hasTrace = points.length > 0;
 
   const pathD = points.reduce(
@@ -692,163 +696,155 @@ export default function TraceLetterGame({
     ''
   );
 
-  return (
-    <ImageBackground
-      source={backgroundImage}
-      resizeMode="cover"
-      style={styles.backgroundImage}
-    >
-      {ambientEnabled && <AmbientBackground />}
+  const animalCardSize = Math.round(
+    Math.min(140 * scale, isLandscape ? height * 0.3 : height * 0.14)
+  );
 
-      <ScrollView
-        style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
+  const prompt = (
+    <View style={[styles.promptColumn, !isLandscape && styles.promptRow]}>
+      <View
+        style={[
+          styles.animalCard,
+          { width: animalCardSize, height: animalCardSize },
         ]}
-        scrollEnabled={scrollEnabled}
       >
-        {/* Top controls */}
-        <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-          <Text
-            style={[styles.levelText, { fontFamily: 'Bangers_400Regular' }]}
-            // Android's default "highQuality" line-breaking has mismeasured
-            // this custom font often enough to clip the tail of the string
-            // (just "NIVEL" with the number gone) - "simple" measures more
-            // literally and doesn't. collapsable={false} keeps Android from
-            // flattening this Text into its parent, another path to the same
-            // glitch. Same root cause as the "ESCUCHAR..." button fix.
-            textBreakStrategy="simple"
-            // Shrink to fit rather than wrap: on some phones the 2nd line is clipped.
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
-            collapsable={false}
-            accessibilityRole="header"
-            accessibilityLabel={t(currentLanguage, 'a11yLevelStatus', {
-              level,
-              max: MAX_LEVEL,
-            })}
-          >
-            {t(currentLanguage, 'level')} {level}/{MAX_LEVEL}
+        {!!targetAnimal && (
+          <LottieView
+            autoPlay={false}
+            loop={false}
+            ref={el => (targetAnimRef.current = el)}
+            resizeMode="contain"
+            source={targetAnimal.animation_path}
+            style={[
+              { width: animalCardSize * 0.86, height: animalCardSize * 0.86 },
+              iconScaleStyle(targetAnimal),
+            ]}
+          />
+        )}
+      </View>
+      <View style={styles.promptColumn}>
+        {!!targetAnimal && (
+          <Text style={[styles.animalNameText, { fontSize: 22 * scale }]}>
+            {currentLanguage === 'en'
+              ? targetAnimal.name
+              : targetAnimal.spanish_name}
           </Text>
-          <View style={styles.topActions}>
-            <ConfirmResetButton
-              currentLanguage={currentLanguage}
-              onConfirm={onReset}
+        )}
+        <Animated.View
+          renderToHardwareTextureAndroid
+          style={{ transform: [{ scale: promptScale }] }}
+        >
+          <BouncyButton
+            onPress={handlePlayPrompt}
+            style={[
+              styles.promptButton,
+              { minHeight: touchTarget, paddingHorizontal: 20 * scale },
+            ]}
+            accessible={true}
+            accessibilityRole="button"
+            accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
+          >
+            {/* Fill lives on a sibling, not the animated view - see AnswerCard. */}
+            <View style={styles.promptButtonBackground} />
+            <MaterialIcons
+              name="volume-up"
+              size={28 * scale}
+              color={PALETTE.ink}
             />
-            <NextGameButton
-              currentLanguage={currentLanguage}
-              onPress={handleNextGame}
-            />
-            <LanguageToggleButton
-              currentLanguage={currentLanguage}
-              onToggle={setCurrentLanguage}
-            />
-          </View>
-        </View>
+            <Text
+              style={[
+                styles.promptText,
+                { fontSize: 22 * scale, lineHeight: 30 * scale },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
+            >
+              {t(currentLanguage, 'playName')}
+            </Text>
+          </BouncyButton>
+        </Animated.View>
+      </View>
+    </View>
+  );
 
-        {/* The animal, shown and named */}
-        <View style={styles.animalContainer}>
-          <View style={styles.animalCard}>
-            {!!targetAnimal && (
-              <LottieView
-                autoPlay={false}
-                loop={false}
-                ref={el => (targetAnimRef.current = el)}
-                resizeMode="contain"
-                source={targetAnimal.animation_path}
-                style={[styles.animalAnimation, iconScaleStyle(targetAnimal)]}
+  return (
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      onNextGame={handleNextGame}
+      onReset={onReset}
+      level={level}
+      maxLevel={MAX_LEVEL}
+      instruction={targetAnimal ? t(currentLanguage, 'traceInstruction') : null}
+      onReplayInstruction={replayInstruction}
+      prompt={prompt}
+      promptPaneRatio={0.34}
+      overlay={
+        <>
+          <CorrectBurst
+            visible={isCorrect}
+            opacity={feedbackAnim}
+            confettiKey={confettiKey}
+          />
+          <TryAgainBanner
+            visible={showWrongOverlay}
+            currentLanguage={currentLanguage}
+          />
+          <CompletionOverlay
+            visible={showComplete}
+            currentLanguage={currentLanguage}
+            confettiKey={confettiKey}
+            onRestart={handleReset}
+            onNextGame={handleNextGame}
+            onHome={handleBackToMenu}
+          />
+        </>
+      }
+    >
+      {/* The canvas is the largest square the area allows (minus the Clear
+          row), so it is big on an iPad and still fits a landscape phone. */}
+      <View style={styles.canvasArea} onLayout={handleCanvasAreaLayout}>
+        <View
+          style={[styles.canvas, { width: canvasSize, height: canvasSize }]}
+          {...(panResponder ? panResponder.panHandlers : {})}
+          accessible={true}
+          accessibilityLabel={t(currentLanguage, 'a11yTraceCanvas', {
+            letter: correctLetter || '',
+          })}
+        >
+          <Svg
+            width={canvasSize}
+            height={canvasSize}
+            style={StyleSheet.absoluteFill}
+          >
+            {!!correctLetter && LETTER_PATHS[correctLetter] && (
+              <Path
+                d={buildGuidePath(LETTER_PATHS[correctLetter], targetBox)}
+                fill="none"
+                stroke={PALETTE.gold}
+                strokeWidth={4 * scale}
+                strokeDasharray="12,16"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
             )}
-          </View>
-          {!!targetAnimal && (
-            <Text style={styles.animalNameText}>
-              {currentLanguage === 'en'
-                ? targetAnimal.name
-                : targetAnimal.spanish_name}
-            </Text>
-          )}
-          <Animated.View
-            renderToHardwareTextureAndroid
-            style={{ transform: [{ scale: promptScale }] }}
-          >
-            <BouncyButton
-              onPress={handlePlayPrompt}
-              style={[
-                styles.promptButton,
-                { width: Math.min(windowWidth - 32, 340) },
-              ]}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yPlayName')}
-            >
-              {/* A rounded View with a background clips its children on
-                  Android regardless of `overflow`, cropping a 2nd line if
-                  this ever wraps. Keeping the rounded fill as an absolutely
-                  positioned sibling behind the Text avoids that. */}
-              <View style={styles.promptButtonBackground} />
-              <Text
-                style={[
-                  styles.promptText,
-                  { fontFamily: 'Bangers_400Regular' },
-                ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
-              >
-                {t(currentLanguage, 'playName')}
-              </Text>
-            </BouncyButton>
-          </Animated.View>
-          {!!targetAnimal && (
-            <InstructionText
-              text={t(currentLanguage, 'traceInstruction')}
-              currentLanguage={currentLanguage}
-              onReplay={replayInstruction}
-              textStyle={styles.helperText}
-            />
-          )}
+            {!!pathD && (
+              <Path
+                d={pathD}
+                stroke={PALETTE.ink}
+                strokeWidth={16 * scale}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+              />
+            )}
+          </Svg>
         </View>
-
-        {/* Drawing canvas */}
-        <View style={styles.canvasWrapper}>
-          <View
-            style={[styles.canvas, { width: canvasSize, height: canvasSize }]}
-            {...(panResponder ? panResponder.panHandlers : {})}
-            accessible={true}
-            accessibilityLabel={t(currentLanguage, 'a11yTraceCanvas', {
-              letter: correctLetter || '',
-            })}
-          >
-            <Svg
-              width={canvasSize}
-              height={canvasSize}
-              style={StyleSheet.absoluteFill}
-            >
-              {!!correctLetter && LETTER_PATHS[correctLetter] && (
-                <Path
-                  d={buildGuidePath(LETTER_PATHS[correctLetter], targetBox)}
-                  fill="none"
-                  stroke="#FFD700"
-                  strokeWidth={4}
-                  strokeDasharray="12,16"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-              {!!pathD && (
-                <Path
-                  d={pathD}
-                  stroke="#0A3D62"
-                  strokeWidth={16}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                />
-              )}
-            </Svg>
-          </View>
+        {/* The row is always reserved so the canvas never jumps when the
+            button appears with the first stroke. */}
+        <View style={styles.clearRow}>
           {hasTrace && (
             <BouncyButton
               onPress={handleClear}
@@ -858,215 +854,53 @@ export default function TraceLetterGame({
               accessibilityLabel={t(currentLanguage, 'a11yClearDrawing')}
             >
               <View style={styles.clearButtonBackground} />
-              <MaterialCommunityIcons name="eraser" size={20} color="#0A3D62" />
+              <MaterialCommunityIcons
+                name="eraser"
+                size={22}
+                color={PALETTE.ink}
+              />
               <Text style={styles.clearButtonText}>
                 {t(currentLanguage, 'clearDrawing')}
               </Text>
             </BouncyButton>
           )}
         </View>
-      </ScrollView>
-
-      {/* Mutually exclusive with the Clear button above: once there's a
-          trace on the canvas, Clear is the relevant action and Menu would
-          just be an easy way to accidentally abandon a half-drawn letter. */}
-      {!showComplete && !hasTrace && (
-        <BackToMenuButton
-          currentLanguage={currentLanguage}
-          onPress={handleBackToMenu}
-        />
-      )}
-
-      {/* Correct feedback + confetti */}
-      {isCorrect && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.feedbackOverlay, { opacity: feedbackAnim }]}
-        >
-          <Text
-            style={[styles.feedbackText, { fontFamily: 'Bangers_400Regular' }]}
-          >
-            ✅
-          </Text>
-          <ConfettiCannon
-            key={`confetti-${confettiKey}`}
-            count={80}
-            fadeOut={true}
-            explosionSpeed={350}
-            fallSpeed={3000}
-            origin={{ x: 0, y: 0 }}
-          />
-        </Animated.View>
-      )}
-
-      {/* Encouragement, not a failure mark */}
-      {showWrongOverlay && (
-        <View pointerEvents="none" style={styles.feedbackOverlay}>
-          <Text
-            style={[styles.tryAgainText, { fontFamily: 'Bangers_400Regular' }]}
-          >
-            {t(currentLanguage, 'tryOnceMore')}
-          </Text>
-        </View>
-      )}
-
-      {/* Completion overlay */}
-      {showComplete && (
-        <View style={styles.completionOverlay}>
-          <Text
-            style={[
-              styles.completionTitle,
-              { fontFamily: 'Bangers_400Regular' },
-            ]}
-          >
-            {t(currentLanguage, 'amazing')}
-          </Text>
-          <Text style={styles.completionSubtitle}>
-            {t(currentLanguage, 'finishedAllLevels')}
-          </Text>
-          <ConfettiCannon
-            key={`final-${confettiKey}-final`}
-            count={200}
-            fadeOut={true}
-            explosionSpeed={300}
-            fallSpeed={3500}
-            origin={{ x: 0, y: 0 }}
-          />
-          <View style={styles.completionActions}>
-            <Animated.View
-              renderToHardwareTextureAndroid
-              style={{ transform: [{ scale: promptScale }] }}
-            >
-              <BouncyButton
-                onPress={handleReset}
-                style={styles.bigButton}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-              >
-                <View style={styles.bigButtonBackground} />
-                <MaterialIcons name="replay" size={20} color="#0A3D62" />
-                <Text style={styles.bigButtonText}>
-                  {t(currentLanguage, 'restart')}
-                </Text>
-              </BouncyButton>
-            </Animated.View>
-            <BouncyButton
-              onPress={handleNextGame}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="skip-next" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'nextGame')}
-              </Text>
-            </BouncyButton>
-            <BouncyButton
-              onPress={handleBackToMenu}
-              style={styles.secondaryButton}
-              accessible={true}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <View style={styles.secondaryButtonBackground} />
-              <MaterialIcons name="home" size={20} color="#0A3D62" />
-              <Text style={styles.secondaryButtonText}>
-                {t(currentLanguage, 'mainMenuFull')}
-              </Text>
-            </BouncyButton>
-          </View>
-        </View>
-      )}
-    </ImageBackground>
+      </View>
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
-  topBar: {
-    width: '100%',
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  promptColumn: {
     alignItems: 'center',
+    gap: 8,
   },
-  levelText: {
-    color: 'white',
-    fontSize: 22,
-    // Without this, a crowded top bar (Reset + Next Game + Language) can
-    // squeeze this text to where the level number gets cut off - letting it
-    // shrink/wrap instead keeps the whole string visible.
-    flex: 1,
-    marginRight: 8,
-    // Bangers clips on Android without both of these - see
-    // first-letter.game.component.jsx for the full explanation.
-    lineHeight: 30,
-    includeFontPadding: false,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-    paddingBottom: 20,
-  },
-  topActions: {
+  // In portrait the animal sits beside its name and button, leaving the
+  // height to the canvas.
+  promptRow: {
     flexDirection: 'row',
-    // Wider than the 10dp this used to be - three adjacent small controls
-    // this close together risked a mis-tap between neighbors for a child
-    // still developing fine motor precision.
     gap: 16,
-    paddingBottom: 20,
-  },
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  animalContainer: {
-    paddingTop: 4,
-    paddingHorizontal: 16,
-    alignItems: 'center',
   },
   animalCard: {
-    width: 110,
-    height: 110,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    backgroundColor: PALETTE.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 4,
+    borderColor: CATEGORY_COLORS.letters.ring,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    ...CARD_SHADOW,
   },
-  animalAnimation: {
-    width: 92,
-    height: 92,
-  },
-  // The written word next to the letter being traced, so a child connects
-  // the animal, its name and the letter rather than tracing in isolation.
   animalNameText: {
-    marginBottom: 10,
-    color: 'white',
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.ink,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
   },
   promptButton: {
-    // Plain on purpose - the filled rounded look lives in
-    // promptButtonBackground instead. See the comment at its usage above.
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    minHeight: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 10,
+    paddingVertical: 10,
   },
   promptButtonBackground: {
     position: 'absolute',
@@ -1074,46 +908,41 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FFD700',
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: '#ffffff',
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
+    borderWidth: 4,
+    borderColor: PALETTE.white,
+    ...CARD_SHADOW,
   },
   promptText: {
-    fontSize: 24,
-    lineHeight: 32,
+    fontFamily: FONTS.title,
     includeFontPadding: false,
     textAlign: 'center',
-    color: '#0A3D62',
+    color: PALETTE.ink,
     letterSpacing: 1,
   },
-  helperText: {
-    fontSize: 20,
-    lineHeight: 28,
-  },
-  canvasWrapper: {
+  canvasArea: {
+    flex: 1,
     alignItems: 'center',
-    paddingTop: 20,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
   },
   canvas: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    backgroundColor: PALETTE.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 4,
+    borderColor: CATEGORY_COLORS.letters.ring,
     overflow: 'hidden',
   },
+  clearRow: {
+    height: CLEAR_ROW_HEIGHT,
+    justifyContent: 'center',
+  },
   clearButton: {
-    // Plain on purpose - see promptButton above for why the fill lives in
-    // a separate absolutely positioned sibling instead of on this View.
+    // Plain on purpose - the fill lives in clearButtonBackground.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 16,
-    // Extra breathing room below, so this button doesn't crowd the
-    // floating Menu button anchored near the bottom of the screen.
-    marginBottom: 24,
     minHeight: LARGE_TOUCH_TARGET,
     paddingHorizontal: 28,
   },
@@ -1123,121 +952,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFD700',
+    backgroundColor: PALETTE.white,
+    borderRadius: RADIUS.pill,
+    borderWidth: 3,
+    borderColor: PALETTE.gold,
   },
   clearButtonText: {
-    color: '#0A3D62',
-    fontWeight: 'bold',
+    fontFamily: FONTS.bodyHeavy,
     fontSize: 18,
-  },
-  feedbackOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  feedbackText: {
-    fontSize: 80,
-    color: 'white',
-    paddingBottom: 34,
-  },
-  tryAgainText: {
-    fontSize: 46,
-    lineHeight: 58,
-    includeFontPadding: false,
-    color: '#FFD700',
-    textAlign: 'center',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowRadius: 10,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  completionOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  completionTitle: {
-    fontSize: 48,
-    lineHeight: 60,
-    includeFontPadding: false,
-    color: 'white',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowRadius: 8,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  completionSubtitle: {
-    marginTop: 8,
-    fontSize: 20,
-    color: '#FFD700',
-  },
-  completionActions: {
-    marginTop: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  bigButton: {
-    // Plain on purpose - the filled rounded look lives in
-    // bigButtonBackground instead, for the same reason as promptButton.
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  bigButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#FFD700',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#ffffff',
-  },
-  bigButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-  },
-  secondaryButtonBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#ffffff',
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  secondaryButtonText: {
-    color: '#0A3D62',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: PALETTE.ink,
   },
 });

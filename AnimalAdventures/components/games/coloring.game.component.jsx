@@ -5,29 +5,26 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { PanResponder, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PanResponder, ScrollView, StyleSheet, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { t, MIN_TOUCH_TARGET } from '../../constants';
+import {
+  CATEGORY_COLORS,
+  PALETTE as THEME,
+  RADIUS,
+} from '../../constants/theme';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, releasePlayer } from '../../utils/sound';
+import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import { tapFeedback } from '../../utils/haptics';
-import { AmbientBackground } from '../utility/ambient-background.component';
+import { useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
-import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
-import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+import { GameScreen } from '../utility/game-screen.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const TRAY_ITEM_SIZE = 56;
@@ -76,14 +73,37 @@ const toPathD = points =>
     ''
   );
 
+/**
+ * The square the faint reference animal is drawn in: as large as the canvas
+ * allows and centered, since the Lottie uses `contain`. New strokes are saved
+ * relative to this square (see `addColorStroke`'s `unit` flag), so they stay
+ * on the animal when the canvas changes shape - rotating the device used to
+ * leave a finished drawing floating off to one side of it.
+ */
+const drawingFrame = ({ width, height }) => {
+  const size = Math.min(width, height);
+  return { x: (width - size) / 2, y: (height - size) / 2, size };
+};
+
+/** A saved stroke in canvas pixels, whichever units it was saved in. */
+const strokeOnScreen = (stroke, frame) =>
+  stroke.unit
+    ? {
+        points: stroke.points.map(p => ({
+          x: frame.x + p.x * frame.size,
+          y: frame.y + p.y * frame.size,
+        })),
+        width: stroke.width * frame.size,
+      }
+    : { points: stroke.points, width: stroke.width || STROKE_WIDTH };
+
 export default function ColoringGame({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
   onNextGame,
-  ambientEnabled,
 }) {
-  const insets = useSafeAreaInsets();
+  const { isLandscape, scale } = useResponsive();
   // Spoken once when the mode opens; tapping the instruction replays it.
   const { replay: replayInstruction } = useInstructionPrompt(
     'coloring',
@@ -117,6 +137,12 @@ export default function ColoringGame({
   const [brushWidth, setBrushWidth] = useState(BRUSH_SIZES[1].width);
   const [isErasing, setIsErasing] = useState(false);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  const frame = useMemo(() => drawingFrame(canvasSize), [canvasSize]);
+  // Latest-ref for the PanResponder, built once - see activeColorRef below.
+  const frameRef = useRef(frame);
+  useEffect(() => {
+    frameRef.current = frame;
+  }, [frame]);
   const handleCanvasLayout = useCallback(e => {
     const { width, height } = e.nativeEvent.layout;
     setCanvasSize({ width, height });
@@ -184,7 +210,7 @@ export default function ColoringGame({
       playClip(soundPlayer, a.sound);
       if (voiceTimer.current) clearTimeout(voiceTimer.current);
       voiceTimer.current = setTimeout(() => {
-        playClip(
+        playVoice(
           voicePlayer,
           currentLanguage === 'en' ? a.voice : a.spanish_voice
         );
@@ -198,18 +224,24 @@ export default function ColoringGame({
   // throttled live erasing in onPanResponderMove below might have missed.
   const finishStroke = useCallback(() => {
     if (currentPointsRef.current.length > 1) {
+      const f = frameRef.current;
       if (isErasingRef.current) {
         eraseStrokesNear(
           animalIdRef.current,
           currentPointsRef.current,
-          ERASE_THRESHOLD
+          ERASE_THRESHOLD,
+          f
         );
-      } else {
+      } else if (f.size > 0) {
         addColorStroke(
           animalIdRef.current,
           activeColorRef.current,
-          currentPointsRef.current,
-          brushWidthRef.current
+          currentPointsRef.current.map(p => ({
+            x: (p.x - f.x) / f.size,
+            y: (p.y - f.y) / f.size,
+          })),
+          brushWidthRef.current / f.size,
+          true
         );
       }
     }
@@ -246,7 +278,12 @@ export default function ColoringGame({
           setIsDrawing(true);
           if (isErasingRef.current) {
             lastErasePointRef.current = point;
-            eraseStrokesNear(animalIdRef.current, [point], ERASE_THRESHOLD);
+            eraseStrokesNear(
+              animalIdRef.current,
+              [point],
+              ERASE_THRESHOLD,
+              frameRef.current
+            );
           }
         },
         onPanResponderMove: evt => {
@@ -261,9 +298,18 @@ export default function ColoringGame({
           });
           if (isErasingRef.current) {
             const last = lastErasePointRef.current;
-            if (!last || Math.hypot(point.x - last.x, point.y - last.y) >= ERASE_LIVE_THROTTLE) {
+            if (
+              !last ||
+              Math.hypot(point.x - last.x, point.y - last.y) >=
+                ERASE_LIVE_THROTTLE
+            ) {
               lastErasePointRef.current = point;
-              eraseStrokesNear(animalIdRef.current, [point], ERASE_THRESHOLD);
+              eraseStrokesNear(
+                animalIdRef.current,
+                [point],
+                ERASE_THRESHOLD,
+                frameRef.current
+              );
             }
           }
         },
@@ -333,288 +379,290 @@ export default function ColoringGame({
   const animalName =
     currentLanguage === 'en' ? animal.name : animal.spanish_name;
 
-  return (
-    <View style={styles.background}>
-      {ambientEnabled && <AmbientBackground />}
+  const trayItemSize = Math.round(TRAY_ITEM_SIZE * scale);
 
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.title} numberOfLines={1}>
-          {t(currentLanguage, 'modeColoringTitle')}
-        </Text>
-        <View style={styles.topActions}>
-          <BouncyButton
-            style={[styles.undoButton, strokes.length === 0 && styles.disabled]}
-            onPress={handleUndo}
-            accessible
-            accessibilityRole="button"
-            accessibilityState={{ disabled: strokes.length === 0 }}
-            accessibilityLabel={t(currentLanguage, 'a11yUndo')}
-          >
-            <MaterialIcons name="undo" size={22} color="#0A3D62" />
-          </BouncyButton>
-          <ConfirmResetButton
-            currentLanguage={currentLanguage}
-            onConfirm={handleReset}
-            labelKey="a11yClearPage"
-            confirmLabelKey="a11yClearPageConfirm"
-          />
-          <NextGameButton
-            currentLanguage={currentLanguage}
-            onPress={handleNextGame}
-          />
-          <LanguageToggleButton
-            currentLanguage={currentLanguage}
-            onToggle={setCurrentLanguage}
-          />
-        </View>
-      </View>
-
-      <InstructionText
-        text={t(currentLanguage, 'modeColoringDescription')}
-        currentLanguage={currentLanguage}
-        onReplay={replayInstruction}
-        textStyle={styles.instructionText}
-      />
-
-      <View style={styles.canvasWrapper}>
-        <View
-          style={styles.canvas}
-          onLayout={handleCanvasLayout}
-          {...(panResponder ? panResponder.panHandlers : {})}
-          accessible={true}
-          accessibilityLabel={t(currentLanguage, 'a11yColoringCanvas', {
-            animal: animalName,
-          })}
-        >
-          {canvasSize.width > 0 && (
-            <LottieView
-              autoPlay={false}
-              loop={false}
-              resizeMode="contain"
-              source={animal.animation_path}
-              style={[StyleSheet.absoluteFill, styles.reference]}
-              pointerEvents="none"
-            />
-          )}
-          <Svg
-            width={canvasSize.width}
-            height={canvasSize.height}
-            style={StyleSheet.absoluteFill}
-          >
-            {strokes.map((s, i) => (
-              <Path
-                key={i}
-                d={toPathD(s.points)}
-                stroke={s.color}
-                strokeWidth={s.width || STROKE_WIDTH}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            ))}
-            {isDrawing && (
-              <Path
-                ref={livePathRef}
-                // Only the starting point at mount time - every point
-                // after this is pushed straight to the native node via
-                // setNativeProps in onPanResponderMove, not through this
-                // prop, so re-renders don't gate how fast the line grows.
-                d={startD}
-                stroke={isErasing ? '#999999' : activeColor}
-                strokeWidth={isErasing ? ERASE_THRESHOLD : brushWidth}
-                strokeDasharray={isErasing ? '2,10' : undefined}
-                strokeOpacity={isErasing ? 0.5 : 1}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            )}
-          </Svg>
-        </View>
-      </View>
-
-      <View style={styles.brushSizes}>
-        {BRUSH_SIZES.map(({ width, key }) => (
-          <BouncyButton
-            key={width}
-            style={[styles.sizeButton, brushWidth === width && styles.sizeButtonActive]}
-            onPress={() => handleSelectBrushSize(width)}
-            accessible
-            accessibilityRole="button"
-            accessibilityState={{ selected: brushWidth === width }}
-            accessibilityLabel={t(currentLanguage, 'a11yBrushSize', {
-              size: t(currentLanguage, key),
-            })}
-          >
-            <View
-              style={{
-                width: width + 6,
-                height: width + 6,
-                borderRadius: (width + 6) / 2,
-                backgroundColor: '#0A3D62',
-              }}
-            />
-          </BouncyButton>
-        ))}
-      </View>
-
-      {/* One scrolling row (like the animal tray below) instead of wrapping
-          into two rows, so the drawing area keeps that height. */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.paletteScroll}
-        contentContainerStyle={styles.palette}
+  const canvas = (
+    <View
+      style={styles.canvas}
+      onLayout={handleCanvasLayout}
+      {...(panResponder ? panResponder.panHandlers : {})}
+      accessible={true}
+      accessibilityLabel={t(currentLanguage, 'a11yColoringCanvas', {
+        animal: animalName,
+      })}
+    >
+      {frame.size > 0 && (
+        <LottieView
+          autoPlay={false}
+          loop={false}
+          resizeMode="contain"
+          source={animal.animation_path}
+          style={[
+            styles.reference,
+            {
+              left: frame.x,
+              top: frame.y,
+              width: frame.size,
+              height: frame.size,
+            },
+          ]}
+          pointerEvents="none"
+        />
+      )}
+      <Svg
+        width={canvasSize.width}
+        height={canvasSize.height}
+        style={StyleSheet.absoluteFill}
       >
+        {strokes.map((stroke, i) => {
+          const onScreen = strokeOnScreen(stroke, frame);
+          return (
+            <Path
+              key={i}
+              d={toPathD(onScreen.points)}
+              stroke={stroke.color}
+              strokeWidth={onScreen.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          );
+        })}
+        {isDrawing && (
+          <Path
+            ref={livePathRef}
+            // Only the starting point at mount time - every point
+            // after this is pushed straight to the native node via
+            // setNativeProps in onPanResponderMove, not through this
+            // prop, so re-renders don't gate how fast the line grows.
+            d={startD}
+            stroke={isErasing ? '#999999' : activeColor}
+            strokeWidth={isErasing ? ERASE_THRESHOLD : brushWidth}
+            strokeDasharray={isErasing ? '2,10' : undefined}
+            strokeOpacity={isErasing ? 0.5 : 1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        )}
+      </Svg>
+    </View>
+  );
+
+  const brushRow = (
+    <View style={styles.brushSizes}>
+      <BouncyButton
+        style={[styles.toolButton, strokes.length === 0 && styles.disabled]}
+        onPress={handleUndo}
+        accessible
+        accessibilityRole="button"
+        accessibilityState={{ disabled: strokes.length === 0 }}
+        accessibilityLabel={t(currentLanguage, 'a11yUndo')}
+      >
+        <MaterialIcons name="undo" size={24} color={THEME.ink} />
+      </BouncyButton>
+      {BRUSH_SIZES.map(({ width, key }) => (
         <BouncyButton
-          style={[styles.swatch, styles.eraserSwatch, isErasing && styles.swatchActive]}
-          onPress={handleToggleEraser}
+          key={width}
+          style={[
+            styles.sizeButton,
+            brushWidth === width && styles.sizeButtonActive,
+          ]}
+          onPress={() => handleSelectBrushSize(width)}
           accessible
           accessibilityRole="button"
-          accessibilityState={{ selected: isErasing }}
-          accessibilityLabel={t(currentLanguage, 'a11yEraser')}
+          accessibilityState={{ selected: brushWidth === width }}
+          accessibilityLabel={t(currentLanguage, 'a11yBrushSize', {
+            size: t(currentLanguage, key),
+          })}
         >
-          <MaterialCommunityIcons name="eraser" size={22} color="#0A3D62" />
-        </BouncyButton>
-        {PALETTE.map(({ color, nameKey }) => (
-          <BouncyButton
-            key={color}
-            style={[
-              styles.swatch,
-              { backgroundColor: color },
-              !isErasing && activeColor === color && styles.swatchActive,
-            ]}
-            onPress={() => handleSelectColor(color)}
-            accessible
-            accessibilityRole="button"
-            accessibilityState={{ selected: !isErasing && activeColor === color }}
-            accessibilityLabel={t(currentLanguage, 'a11yColorSwatch', {
-              color: t(currentLanguage, nameKey),
-            })}
+          <View
+            style={{
+              width: width + 6,
+              height: width + 6,
+              borderRadius: (width + 6) / 2,
+              backgroundColor: THEME.ink,
+            }}
           />
-        ))}
-      </ScrollView>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[
-          styles.tray,
-          { marginBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
-        ]}
-        contentContainerStyle={styles.trayContent}
-      >
-        {animalList.map(a => (
-          <BouncyButton
-            key={a.id}
-            style={[
-              styles.trayItemWrapper,
-              a.id === animalId && styles.trayItemActive,
-            ]}
-            onPress={() => handleSelectAnimal(a)}
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yColoringAnimal', {
-              animal: currentLanguage === 'en' ? a.name : a.spanish_name,
-            })}
-          >
-            <LottieView
-              ref={r => {
-                lottieRefs.current[a.id] = r;
-              }}
-              autoPlay={false}
-              loop={false}
-              resizeMode="contain"
-              source={a.animation_path}
-              style={[
-                { width: TRAY_ITEM_SIZE, height: TRAY_ITEM_SIZE },
-                iconScaleStyle(a),
-              ]}
-            />
-          </BouncyButton>
-        ))}
-      </ScrollView>
-
-      <BackToMenuButton
-        currentLanguage={currentLanguage}
-        onPress={handleBackToMenu}
-      />
+        </BouncyButton>
+      ))}
     </View>
+  );
+
+  const swatches = [
+    <BouncyButton
+      key="eraser"
+      style={[
+        styles.swatch,
+        styles.eraserSwatch,
+        isErasing && styles.swatchActive,
+      ]}
+      onPress={handleToggleEraser}
+      accessible
+      accessibilityRole="button"
+      accessibilityState={{ selected: isErasing }}
+      accessibilityLabel={t(currentLanguage, 'a11yEraser')}
+    >
+      <MaterialCommunityIcons name="eraser" size={22} color={THEME.ink} />
+    </BouncyButton>,
+    ...PALETTE.map(({ color, nameKey }) => (
+      <BouncyButton
+        key={color}
+        style={[
+          styles.swatch,
+          { backgroundColor: color },
+          !isErasing && activeColor === color && styles.swatchActive,
+        ]}
+        onPress={() => handleSelectColor(color)}
+        accessible
+        accessibilityRole="button"
+        accessibilityState={{ selected: !isErasing && activeColor === color }}
+        accessibilityLabel={t(currentLanguage, 'a11yColorSwatch', {
+          color: t(currentLanguage, nameKey),
+        })}
+      />
+    )),
+  ];
+
+  const tray = (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={[styles.tray, { maxHeight: trayItemSize + 24 }]}
+      contentContainerStyle={styles.trayContent}
+    >
+      {animalList.map(a => (
+        <BouncyButton
+          key={a.id}
+          style={[
+            styles.trayItemWrapper,
+            a.id === animalId && styles.trayItemActive,
+          ]}
+          onPress={() => handleSelectAnimal(a)}
+          accessible
+          accessibilityRole="button"
+          accessibilityLabel={t(currentLanguage, 'a11yColoringAnimal', {
+            animal: currentLanguage === 'en' ? a.name : a.spanish_name,
+          })}
+        >
+          <LottieView
+            ref={r => {
+              lottieRefs.current[a.id] = r;
+            }}
+            autoPlay={false}
+            loop={false}
+            resizeMode="contain"
+            source={a.animation_path}
+            style={[
+              { width: trayItemSize, height: trayItemSize },
+              iconScaleStyle(a),
+            ]}
+          />
+        </BouncyButton>
+      ))}
+    </ScrollView>
+  );
+
+  return (
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      onNextGame={handleNextGame}
+      onReset={handleReset}
+      resetLabelKey="a11yClearPage"
+      resetConfirmLabelKey="a11yClearPageConfirm"
+      instruction={t(currentLanguage, 'modeColoringDescription')}
+      onReplayInstruction={replayInstruction}
+    >
+      {/* Portrait: tools stacked under the canvas. Landscape: tools in a
+          side panel so the canvas keeps the full height. */}
+      {isLandscape ? (
+        <View style={styles.landscape}>
+          {canvas}
+          {/* Scrolls, so a very short screen can still reach every tool. */}
+          <ScrollView
+            style={styles.sidePanel}
+            contentContainerStyle={styles.sidePanelContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {brushRow}
+            <View style={styles.paletteWrap}>{swatches}</View>
+            {tray}
+          </ScrollView>
+        </View>
+      ) : (
+        <View style={styles.portrait}>
+          {canvas}
+          {brushRow}
+          {/* One scrolling row instead of wrapping into two, so the
+              drawing area keeps that height. */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.paletteScroll}
+            contentContainerStyle={styles.palette}
+          >
+            {swatches}
+          </ScrollView>
+          {tray}
+        </View>
+      )}
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
+  portrait: {
     flex: 1,
-    backgroundColor: '#BD0000',
+    gap: 10,
   },
-  topBar: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
+  landscape: {
     flex: 1,
-    flexShrink: 1,
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginRight: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-  },
-  instructionText: {
-    fontSize: 18,
-    lineHeight: 26,
-  },
-  topActions: {
     flexDirection: 'row',
     gap: 16,
   },
-  undoButton: {
-    alignItems: 'center',
+  sidePanel: {
+    width: '46%',
+    maxWidth: 460,
+    flexGrow: 0,
+  },
+  sidePanelContent: {
     justifyContent: 'center',
-    minHeight: MIN_TOUCH_TARGET,
-    minWidth: MIN_TOUCH_TARGET,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 6,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  disabled: {
-    opacity: 0.4,
-  },
-  canvasWrapper: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    flexGrow: 1,
+    gap: 12,
   },
   canvas: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    backgroundColor: THEME.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 4,
+    borderColor: CATEGORY_COLORS.create.ring,
     overflow: 'hidden',
   },
   reference: {
+    position: 'absolute',
     opacity: 0.18,
+  },
+  disabled: {
+    opacity: 0.4,
   },
   brushSizes: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    // Matches the 16dp minimum this app settled on everywhere else after
-    // finding smaller gaps risked mis-taps for this audience (see
-    // guess-animal.game.component.jsx's topActions comment) - this row
-    // hadn't been brought in line with that yet.
+    // The established 16dp floor between adjacent controls.
     gap: 16,
-    paddingTop: 10,
+  },
+  toolButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: MIN_TOUCH_TARGET,
+    minWidth: MIN_TOUCH_TARGET,
+    backgroundColor: THEME.white,
+    borderRadius: RADIUS.pill,
+    borderWidth: 2,
+    borderColor: THEME.gold,
   },
   sizeButton: {
     width: MIN_TOUCH_TARGET,
@@ -622,12 +670,12 @@ const styles = StyleSheet.create({
     borderRadius: MIN_TOUCH_TARGET / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: 'transparent',
   },
   sizeButtonActive: {
-    borderColor: '#FFD700',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderColor: THEME.gold,
+    backgroundColor: THEME.white,
   },
   paletteScroll: {
     flexGrow: 0,
@@ -635,46 +683,49 @@ const styles = StyleSheet.create({
   palette: {
     flexDirection: 'row',
     alignItems: 'center',
-    // Same 16dp-minimum reasoning as brushSizes above - 11 adjacent
-    // swatches (eraser + 10 colors) at the old 10dp gap was tighter than
-    // this app's own established standard for small hands.
+    // Same 16dp minimum as brushSizes above.
     gap: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  paletteWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 16,
   },
   swatch: {
     width: MIN_TOUCH_TARGET,
     height: MIN_TOUCH_TARGET,
     borderRadius: MIN_TOUCH_TARGET / 2,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.8)',
+    borderColor: THEME.creamDeep,
   },
   eraserSwatch: {
-    backgroundColor: '#ffffff',
+    backgroundColor: THEME.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   swatchActive: {
-    borderWidth: 3,
-    borderColor: '#0A3D62',
+    borderWidth: 4,
+    borderColor: THEME.ink,
   },
   tray: {
-    maxHeight: TRAY_ITEM_SIZE + 24,
-    marginTop: 4,
+    flexGrow: 0,
   },
   trayContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   trayItemWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFD700',
+    backgroundColor: THEME.white,
+    borderRadius: RADIUS.sm,
+    borderWidth: 3,
+    borderColor: CATEGORY_COLORS.create.fill,
     padding: 4,
   },
   trayItemActive: {
-    borderColor: '#0A3D62',
+    borderColor: CATEGORY_COLORS.create.ring,
   },
 });

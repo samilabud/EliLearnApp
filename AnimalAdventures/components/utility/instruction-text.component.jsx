@@ -18,7 +18,11 @@ export function InstructionText({
   currentLanguage,
   onReplay,
   textStyle,
+  // 'light' is white text for the red header band; 'dark' is ink for the
+  // cream canvas, where white would disappear.
+  tone = 'light',
 }) {
+  const dark = tone === 'dark';
   return (
     <BouncyButton
       onPress={onReplay}
@@ -30,11 +34,16 @@ export function InstructionText({
       <MaterialIcons
         name="volume-up"
         size={28}
-        color="white"
-        style={styles.icon}
+        color={dark ? '#0A3D62' : 'white'}
+        style={dark ? null : styles.icon}
       />
       <Text
-        style={[styles.text, { fontFamily: 'Bangers_400Regular' }, textStyle]}
+        style={[
+          styles.text,
+          { fontFamily: 'Bangers_400Regular' },
+          dark && styles.textDark,
+          textStyle,
+        ]}
         textBreakStrategy="simple"
         collapsable={false}
       >
@@ -69,5 +78,10 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 3 },
+  },
+  textDark: {
+    color: '#0A3D62',
+    textShadowRadius: 0,
+    textShadowOffset: { width: 0, height: 0 },
   },
 });

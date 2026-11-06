@@ -20,7 +20,7 @@ import React, {
 } from 'react';
 import { AppState } from 'react-native';
 import { loadJSON, saveJSON } from '../utils/storage';
-import { setSoundEnabled } from '../utils/sound';
+import { setSoundEnabled, setVoiceEnabled, setVoiceRate } from '../utils/sound';
 
 const SETTINGS_KEY = 'app.settings';
 const USAGE_KEY = 'app.usage';
@@ -40,12 +40,28 @@ export const PLAY_LIMIT_OPTIONS = [0, 10, 15, 20, 30, 45];
  */
 export const CHILD_AGE_OPTIONS = ['under4', '4to6', '7plus'];
 
+/** Playback rate for spoken audio when a parent picks the slower voice. */
+export const SLOW_VOICE_RATE = 0.85;
+
 const DEFAULT_SETTINGS = {
   language: 'en',
+  // Sound effects (animal noises, jingles). Spoken audio has its own toggle.
   soundEnabled: true,
+  voiceEnabled: true,
+  slowVoice: false,
   playLimitMinutes: 0,
-  ambientEffectsEnabled: true,
+  // Off by default: the floating bubbles are decoration, not feedback, and
+  // motion with no purpose competes with the game for a child's attention.
+  // Installs that already chose a value keep it.
+  ambientEffectsEnabled: false,
   childAgeBand: '4to6',
+};
+
+/** Push the audio-related settings into the playback module. */
+const applyAudio = settings => {
+  setSoundEnabled(settings.soundEnabled);
+  setVoiceEnabled(settings.voiceEnabled);
+  setVoiceRate(settings.slowVoice ? SLOW_VOICE_RATE : 1);
 };
 
 const SettingsContext = createContext(null);
@@ -73,10 +89,16 @@ export function SettingsProvider({ children }) {
       if (cancelled) return;
 
       const next = stored
-        ? { ...DEFAULT_SETTINGS, ...stored }
+        ? {
+            ...DEFAULT_SETTINGS,
+            ...stored,
+            // Before voice had its own toggle, one switch muted everything -
+            // a parent who had turned it off still means "silent".
+            voiceEnabled: stored.voiceEnabled ?? stored.soundEnabled ?? true,
+          }
         : DEFAULT_SETTINGS;
       setSettings(next);
-      setSoundEnabled(next.soundEnabled);
+      applyAudio(next);
 
       // Yesterday's usage is not today's problem.
       if (usage && usage.day === today()) {
@@ -94,7 +116,7 @@ export function SettingsProvider({ children }) {
     setSettings(prev => {
       const next = { ...prev, ...patch };
       saveJSON(SETTINGS_KEY, next);
-      if ('soundEnabled' in patch) setSoundEnabled(next.soundEnabled);
+      applyAudio(next);
       return next;
     });
   }, []);
@@ -145,11 +167,15 @@ export function SettingsProvider({ children }) {
       hydrated,
       language: settings.language,
       soundEnabled: settings.soundEnabled,
+      voiceEnabled: settings.voiceEnabled,
+      slowVoice: settings.slowVoice,
       playLimitMinutes: settings.playLimitMinutes,
       ambientEffectsEnabled: settings.ambientEffectsEnabled,
       childAgeBand: settings.childAgeBand,
       setLanguage: language => update({ language }),
       setSoundEnabled: soundEnabled => update({ soundEnabled }),
+      setVoiceEnabled: voiceEnabled => update({ voiceEnabled }),
+      setSlowVoice: slowVoice => update({ slowVoice }),
       setPlayLimitMinutes: playLimitMinutes => update({ playLimitMinutes }),
       setAmbientEffectsEnabled: ambientEffectsEnabled =>
         update({ ambientEffectsEnabled }),

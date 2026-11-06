@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useAudioPlayer } from 'expo-audio';
 import { getInstructionSound } from './instruction-sounds';
-import { isSoundEnabled, playClip, releasePlayer, stopClip } from './sound';
+import { isVoiceEnabled, playVoice, releasePlayer, stopClip } from './sound';
 
 // If the "finished" event never arrives (a clip that fails to load, say),
 // the round must still start - a child should never be left waiting on a
@@ -49,7 +49,7 @@ export function useInstructionPrompt(gameKey, lang, { onFinished } = {}) {
   // initial play deliberately uses whichever language was active at open.
   useEffect(() => {
     const source = getInstructionSound(gameKey, langRef.current);
-    if (!source || !isSoundEnabled()) {
+    if (!source || !isVoiceEnabled()) {
       finish();
       return undefined;
     }
@@ -61,7 +61,7 @@ export function useInstructionPrompt(gameKey, lang, { onFinished } = {}) {
     } catch {
       // No listener support - the fallback timer below covers it.
     }
-    playClip(player, source);
+    playVoice(player, source);
     timerRef.current = setTimeout(finish, FALLBACK_MS);
     return () => {
       if (subscription && subscription.remove) subscription.remove();
@@ -73,7 +73,7 @@ export function useInstructionPrompt(gameKey, lang, { onFinished } = {}) {
 
   const replay = useCallback(() => {
     const source = getInstructionSound(gameKey, langRef.current);
-    if (source) playClip(player, source);
+    if (source) playVoice(player, source);
   }, [gameKey, player]);
 
   const stop = useCallback(() => stopClip(player), [player]);

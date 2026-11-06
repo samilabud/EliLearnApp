@@ -1,39 +1,30 @@
-import React, { useCallback, useMemo, useRef } from 'react';
-import {
-  ImageBackground,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { MODES } from '../main_menu/main_menu.component.jsx';
 import { t } from '../../constants';
+import {
+  CATEGORY_COLORS,
+  FONTS,
+  PALETTE,
+  RADIUS,
+  titleText,
+} from '../../constants/theme';
+import { gridColumns, useResponsive } from '../../utils/use-responsive';
 import { tapFeedback } from '../../utils/haptics';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, releasePlayer } from '../../utils/sound';
+import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { BouncyButton } from '../utility/bouncy-button.component';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
+import { GameScreen } from '../utility/game-screen.component';
 
-const GRID_PADDING_H = 12;
-const CARD_MARGIN_TOP = 20;
-const PORTRAIT_COLUMNS = 3;
-const LANDSCAPE_COLUMNS = 6;
+const CARD_GAP = 16;
+// Narrowest a card gets before the grid drops a column; grown with the
+// device scale so an iPad shows bigger animals, not just more of them.
 const MIN_CARD_WIDTH = 104;
-const CARD_HEIGHT = 128;
-const BOX_HEIGHT = 96;
 
 /**
  * Every animal in the app, shown as met or not yet met.
@@ -46,9 +37,8 @@ export default function AlbumScreen({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
-  ambientEnabled,
 }) {
-  const [fontsLoaded] = useFonts({ Bangers_400Regular });
+  const { scale } = useResponsive();
   const { met, metVia, stars } = useGameProgress();
   // Only the leveled games earn stars - 'learn' and 'album' have no level
   // concept, so they're naturally absent from `stars` and skipped here.
@@ -59,16 +49,21 @@ export default function AlbumScreen({
   const animPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
   const animRefs = useRef({});
-  const insets = useSafeAreaInsets();
   const voiceTimer = useRef(null);
 
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const columns =
-    windowWidth > windowHeight ? LANDSCAPE_COLUMNS : PORTRAIT_COLUMNS;
-  const cardWidth = Math.max(
-    MIN_CARD_WIDTH,
-    Math.floor((windowWidth - GRID_PADDING_H * 2) / columns) - GRID_PADDING_H
+  const [areaWidth, setAreaWidth] = useState(0);
+  const columns = gridColumns(
+    areaWidth,
+    MIN_CARD_WIDTH * scale,
+    CARD_GAP,
+    3,
+    8
   );
+  const cardWidth = Math.floor(
+    (areaWidth - CARD_GAP * (columns - 1)) / columns
+  );
+  const boxSize = cardWidth;
+  const shelfItemSize = Math.round(72 * scale);
 
   const metSet = useMemo(() => new Set(met), [met]);
 
@@ -106,7 +101,7 @@ export default function AlbumScreen({
       // screen uses for the same pairing.
       if (voiceTimer.current) clearTimeout(voiceTimer.current);
       voiceTimer.current = setTimeout(() => {
-        playClip(
+        playVoice(
           voicePlayer,
           currentLanguage === 'en' ? animal.voice : animal.spanish_voice
         );
@@ -115,46 +110,28 @@ export default function AlbumScreen({
     [metSet, animPlayer, voicePlayer, currentLanguage]
   );
 
-  if (!fontsLoaded) return null;
-
   return (
-    <ImageBackground
-      source={require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg')}
-      resizeMode="cover"
-      style={styles.backgroundImage}
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      badge={t(currentLanguage, 'albumProgress', {
+        met: metSet.size,
+        total: animalList.length,
+      })}
     >
-      {ambientEnabled && <AmbientBackground />}
-
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerCount}>
-          {t(currentLanguage, 'albumProgress', {
-            met: metSet.size,
-            total: animalList.length,
-          })}
-        </Text>
-
-        <LanguageToggleButton
-          currentLanguage={currentLanguage}
-          onToggle={setCurrentLanguage}
-        />
-      </View>
-
       <ScrollView
         style={styles.scrollArea}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
-        ]}
+        contentContainerStyle={styles.scrollContent}
+        onLayout={e => setAreaWidth(e.nativeEvent.layout.width)}
       >
         {metSet.size === 0 && (
-          <Text style={[styles.hint, { fontFamily: 'Bangers_400Regular' }]}>
+          <Text style={styles.hint}>
             {t(currentLanguage, 'albumHintEmpty')}
           </Text>
         )}
 
-        <Text
-          style={[styles.starsShelfTitle, { fontFamily: 'Bangers_400Regular' }]}
-        >
+        <Text style={styles.sectionTitle}>
           {t(currentLanguage, 'starsShelfTitle')}
         </Text>
         <ScrollView
@@ -168,7 +145,10 @@ export default function AlbumScreen({
             return (
               <View
                 key={mode.key}
-                style={styles.starsShelfItem}
+                style={[
+                  styles.starsShelfItem,
+                  { width: shelfItemSize, height: shelfItemSize },
+                ]}
                 accessible={true}
                 accessibilityLabel={t(currentLanguage, 'a11yStarBadge', {
                   count,
@@ -181,10 +161,13 @@ export default function AlbumScreen({
                   autoSize={false}
                   resizeMode="contain"
                   source={mode.icon}
-                  style={styles.starsShelfIcon}
+                  style={{
+                    width: shelfItemSize * 0.6,
+                    height: shelfItemSize * 0.6,
+                  }}
                 />
                 <View style={styles.starsShelfCount}>
-                  <MaterialIcons name="star" size={14} color="white" />
+                  <MaterialIcons name="star" size={14} color={PALETTE.ink} />
                   <Text style={styles.starsShelfCountText}>{count}</Text>
                 </View>
               </View>
@@ -192,255 +175,200 @@ export default function AlbumScreen({
           })}
         </ScrollView>
 
-        <View style={styles.grid}>
-          {animalList.map(animal => {
-            const isMet = metSet.has(animal.id);
-            const name =
-              currentLanguage === 'en' ? animal.name : animal.spanish_name;
-            // Absent for an animal met before this slice existed, or (in
-            // principle) an unrecognized game key from a future build - both
-            // just mean no badge rather than a broken one.
-            const sourceKey = metVia[animal.id];
-            const sourceMode = MODES.find(m => m.key === sourceKey);
-            const sourceTitle = sourceMode
-              ? t(currentLanguage, sourceMode.titleKey)
-              : null;
+        {areaWidth > 0 && (
+          <View style={[styles.grid, { gap: CARD_GAP }]}>
+            {animalList.map(animal => {
+              const isMet = metSet.has(animal.id);
+              const name =
+                currentLanguage === 'en' ? animal.name : animal.spanish_name;
+              // Absent for an animal met before this slice existed, or (in
+              // principle) an unrecognized game key from a future build -
+              // both just mean no badge rather than a broken one.
+              const sourceKey = metVia[animal.id];
+              const sourceMode = MODES.find(m => m.key === sourceKey);
+              const sourceTitle = sourceMode
+                ? t(currentLanguage, sourceMode.titleKey)
+                : null;
 
-            return (
-              <BouncyButton
-                key={animal.id}
-                style={[styles.card, { width: cardWidth }]}
-                onPress={() => handlePress(animal)}
-                disabled={!isMet}
-                accessible
-                accessibilityRole={isMet ? 'button' : 'image'}
-                accessibilityLabel={
-                  isMet
-                    ? sourceTitle
-                      ? t(currentLanguage, 'a11yAlbumAnimalMetVia', {
-                          animal: name,
-                          game: sourceTitle,
-                        })
-                      : t(currentLanguage, 'a11yAlbumAnimal', { animal: name })
-                    : t(currentLanguage, 'a11yAlbumLocked')
-                }
-              >
-                <View
-                  style={[styles.box, isMet ? styles.boxMet : styles.boxLocked]}
+              return (
+                <BouncyButton
+                  key={animal.id}
+                  style={{ width: cardWidth }}
+                  onPress={() => handlePress(animal)}
+                  disabled={!isMet}
+                  accessible
+                  accessibilityRole={isMet ? 'button' : 'image'}
+                  accessibilityLabel={
+                    isMet
+                      ? sourceTitle
+                        ? t(currentLanguage, 'a11yAlbumAnimalMetVia', {
+                            animal: name,
+                            game: sourceTitle,
+                          })
+                        : t(currentLanguage, 'a11yAlbumAnimal', {
+                            animal: name,
+                          })
+                      : t(currentLanguage, 'a11yAlbumLocked')
+                  }
                 >
-                  {isMet ? (
-                    <LottieView
-                      autoPlay={false}
-                      loop={false}
-                      autoSize={false}
-                      ref={el => (animRefs.current[animal.id] = el)}
-                      resizeMode="contain"
-                      source={animal.animation_path}
-                      style={[styles.animation, iconScaleStyle(animal)]}
-                    />
-                  ) : (
-                    <Text style={styles.lockedMark}>?</Text>
-                  )}
-                  {isMet && sourceMode && (
-                    <View style={styles.sourceBadge}>
-                      <MaterialIcons
-                        name={sourceMode.glyph}
-                        size={12}
-                        color="white"
+                  {/* Met and unmet cards share one geometry, so every row
+                      lines up regardless of which animals are filled in. */}
+                  <View
+                    style={[
+                      styles.box,
+                      { height: boxSize },
+                      isMet ? styles.boxMet : styles.boxLocked,
+                    ]}
+                  >
+                    {isMet ? (
+                      <LottieView
+                        autoPlay={false}
+                        loop={false}
+                        autoSize={false}
+                        ref={el => (animRefs.current[animal.id] = el)}
+                        resizeMode="contain"
+                        source={animal.animation_path}
+                        style={[
+                          { width: boxSize * 0.82, height: boxSize * 0.82 },
+                          iconScaleStyle(animal),
+                        ]}
                       />
-                    </View>
-                  )}
-                </View>
+                    ) : (
+                      <Text
+                        style={[
+                          styles.lockedMark,
+                          { fontSize: boxSize * 0.35 },
+                        ]}
+                      >
+                        ?
+                      </Text>
+                    )}
+                    {isMet && sourceMode && (
+                      <View style={styles.sourceBadge}>
+                        <MaterialIcons
+                          name={sourceMode.glyph}
+                          size={14}
+                          color="white"
+                        />
+                      </View>
+                    )}
+                  </View>
 
-                <Text
-                  style={[
-                    styles.label,
-                    isMet ? styles.labelMet : styles.labelLocked,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {isMet ? name : t(currentLanguage, 'notMetYet')}
-                </Text>
-              </BouncyButton>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.label,
+                      isMet ? styles.labelMet : styles.labelLocked,
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    {isMet ? name : t(currentLanguage, 'notMetYet')}
+                  </Text>
+                </BouncyButton>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
-
-      <BackToMenuButton
-        currentLanguage={currentLanguage}
-        onPress={handleBackToMenu}
-      />
-    </ImageBackground>
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  headerCount: {
-    color: '#FFD700',
-    fontSize: 18,
-    fontWeight: 'bold',
-    flexShrink: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 2 },
-  },
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 10,
-    paddingHorizontal: GRID_PADDING_H,
+    paddingBottom: 8,
   },
   hint: {
-    color: 'white',
-    fontSize: 20,
-    // Bangers clips on Android without both of these - see
-    // first-letter.game.component.jsx for the full explanation.
-    lineHeight: 26,
-    includeFontPadding: false,
+    ...titleText(22, PALETTE.ink),
     textAlign: 'center',
-    marginTop: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 2 },
+    marginBottom: 12,
   },
-  starsShelfTitle: {
-    color: '#FFD700',
-    fontSize: 20,
-    lineHeight: 26,
-    includeFontPadding: false,
-    letterSpacing: 1,
-    marginTop: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 4,
-    textShadowOffset: { width: 0, height: 2 },
+  sectionTitle: {
+    ...titleText(22, PALETTE.red),
   },
   starsShelf: {
-    gap: 12,
-    paddingVertical: 10,
+    gap: 16,
+    paddingTop: 8,
+    paddingBottom: 18,
   },
   starsShelfItem: {
-    width: 72,
-    height: 72,
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
+    borderRadius: RADIUS.sm,
+    backgroundColor: PALETTE.white,
     borderWidth: 3,
-    borderColor: '#FFD700',
+    borderColor: PALETTE.gold,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  starsShelfIcon: {
-    width: 40,
-    height: 40,
-  },
   starsShelfCount: {
     position: 'absolute',
-    bottom: -8,
+    bottom: -10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
     borderWidth: 2,
-    borderColor: 'white',
-    paddingHorizontal: 7,
+    borderColor: PALETTE.white,
+    paddingHorizontal: 8,
     paddingVertical: 2,
   },
   starsShelfCountText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.ink,
+    fontSize: 13,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-evenly',
   },
-  card: {
-    height: CARD_HEIGHT,
-    marginTop: CARD_MARGIN_TOP,
-    alignItems: 'center',
-  },
-  // Met and unmet cards share one geometry. They used to differ - the locked
-  // box was pinned with top: 0 while the met box had no inset and fell back
-  // to its static position - which stacked the two states at different
-  // heights and made every row look ragged.
   box: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: BOX_HEIGHT,
-    borderRadius: 18,
-    borderWidth: 3,
+    width: '100%',
+    borderRadius: RADIUS.md,
+    borderWidth: 4,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
   boxMet: {
-    backgroundColor: '#ffffff',
-    borderColor: '#FFD700',
+    backgroundColor: PALETTE.white,
+    borderColor: CATEGORY_COLORS.listen.ring,
   },
   boxLocked: {
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-    borderColor: 'rgba(255, 215, 0, 0.5)',
+    backgroundColor: PALETTE.creamDeep,
+    borderColor: 'rgba(10, 61, 98, 0.15)',
+    borderStyle: 'dashed',
   },
-  animation: {
-    width: BOX_HEIGHT - 14,
-    height: BOX_HEIGHT - 14,
-  },
-  // "box" is already position:'relative' by default (every RN View is), so
-  // this positions against it without any extra wiring.
   sourceBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#0A3D62',
+    bottom: 6,
+    right: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: PALETTE.ink,
     borderWidth: 1.5,
     borderColor: 'white',
     alignItems: 'center',
     justifyContent: 'center',
   },
   lockedMark: {
-    fontSize: 34,
     fontWeight: 'bold',
-    color: 'rgba(10, 61, 98, 0.45)',
+    color: 'rgba(10, 61, 98, 0.35)',
   },
   label: {
-    position: 'absolute',
-    bottom: 2,
-    left: 0,
-    right: 0,
+    marginTop: 6,
     textAlign: 'center',
   },
   labelMet: {
-    fontFamily: 'Bangers_400Regular',
-    fontSize: 18,
-    letterSpacing: 1,
-    color: '#0A3D62',
-    textShadowColor: 'rgba(255, 255, 255, 0.85)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 1 },
+    ...titleText(18, PALETTE.ink),
   },
   labelLocked: {
+    fontFamily: FONTS.body,
     fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+    color: PALETTE.inkSoft,
   },
 });

@@ -197,6 +197,10 @@ const MAX_STROKES_PER_PAGE = 300;
  * needs. */
 const MIN_POINT_DISTANCE = 3;
 
+/** The same thinning for strokes stored in unit coordinates (see
+ * `addColorStroke`) - about 3px on a phone-sized drawing frame. */
+const MIN_UNIT_POINT_DISTANCE = 0.008;
+
 const GameProgressContext = createContext(null);
 
 const validIds = new Set(animalList.map(a => a.id));
@@ -251,7 +255,10 @@ const whoseSoundIsUsable = whoseSound => {
 const countingIsUsable = counting => {
   if (!counting) return false;
   if (counting.targetId && !validIds.has(counting.targetId)) return false;
-  if (counting.targetCount != null && typeof counting.targetCount !== 'number') {
+  if (
+    counting.targetCount != null &&
+    typeof counting.targetCount !== 'number'
+  ) {
     return false;
   }
   return (counting.optionCounts || []).every(n => typeof n === 'number');
@@ -735,17 +742,21 @@ export function GameProgressProvider({ children }) {
    * normally.
    * @param {string} animalId
    * @param {string} color - Hex color of this stroke.
-   * @param {{x: number, y: number}[]} points - Canvas-local coordinates.
-   * @param {number} width - Brush width this stroke was drawn with.
+   * @param {{x: number, y: number}[]} points - Canvas-local coordinates,
+   *   or, when `unit` is set, fractions of the drawing frame.
+   * @param {number} width - Brush width this stroke was drawn with, in the
+   *   same units as `points`.
+   * @param {boolean} [unit] - Points and width are fractions of the square
+   *   the reference animal is drawn in rather than pixels, so the stroke
+   *   stays on the animal when the canvas changes size (rotation, another
+   *   device). Older saved strokes have no flag and stay in pixels.
    */
-  const addColorStroke = useCallback((animalId, color, points, width) => {
+  const addColorStroke = useCallback((animalId, color, points, width, unit) => {
     if (!validIds.has(animalId) || points.length === 0) return;
+    const minDistance = unit ? MIN_UNIT_POINT_DISTANCE : MIN_POINT_DISTANCE;
     const thinned = points.reduce((acc, p) => {
       const last = acc[acc.length - 1];
-      if (
-        last &&
-        Math.hypot(p.x - last.x, p.y - last.y) < MIN_POINT_DISTANCE
-      ) {
+      if (last && Math.hypot(p.x - last.x, p.y - last.y) < minDistance) {
         return acc;
       }
       acc.push(p);
@@ -755,7 +766,9 @@ export function GameProgressProvider({ children }) {
       const page = prev.pages[animalId] || { strokes: [] };
       const nextStrokes = [
         ...page.strokes,
-        { color, points: thinned, width },
+        unit
+          ? { color, points: thinned, width, unit: true }
+          : { color, points: thinned, width },
       ].slice(-MAX_STROKES_PER_PAGE);
       return {
         pages: { ...prev.pages, [animalId]: { strokes: nextStrokes } },
@@ -787,15 +800,25 @@ export function GameProgressProvider({ children }) {
    * @param {string} animalId
    * @param {{x: number, y: number}[]} points - The eraser gesture's path.
    * @param {number} threshold - How close (px) counts as "touched".
+   * @param {{x: number, y: number, size: number}} [frame] - Where the
+   *   drawing frame sits on screen, to place unit-coordinate strokes in
+   *   the same pixel space as the eraser before comparing.
    */
-  const eraseStrokesNear = useCallback((animalId, points, threshold) => {
+  const eraseStrokesNear = useCallback((animalId, points, threshold, frame) => {
     setColoring(prev => {
       const page = prev.pages[animalId];
       if (!page || page.strokes.length === 0) return prev;
+      const toScreen = (s, sp) =>
+        s.unit && frame
+          ? { x: frame.x + sp.x * frame.size, y: frame.y + sp.y * frame.size }
+          : sp;
       const touched = s =>
-        s.points.some(sp =>
-          points.some(ep => Math.hypot(sp.x - ep.x, sp.y - ep.y) < threshold)
-        );
+        s.points.some(raw => {
+          const sp = toScreen(s, raw);
+          return points.some(
+            ep => Math.hypot(sp.x - ep.x, sp.y - ep.y) < threshold
+          );
+        });
       const nextStrokes = page.strokes.filter(s => !touched(s));
       if (nextStrokes.length === page.strokes.length) return prev;
       return {

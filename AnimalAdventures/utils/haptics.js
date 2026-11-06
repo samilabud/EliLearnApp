@@ -31,14 +31,15 @@ export const selectFeedback = () =>
 /** Celebratory buzz for a correct answer or a matched pair. */
 export const successFeedback = () =>
   safely(() =>
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
   );
 
-/** Distinct buzz for a wrong answer - different enough to tell apart. */
-export const errorFeedback = () =>
-  safely(() =>
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error),
-  );
+/**
+ * Soft nudge for a wrong answer. Deliberately not the platform's "error"
+ * buzz: a mistake is a normal part of learning here, and the card's
+ * puzzled head-tilt already says "not that one" without a harsh signal.
+ */
+export const errorFeedback = () => safely(() => Haptics.selectionAsync());
 
 /** Strong buzz reserved for finishing a level or the whole game. */
 export const celebrationFeedback = () =>

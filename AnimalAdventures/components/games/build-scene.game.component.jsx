@@ -10,34 +10,30 @@ import {
   PanResponder,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { t } from '../../constants';
+import { CATEGORY_COLORS, PALETTE, RADIUS } from '../../constants/theme';
+import { useResponsive } from '../../utils/use-responsive';
 import { animalList, iconScaleStyle, sceneScale } from '../animals/animal.list';
 import { sceneryList } from '../scenery/scenery.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
-import { playClip, releasePlayer } from '../../utils/sound';
+import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import { tapFeedback, successFeedback } from '../../utils/haptics';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
-import {
-  BackToMenuButton,
-  BACK_TO_MENU_CLEARANCE,
-} from '../utility/back-to-menu-button.component';
-import { ConfirmResetButton } from '../utility/confirm-reset-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+import { GameScreen } from '../utility/game-screen.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 
 const TRAY_ITEM_SIZE = 64;
 const PLACED_ITEM_SIZE = 80;
 
-const placedSizeFor = item => PLACED_ITEM_SIZE * (sceneScale[item.id] ?? 1);
+// Both sizes grow with the device scale, so animals are not specks on an
+// iPad scene.
+const placedSizeFor = (item, scale = 1) =>
+  PLACED_ITEM_SIZE * scale * (sceneScale[item.id] ?? 1);
 // How far a touch has to travel before a placed animal's release counts as
 // a drag rather than a tap.
 const TAP_SLOP = 6;
@@ -221,7 +217,8 @@ export default function BuildSceneGame({
   onBackToMenu,
   onNextGame,
 }) {
-  const insets = useSafeAreaInsets();
+  const { scale } = useResponsive();
+  const traySize = Math.round(TRAY_ITEM_SIZE * scale);
   // Spoken once when the mode opens; tapping the instruction replays it.
   const { replay: replayInstruction } = useInstructionPrompt(
     'buildScene',
@@ -277,7 +274,7 @@ export default function BuildSceneGame({
       playClip(soundPlayer, animal.sound);
       if (voiceTimer.current) clearTimeout(voiceTimer.current);
       voiceTimer.current = setTimeout(() => {
-        playClip(
+        playVoice(
           voicePlayer,
           currentLanguage === 'en' ? animal.voice : animal.spanish_voice
         );
@@ -317,6 +314,12 @@ export default function BuildSceneGame({
 
   const beginDrag = useCallback(
     (key, item, size, pageX, pageY) => {
+      // Re-measured on every drag rather than trusted from the last layout:
+      // a rotation or header change can move the scene on screen without
+      // resizing it, which would make drops land offset from the finger.
+      sceneRef.current?.measureInWindow((x, y) => {
+        scenePageRef.current = { x, y };
+      });
       ghostPan.setValue({ x: pageX - size / 2, y: pageY - size / 2 });
       setDrag({ key, item, size });
     },
@@ -411,219 +414,180 @@ export default function BuildSceneGame({
   }, []);
 
   return (
-    <View style={styles.background}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.title} numberOfLines={1}>
-          {t(currentLanguage, 'modeBuildSceneTitle')}
-        </Text>
-        <View style={styles.topActions}>
-          <ConfirmResetButton
-            currentLanguage={currentLanguage}
-            onConfirm={handleReset}
-            labelKey="a11yClearScene"
-            confirmLabelKey="a11yClearSceneConfirm"
-          />
-          <NextGameButton
-            currentLanguage={currentLanguage}
-            onPress={handleNextGame}
-          />
-          <LanguageToggleButton
-            currentLanguage={currentLanguage}
-            onToggle={setCurrentLanguage}
-          />
-        </View>
-      </View>
-
-      <InstructionText
-        text={t(currentLanguage, 'buildSceneEmptyHint')}
-        currentLanguage={currentLanguage}
-        onReplay={replayInstruction}
-        textStyle={styles.instructionText}
-      />
-
-      <View
-        ref={sceneRef}
-        onLayout={handleSceneLayout}
-        style={styles.scene}
-        // Only one opaque accessible element while empty (announcing the
-        // drop zone + hint) - once animals are placed, each one needs its
-        // own independent accessibility label, which a single `accessible`
-        // container here would otherwise swallow.
-        accessible={scene.placed.length === 0}
-        accessibilityLabel={t(currentLanguage, 'a11ySceneDropZone')}
-      >
-        <View style={styles.sky} />
-        <View style={styles.ground} />
-
-        {scene.placed.map(p => {
-          const item =
-            p.kind === 'scenery' ? sceneryById[p.itemId] : animalsById[p.itemId];
-          if (!item) return null;
-          return (
-            <DraggableItem
-              key={p.instanceId}
-              item={item}
-              currentLanguage={currentLanguage}
-              size={placedSizeFor(item)}
-              isPlaced
-              left={p.x * sceneSize.width - placedSizeFor(item) / 2}
-              top={p.y * sceneSize.height - placedSizeFor(item) / 2}
-              hidden={drag?.key === p.instanceId}
-              onTap={() => handlePlacedTap(item)}
-              onDragStart={(pageX, pageY) =>
-                beginDrag(p.instanceId, item, placedSizeFor(item), pageX, pageY)
-              }
-              onDragMove={moveDrag}
-              onDragEnd={(pageX, pageY, moved) =>
-                handlePlacedDragEnd(p.instanceId, pageX, pageY, moved)
-              }
-            />
-          );
-        })}
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={!drag}
-        style={[
-          styles.tray,
-          // Pushes the whole tray bar above the floating BackToMenuButton's
-          // territory - it floats at a fixed position near the screen
-          // bottom, which overlaps this always-visible tray on every other
-          // screen's scrollable content it was designed for.
-          { marginBottom: insets.bottom + BACK_TO_MENU_CLEARANCE },
-        ]}
-        contentContainerStyle={styles.trayContent}
-      >
-        {animalList.map(animal => (
-          <View key={animal.id} style={styles.trayItemWrapper}>
-            <DraggableItem
-              item={animal}
-              currentLanguage={currentLanguage}
-              size={TRAY_ITEM_SIZE}
-              isPlaced={false}
-              hidden={drag?.key === `tray-animal-${animal.id}`}
-              onDragStart={(pageX, pageY) =>
-                beginDrag(
-                  `tray-animal-${animal.id}`,
-                  animal,
-                  placedSizeFor(animal),
-                  pageX,
-                  pageY
-                )
-              }
-              onDragMove={moveDrag}
-              onDragEnd={(pageX, pageY, moved) =>
-                handleTrayDragEnd(animal, 'animal', pageX, pageY, moved)
-              }
-            />
-          </View>
-        ))}
-
-        {/* A thin divider rather than a second tray row - scenery is a
-            smaller, secondary set, and a second horizontally-scrolling bar
-            would cost vertical space the scene area needs more. */}
-        <View style={styles.trayDivider} />
-
-        {sceneryList.map(scenery => (
-          <View key={scenery.id} style={styles.trayItemWrapper}>
-            <DraggableItem
-              item={scenery}
-              currentLanguage={currentLanguage}
-              size={TRAY_ITEM_SIZE}
-              isPlaced={false}
-              hidden={drag?.key === `tray-scenery-${scenery.id}`}
-              onDragStart={(pageX, pageY) =>
-                beginDrag(
-                  `tray-scenery-${scenery.id}`,
-                  scenery,
-                  placedSizeFor(scenery),
-                  pageX,
-                  pageY
-                )
-              }
-              onDragMove={moveDrag}
-              onDragEnd={(pageX, pageY, moved) =>
-                handleTrayDragEnd(scenery, 'scenery', pageX, pageY, moved)
-              }
-            />
-          </View>
-        ))}
-      </ScrollView>
-
-      <BackToMenuButton
-        currentLanguage={currentLanguage}
-        onPress={handleBackToMenu}
-      />
-
-      {/* The drag ghost - a direct child of the root view, not of the scene
-          or the tray, so neither's clipping touches it. See DraggableItem's
-          comment for why this exists. */}
-      {drag && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.ghost,
-            {
-              width: drag.size,
-              height: drag.size,
-              transform: ghostPan.getTranslateTransform(),
-            },
-          ]}
+    <GameScreen
+      currentLanguage={currentLanguage}
+      setCurrentLanguage={setCurrentLanguage}
+      onHome={handleBackToMenu}
+      onNextGame={handleNextGame}
+      onReset={handleReset}
+      resetLabelKey="a11yClearScene"
+      resetConfirmLabelKey="a11yClearSceneConfirm"
+      instruction={t(currentLanguage, 'buildSceneEmptyHint')}
+      onReplayInstruction={replayInstruction}
+      overlay={
+        <>
+          {/* The drag ghost - a direct child of the root view, not of the scene
+              or the tray, so neither's clipping touches it. See DraggableItem's
+              comment for why this exists. */}
+          {drag && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.ghost,
+                {
+                  width: drag.size,
+                  height: drag.size,
+                  transform: ghostPan.getTranslateTransform(),
+                },
+              ]}
+            >
+              <LottieView
+                autoPlay={false}
+                loop={false}
+                autoSize={false}
+                resizeMode="contain"
+                source={drag.item.animation_path}
+                style={[
+                  { width: drag.size, height: drag.size },
+                  iconScaleStyle(drag.item),
+                ]}
+              />
+            </Animated.View>
+          )}
+        </>
+      }
+    >
+      <View style={styles.layout}>
+        <View
+          ref={sceneRef}
+          onLayout={handleSceneLayout}
+          style={styles.scene}
+          // Only one opaque accessible element while empty (announcing the
+          // drop zone + hint) - once animals are placed, each one needs its
+          // own independent accessibility label, which a single `accessible`
+          // container here would otherwise swallow.
+          accessible={scene.placed.length === 0}
+          accessibilityLabel={t(currentLanguage, 'a11ySceneDropZone')}
         >
-          <LottieView
-            autoPlay={false}
-            loop={false}
-            autoSize={false}
-            resizeMode="contain"
-            source={drag.item.animation_path}
-            style={[
-              { width: drag.size, height: drag.size },
-              iconScaleStyle(drag.item),
-            ]}
-          />
-        </Animated.View>
-      )}
-    </View>
+          <View style={styles.sky} />
+          <View style={styles.ground} />
+
+          {scene.placed.map(p => {
+            const item =
+              p.kind === 'scenery'
+                ? sceneryById[p.itemId]
+                : animalsById[p.itemId];
+            if (!item) return null;
+            return (
+              <DraggableItem
+                key={p.instanceId}
+                item={item}
+                currentLanguage={currentLanguage}
+                size={placedSizeFor(item, scale)}
+                isPlaced
+                left={p.x * sceneSize.width - placedSizeFor(item, scale) / 2}
+                top={p.y * sceneSize.height - placedSizeFor(item, scale) / 2}
+                hidden={drag?.key === p.instanceId}
+                onTap={() => handlePlacedTap(item)}
+                onDragStart={(pageX, pageY) =>
+                  beginDrag(
+                    p.instanceId,
+                    item,
+                    placedSizeFor(item, scale),
+                    pageX,
+                    pageY
+                  )
+                }
+                onDragMove={moveDrag}
+                onDragEnd={(pageX, pageY, moved) =>
+                  handlePlacedDragEnd(p.instanceId, pageX, pageY, moved)
+                }
+              />
+            );
+          })}
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          scrollEnabled={!drag}
+          style={[styles.tray, { maxHeight: traySize + 24 }]}
+          contentContainerStyle={styles.trayContent}
+        >
+          {animalList.map(animal => (
+            <View key={animal.id} style={styles.trayItemWrapper}>
+              <DraggableItem
+                item={animal}
+                currentLanguage={currentLanguage}
+                size={traySize}
+                isPlaced={false}
+                hidden={drag?.key === `tray-animal-${animal.id}`}
+                onDragStart={(pageX, pageY) =>
+                  beginDrag(
+                    `tray-animal-${animal.id}`,
+                    animal,
+                    placedSizeFor(animal, scale),
+                    pageX,
+                    pageY
+                  )
+                }
+                onDragMove={moveDrag}
+                onDragEnd={(pageX, pageY, moved) =>
+                  handleTrayDragEnd(animal, 'animal', pageX, pageY, moved)
+                }
+              />
+            </View>
+          ))}
+
+          {/* A thin divider rather than a second tray row - scenery is a
+              smaller, secondary set, and a second horizontally-scrolling bar
+              would cost vertical space the scene area needs more. */}
+          <View style={styles.trayDivider} />
+
+          {sceneryList.map(scenery => (
+            <View
+              key={scenery.id}
+              style={[styles.trayItemWrapper, styles.scenerySlot]}
+            >
+              <DraggableItem
+                item={scenery}
+                currentLanguage={currentLanguage}
+                size={traySize}
+                isPlaced={false}
+                hidden={drag?.key === `tray-scenery-${scenery.id}`}
+                onDragStart={(pageX, pageY) =>
+                  beginDrag(
+                    `tray-scenery-${scenery.id}`,
+                    scenery,
+                    placedSizeFor(scenery, scale),
+                    pageX,
+                    pageY
+                  )
+                }
+                onDragMove={moveDrag}
+                onDragEnd={(pageX, pageY, moved) =>
+                  handleTrayDragEnd(scenery, 'scenery', pageX, pageY, moved)
+                }
+              />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    </GameScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
+  layout: {
     flex: 1,
-    backgroundColor: '#BD0000',
-  },
-  topBar: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: {
-    flex: 1,
-    flexShrink: 1,
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginRight: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.4)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 3 },
-  },
-  topActions: {
-    flexDirection: 'row',
-    gap: 16,
+    gap: 12,
   },
   scene: {
     flex: 1,
-    marginHorizontal: 12,
-    borderRadius: 20,
+    borderRadius: RADIUS.md,
     overflow: 'hidden',
-    borderWidth: 3,
-    borderColor: '#FFD700',
+    borderWidth: 4,
+    borderColor: CATEGORY_COLORS.create.ring,
   },
   sky: {
     position: 'absolute',
@@ -641,41 +605,39 @@ const styles = StyleSheet.create({
     height: '35%',
     backgroundColor: '#8FCB6B',
   },
-  // The instruction stays visible (and tappable to hear again) for the whole
-  // session, not just while the scene is empty.
-  instructionText: {
-    fontSize: 18,
-    lineHeight: 26,
-  },
   tray: {
-    maxHeight: TRAY_ITEM_SIZE + 24,
-    marginTop: 10,
+    flexGrow: 0,
   },
   trayContent: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   trayItemWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFD700',
+    backgroundColor: PALETTE.white,
+    borderRadius: RADIUS.sm,
+    borderWidth: 3,
+    borderColor: CATEGORY_COLORS.create.fill,
     padding: 4,
   },
+  // Scenery art includes a white cloud, which vanishes on a white tile -
+  // the same sky blue as the scene keeps every piece visible.
+  scenerySlot: {
+    backgroundColor: '#CFE8F8',
+  },
   trayDivider: {
-    width: 2,
+    width: 3,
     alignSelf: 'stretch',
     marginVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 1,
+    backgroundColor: CATEGORY_COLORS.create.ring,
+    borderRadius: 2,
   },
   ghost: {
     position: 'absolute',
     top: 0,
     left: 0,
-    // Above everything, including the floating menu button, so a drag in
-    // progress is never visually interrupted by it.
+    // Above everything, so a drag in progress is never visually
+    // interrupted.
     zIndex: 100,
     elevation: 20,
   },

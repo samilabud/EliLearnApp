@@ -1,29 +1,18 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ImageBackground, Animated } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AnimalScreen from '../animals/animal.screen.component.jsx';
-import { AmbientBackground } from '../utility/ambient-background.component';
 import { tapFeedback } from '../../utils/haptics';
 import { useBackToMenu } from '../../utils/navigation';
-import { LanguageToggleButton } from '../utility/language-toggle-button.component';
-import { NextGameButton } from '../utility/next-game-button.component';
-import { BackToMenuButton } from '../utility/back-to-menu-button.component';
-import { InstructionText } from '../utility/instruction-text.component';
+import { GameScreen } from '../utility/game-screen.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 import { t } from '../../constants';
-
-const backgroundImage = require('../../assets/backgrounds/pawel-czerwinski-4gWNAWeOvP0-unsplash.jpg');
 
 function HomeScreen({
   currentLanguage,
   setCurrentLanguage,
   onBackToMenu,
   onNextGame,
-  ambientEnabled,
 }) {
-  const [fadeAnim] = React.useState(() => new Animated.Value(0));
-  const insets = useSafeAreaInsets();
   // Spoken once when the mode opens; tapping the instruction replays it.
   const { replay: replayInstruction } = useInstructionPrompt(
     'learn',
@@ -37,74 +26,21 @@ function HomeScreen({
 
   useBackToMenu(handleBackToMenu);
 
-  // The launch splash now lives in App, so this screen just fades itself in.
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
   return (
-    <ImageBackground
-      source={backgroundImage}
-      resizeMode="cover"
-      style={styles.backgroundImage}
-    >
-      {ambientEnabled && <AmbientBackground />}
-
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <NextGameButton
-            currentLanguage={currentLanguage}
-            onPress={onNextGame}
-          />
-          <LanguageToggleButton
-            currentLanguage={currentLanguage}
-            onToggle={setCurrentLanguage}
-          />
-        </View>
-
-        <InstructionText
-          text={t(currentLanguage, 'modeLearnDescription')}
-          currentLanguage={currentLanguage}
-          onReplay={replayInstruction}
-          textStyle={styles.instructionText}
-        />
-
-        <AnimalScreen currentLanguage={currentLanguage} />
-      </Animated.View>
-
-      <BackToMenuButton
+    <>
+      <GameScreen
         currentLanguage={currentLanguage}
-        onPress={handleBackToMenu}
-      />
-
-      <StatusBar style="auto" />
-    </ImageBackground>
+        setCurrentLanguage={setCurrentLanguage}
+        onHome={handleBackToMenu}
+        onNextGame={onNextGame}
+        instruction={t(currentLanguage, 'modeLearnDescription')}
+        onReplayInstruction={replayInstruction}
+      >
+        <AnimalScreen currentLanguage={currentLanguage} />
+      </GameScreen>
+      <StatusBar style="light" />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#BD0000',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 10,
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  instructionText: {
-    fontSize: 20,
-    lineHeight: 28,
-  },
-});
 
 export default HomeScreen;

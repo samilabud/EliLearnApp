@@ -6,7 +6,7 @@ I can't guarantee the exact current pixel dimensions App Store Connect requires 
 
 - [ ] **iPhone, 6.9" class** — simulator: iPhone 17 Pro Max (or iPhone 16 Pro Max)
 
-**iPad screenshots are no longer needed.** `supportsTablet` was switched to `false` on 2026-10-24 after discovering that at least 2 of the 6 quiz-style game screens (`whose-sound`, `first-letter`, and likely `find-animal`, `guess-animal`, `memory-animal`, `trace-letter` too, since they share the same layout pattern) leave roughly 60-70% of an iPad screen empty below the content — confirmed by actually running the build on an iPad simulator, not just inferred from code. Menu, Album, and Build a Scene all looked correct on iPad, so this is a fixable layout bug in those specific screens, not a fundamental incompatibility — iPad support should come back in a follow-up version once that's fixed, at which point this checklist's iPad row should be restored.
+- [ ] **iPad, 13" class** — simulator: iPad Pro 13-inch (M4). `supportsTablet` is back on in 5.7.0 (the quiz-screen layout bug that forced it off on 2026-10-24 is fixed), so Apple requires iPad screenshots again. Capture from a **Release** build, and check the layout on the simulator first (see `ios-readiness.md` section c).
 
 ## What to capture (suggest 5-6 per device class, portrait)
 

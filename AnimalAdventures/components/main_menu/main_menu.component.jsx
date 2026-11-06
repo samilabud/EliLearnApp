@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -7,43 +7,58 @@ import {
   Animated,
   Easing,
   Image,
-  Pressable,
   ScrollView,
-  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useAudioPlayer } from 'expo-audio';
 import ConfettiCannon from 'react-native-confetti-cannon';
-import { useFonts, Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { AmbientBackground } from '../utility/ambient-background.component';
 import { animalList, iconScaleStyle } from '../animals/animal.list';
-import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { t } from '../../constants';
+import {
+  CARD_SHADOW,
+  CATEGORY_COLORS,
+  FONTS,
+  PALETTE,
+  RADIUS,
+  titleText,
+} from '../../constants/theme';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
-import { playClip, releasePlayer } from '../../utils/sound';
+import { playClip, releasePlayer, playVoice } from '../../utils/sound';
+import { gridColumns, useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
 import { LanguageToggleButton } from '../utility/language-toggle-button.component';
 
-const ICON_SIZE = { width: 90, height: 90 };
-const ICON_SIZE_LANDSCAPE = { width: 60, height: 60 };
-// Vertical space the always-visible Album pill (see topRightFloating/
-// albumButton below) reserves above the language toggle, so the two
-// top-right floating controls never overlap: the pill's own minHeight
-// (MIN_TOUCH_TARGET) plus a comfortable gap.
-const ALBUM_PILL_CLEARANCE = 58;
 // Matches the source PNG's own 100:85 aspect ratio, so it isn't stretched.
-const MASCOT_SIZE = { width: 110, height: 94 };
-const MASCOT_SIZE_LANDSCAPE = { width: 64, height: 54 };
+const MASCOT_ASPECT = 85 / 100;
+const MASCOT_WIDTH = 110;
+const TILE_GAP = 16;
+// Narrowest a menu tile gets before the grid drops a column - two across on
+// a phone, three to five on a landscape phone or tablet.
+const MIN_TILE_WIDTH = 150;
+const BOTTOM_BAR_HEIGHT = 72;
 
 // The app's own dog sublogo mark as a mascot above the title - unlike the
 // dog baked into the store icon artwork, it has no background and doesn't
 // carry English text that can't switch to Spanish.
 const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog-1.png');
+// The mascot's bark reuses the dog's own clip, already loudness-matched to
+// the rest of the app's audio - no sudden loud surprise.
+const MASCOT_BARK = animalList.find(a => a.id === 'dog-tail-wag')?.sound;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Menu groups, in the order they appear. */
+const CATEGORIES = [
+  { key: 'listen', titleKey: 'categoryListen', glyph: 'hearing' },
+  { key: 'letters', titleKey: 'categoryLetters', glyph: 'sort-by-alpha' },
+  { key: 'memory', titleKey: 'categoryMemory', glyph: 'visibility' },
+  { key: 'create', titleKey: 'categoryCreate', glyph: 'palette' },
+];
 
 // Every card now has its own small, hand-authored Lottie (a few KB each,
 // vector shapes only, no embedded images) - a consistent custom set instead
@@ -55,11 +70,15 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 //
 // The cards differ only by icon and copy, so they are described once here
 // and rendered in a loop. Keeps their accessibility wiring identical.
+// `category` places each card in one of the menu's labeled groups and gives
+// it that group's pastel (see CATEGORY_COLORS in constants/theme.js), which
+// its game screen repeats around the answer cards.
 // Exported so the album screen's stars shelf and "found via" badges can
 // reuse the same icon/title metadata instead of duplicating it.
 export const MODES = [
   {
     key: 'learn',
+    category: 'listen',
     icon: require('../../assets/animations/icons/learn_icon.json'),
     glyph: 'explore',
     titleKey: 'modeLearnTitle',
@@ -67,6 +86,7 @@ export const MODES = [
   },
   {
     key: 'guess',
+    category: 'listen',
     icon: require('../../assets/animations/icons/guess_icon.json'),
     glyph: 'quiz',
     titleKey: 'modeGuessTitle',
@@ -74,6 +94,7 @@ export const MODES = [
   },
   {
     key: 'letter',
+    category: 'letters',
     icon: require('../../assets/animations/icons/letter_icon.json'),
     glyph: 'sort-by-alpha',
     titleKey: 'modeLetterTitle',
@@ -81,6 +102,7 @@ export const MODES = [
   },
   {
     key: 'lastLetter',
+    category: 'letters',
     icon: require('../../assets/animations/icons/last_letter_icon.json'),
     glyph: 'sort-by-alpha',
     titleKey: 'modeLastLetterTitle',
@@ -88,6 +110,7 @@ export const MODES = [
   },
   {
     key: 'trace',
+    category: 'letters',
     icon: require('../../assets/animations/icons/trace_icon.json'),
     glyph: 'gesture',
     titleKey: 'modeTraceTitle',
@@ -95,6 +118,7 @@ export const MODES = [
   },
   {
     key: 'memory',
+    category: 'memory',
     icon: require('../../assets/animations/icons/memory_icon.json'),
     glyph: 'extension',
     titleKey: 'modeMemoryTitle',
@@ -102,6 +126,7 @@ export const MODES = [
   },
   {
     key: 'findAnimal',
+    category: 'memory',
     icon: require('../../assets/animations/icons/findAnimal_icon.json'),
     glyph: 'search',
     titleKey: 'modeFindAnimalTitle',
@@ -109,6 +134,7 @@ export const MODES = [
   },
   {
     key: 'whoseSound',
+    category: 'listen',
     icon: require('../../assets/animations/icons/whoseSound_icon.json'),
     glyph: 'hearing',
     titleKey: 'modeWhoseSoundTitle',
@@ -116,6 +142,7 @@ export const MODES = [
   },
   {
     key: 'buildScene',
+    category: 'create',
     icon: require('../../assets/animations/icons/build_scene_icon.json'),
     glyph: 'landscape',
     titleKey: 'modeBuildSceneTitle',
@@ -123,6 +150,7 @@ export const MODES = [
   },
   {
     key: 'coloring',
+    category: 'create',
     icon: require('../../assets/animations/icons/coloring_icon.json'),
     glyph: 'palette',
     titleKey: 'modeColoringTitle',
@@ -130,6 +158,7 @@ export const MODES = [
   },
   {
     key: 'counting',
+    category: 'letters',
     icon: require('../../assets/animations/icons/counting_icon.json'),
     glyph: 'format-list-numbered',
     titleKey: 'modeCountingTitle',
@@ -138,9 +167,8 @@ export const MODES = [
 ];
 
 // The album isn't a game to try once and move past like the cards above -
-// it's a standing collection a child comes back to, so it lives as its own
-// persistent icon near the top instead of competing for a spot (and a
-// scroll) in the mode grid. Kept out of MODES itself: nothing else in the
+// it's a standing collection a child comes back to, so it lives in the
+// always-visible bottom bar instead of competing for a spot in the grid. Kept out of MODES itself: nothing else in the
 // app treats 'album' as a playable mode or a "found via" source.
 const ALBUM_MODE = {
   key: 'album',
@@ -156,10 +184,11 @@ function MainMenu({
   onOpenParents,
   ambientEnabled,
 }) {
-  const [fadeAnim] = React.useState(() => new Animated.Value(0));
-  // Entrance scale for the title (bounces in) and the idle "breathe" loop
-  // that keeps it feeling alive once settled - same pulse pattern used for
-  // the prompt button in the games (see promptPulse in first-letter.game).
+  const insets = useSafeAreaInsets();
+  const { isLandscape, isTablet, scale, contentMaxWidth } = useResponsive();
+  // A phone on its side has ~400dp of height: the header, banner and tab bar
+  // would take all of it. Compact mode shrinks them so the game tiles show.
+  const compact = isLandscape && !isTablet;
   const { stars, hasSeenTodaysAnimal, markDailyAnimalCelebrated } =
     useGameProgress();
   const { childAgeBand } = useSettings();
@@ -172,10 +201,12 @@ function MainMenu({
 
   const dailySoundPlayer = useAudioPlayer(null);
   const dailyVoicePlayer = useAudioPlayer(null);
-  const [showDailyCelebration, setShowDailyCelebration] = React.useState(false);
+  const mascotPlayer = useAudioPlayer(null);
+  const [showDailyCelebration, setShowDailyCelebration] = useState(false);
   // Imperative play/reset rather than a static `autoPlay` prop, so the same
   // animation can be replayed on tap, not just once on the day's first view.
   const dailyLottieRef = useRef(null);
+  const voiceTimer = useRef(null);
 
   // Fires once per calendar day, the first time the menu is seen that day -
   // a little surprise rather than something a child has to go looking for.
@@ -199,8 +230,9 @@ function MainMenu({
     playClip(dailySoundPlayer, todaysAnimal.sound);
     // Staggered rather than simultaneous, so the sound and the spoken name
     // don't talk over each other - same pairing the album screen uses.
-    setTimeout(() => {
-      playClip(
+    if (voiceTimer.current) clearTimeout(voiceTimer.current);
+    voiceTimer.current = setTimeout(() => {
+      playVoice(
         dailyVoicePlayer,
         currentLanguage === 'en'
           ? todaysAnimal.voice
@@ -213,351 +245,415 @@ function MainMenu({
     return () => {
       releasePlayer(dailySoundPlayer);
       releasePlayer(dailyVoicePlayer);
+      releasePlayer(mascotPlayer);
+      if (voiceTimer.current) clearTimeout(voiceTimer.current);
     };
-  }, [dailySoundPlayer, dailyVoicePlayer]);
+  }, [dailySoundPlayer, dailyVoicePlayer, mascotPlayer]);
 
-  const [titleScale] = React.useState(() => new Animated.Value(0.6));
-  const [titleBreathe] = React.useState(() => new Animated.Value(0));
-  const [subtitleSlide] = React.useState(() => new Animated.Value(20));
-  const [fontsLoaded] = useFonts({ Bangers_400Regular });
-  // Stacked full-width cards give one card per screen on a landscape tablet,
-  // which Android 16 can force regardless of the manifest. Side by side
-  // instead, in a horizontally scrolling row (see modeContainerLandscape) -
-  // now that there are six modes rather than three, they no longer fit a
-  // landscape screen's width unscrolled.
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const isLandscape = windowWidth > windowHeight;
-  const insets = useSafeAreaInsets();
-
-  // Lets tapping the mascot/title jump straight to the mode cards, and lets
-  // scrolling there hide the language button so it stops floating over the
-  // cards. The cards' own y position (within the ScrollView's content, not
-  // the screen) is captured via onLayout rather than hardcoded, since it
-  // shifts with orientation, font scaling and screen size.
-  const scrollRef = useRef(null);
-  const modesY = useRef(0);
-  const handleJumpToModes = () => {
-    tapFeedback();
-    scrollRef.current?.scrollTo({
-      y: Math.max(0, modesY.current - 16),
-      animated: true,
-    });
-  };
-
-  const [languageVisible, setLanguageVisible] = React.useState(true);
-  const [languageOpacity] = React.useState(() => new Animated.Value(1));
-  useEffect(() => {
-    Animated.timing(languageOpacity, {
-      toValue: languageVisible ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [languageVisible, languageOpacity]);
-
-  // The top-left Parents shortcut is only meant to greet a parent right
-  // after launch, before a child has started scrolling/playing - so unlike
-  // the language/album controls (which stay up until the cards scroll under
-  // them), this one disappears the moment there's any scroll at all, not
-  // just once the cards arrive.
-  const [topParentsVisible, setTopParentsVisible] = React.useState(true);
-  const [topParentsOpacity] = React.useState(() => new Animated.Value(1));
-  useEffect(() => {
-    Animated.timing(topParentsOpacity, {
-      toValue: topParentsVisible ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [topParentsVisible, topParentsOpacity]);
-
-  const handleScroll = e => {
-    const y = e.nativeEvent.contentOffset.y;
-    setTopParentsVisible(y <= 4);
-    if (!modesY.current) return;
-    setLanguageVisible(y < modesY.current - 120);
-  };
-
-  // The launch splash now lives in App, so this screen just fades itself in,
-  // while the title bounces in and the subtitle slides up under it - a
-  // livelier arrival for a screen a preschooler sees every launch.
+  // The title bounces in once and then stays still - motion here is an
+  // arrival, not a constant loop competing with the game tiles for a
+  // child's attention.
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [titleScale] = useState(() => new Animated.Value(0.6));
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 400,
       useNativeDriver: true,
     }).start();
-
-    Animated.timing(subtitleSlide, {
-      toValue: 0,
-      duration: 350,
-      delay: 150,
-      useNativeDriver: true,
-    }).start();
-
     Animated.spring(titleScale, {
       toValue: 1,
       friction: 5,
       tension: 140,
       useNativeDriver: true,
-    }).start(() => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(titleBreathe, {
-            toValue: 1,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(titleBreathe, {
-            toValue: 0,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    });
-  }, [fadeAnim, titleScale, titleBreathe, subtitleSlide]);
+    }).start();
+  }, [fadeAnim, titleScale]);
+
+  // A small hidden delight: tapping the puppy makes it hop and wiggle with a
+  // bark. Gentle by design - a short, familiar sound at the app's normal
+  // loudness, never a jump scare.
+  const [dance] = useState(() => new Animated.Value(0));
+  const handleMascotPress = useCallback(() => {
+    tapFeedback();
+    if (MASCOT_BARK) playClip(mascotPlayer, MASCOT_BARK);
+    dance.setValue(0);
+    Animated.timing(dance, {
+      toValue: 1,
+      duration: 900,
+      easing: Easing.linear,
+      useNativeDriver: true,
+    }).start();
+  }, [dance, mascotPlayer]);
+  const danceY = dance.interpolate({
+    inputRange: [0, 0.15, 0.3, 0.45, 0.6, 1],
+    outputRange: [0, -18, 0, -12, 0, 0],
+  });
+  const danceRotate = dance.interpolate({
+    inputRange: [0, 0.2, 0.4, 0.6, 0.8, 1],
+    outputRange: ['0deg', '-10deg', '10deg', '-8deg', '6deg', '0deg'],
+  });
 
   const handleModeSelect = mode => {
     selectFeedback();
     onModeSelect(mode);
   };
 
-  const titleBreatheScale = titleBreathe.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.03],
-  });
+  const handleOpenParents = () => {
+    tapFeedback();
+    onOpenParents();
+  };
+
+  // Tile columns come from the content width actually available, so the
+  // same grid gives two big tiles on a phone and more on a wide screen.
+  const [contentWidth, setContentWidth] = useState(0);
+  const columns = gridColumns(
+    contentWidth,
+    // Tile width grows only a little with the device: bigger screens should
+    // show more tiles per row, not a few giant ones.
+    MIN_TILE_WIDTH * Math.min(scale, 1.25),
+    TILE_GAP,
+    2,
+    6
+  );
+  const tileWidth = Math.floor(
+    (contentWidth - TILE_GAP * (columns - 1)) / columns
+  );
+  const iconSize = Math.round(Math.min(tileWidth * 0.5, 100 * scale));
+
+  // Learn Animal Sounds & Names is the gentlest, most passive mode (hear a
+  // name, hear a sound) - right for a toddler just meeting these animals,
+  // but not worth a slot for an older child who has moved on. Hidden rather
+  // than removed: switching the age band back shows it again.
+  const visibleModes = MODES.filter(
+    mode => mode.key !== 'learn' || childAgeBand === 'under4'
+  );
+
+  const mascotWidth = Math.round(
+    MASCOT_WIDTH * scale * (compact ? 0.5 : isLandscape ? 0.7 : 1)
+  );
+  const todaysName =
+    currentLanguage === 'en' ? todaysAnimal.name : todaysAnimal.spanish_name;
+  const heroAnimalSize = Math.round((compact ? 56 : 96) * scale);
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
 
-      {/* Main Content */}
-      <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
+      <Animated.View style={[styles.fill, { opacity: fadeAnim }]}>
         <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={[
-            styles.content,
-            isLandscape && styles.contentLandscape,
-            {
-              paddingTop: insets.top + (isLandscape ? 54 : 64),
-              paddingBottom: insets.bottom + 24,
-            },
-          ]}
           showsVerticalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={32}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + BOTTOM_BAR_HEIGHT + 24,
+          }}
         >
-          <Pressable
-            onPress={handleJumpToModes}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yJumpToGames')}
+          {/* Red header band - the splash's brand color framing the menu. */}
+          <View
+            style={[
+              styles.band,
+              {
+                paddingTop: insets.top + (compact ? 4 : 12),
+                paddingLeft: insets.left + 20,
+                paddingRight: insets.right + 20,
+                paddingBottom: compact ? 40 : 64,
+              },
+            ]}
           >
-            <Animated.View
-              style={{
-                alignItems: 'center',
-                transform: [
-                  { scale: Animated.multiply(titleScale, titleBreatheScale) },
-                ],
-              }}
+            {ambientEnabled && <AmbientBackground />}
+            <View
+              style={[styles.bandTopRow, compact && styles.bandTopRowCompact]}
             >
-              <Image
-                source={DOG_MASCOT}
-                resizeMode="contain"
-                style={isLandscape ? MASCOT_SIZE_LANDSCAPE : MASCOT_SIZE}
+              <LanguageToggleButton
+                currentLanguage={currentLanguage}
+                onToggle={setCurrentLanguage}
               />
-              <Text
+            </View>
+            <View style={[styles.brand, isLandscape && styles.brandRow]}>
+              <BouncyButton
+                onPress={handleMascotPress}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel={t(currentLanguage, 'a11yMascot')}
+              >
+                <Animated.View
+                  style={{
+                    transform: [
+                      { scale: titleScale },
+                      { translateY: danceY },
+                      { rotate: danceRotate },
+                    ],
+                  }}
+                >
+                  <Image
+                    source={DOG_MASCOT}
+                    resizeMode="contain"
+                    style={{
+                      width: mascotWidth,
+                      height: mascotWidth * MASCOT_ASPECT,
+                    }}
+                  />
+                </Animated.View>
+              </BouncyButton>
+              <Animated.View
                 style={[
-                  styles.title,
-                  isLandscape && styles.titleLandscape,
-                  fontsLoaded && { fontFamily: 'Bangers_400Regular' },
+                  styles.brandText,
+                  isLandscape && styles.brandTextRow,
+                  { transform: [{ scale: titleScale }] },
                 ]}
               >
-                {t(currentLanguage, 'appTitle')}
-              </Text>
-            </Animated.View>
-          </Pressable>
-
-          <Animated.View style={{ transform: [{ translateY: subtitleSlide }] }}>
-            <Text
-              style={[styles.subtitle, isLandscape && styles.subtitleLandscape]}
-            >
-              {t(currentLanguage, 'chooseAdventure')}
-            </Text>
-          </Animated.View>
-
-          {/* Today's Animal - a small daily highlight, not another mode to
-              pick. A tap just hears it, same as a met card in the album. */}
-          <BouncyButton
-            style={styles.dailyCard}
-            onPress={handlePlayTodaysAnimal}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yTodaysAnimal', {
-              animal:
-                currentLanguage === 'en'
-                  ? todaysAnimal.name
-                  : todaysAnimal.spanish_name,
-            })}
-          >
-            <LottieView
-              ref={dailyLottieRef}
-              autoPlay={showDailyCelebration}
-              loop={false}
-              autoSize={false}
-              resizeMode="contain"
-              source={todaysAnimal.animation_path}
-              style={[styles.dailyAnimation, iconScaleStyle(todaysAnimal)]}
-            />
-            <View>
-              <Text style={styles.dailyLabel}>
-                {t(currentLanguage, 'todaysAnimalLabel')}
-              </Text>
-              <Text
-                style={[styles.dailyName, { fontFamily: 'Bangers_400Regular' }]}
-              >
-                {currentLanguage === 'en'
-                  ? todaysAnimal.name
-                  : todaysAnimal.spanish_name}
-              </Text>
-            </View>
-          </BouncyButton>
-
-          {/* Mode Selection Buttons */}
-          {(() => {
-            // Learn Animal Sounds & Names is the gentlest, most passive mode
-            // (hear a name, hear a sound) - right for a toddler just meeting
-            // these animals, but not worth a slot for an older child who has
-            // moved on to the active games below it. Hidden rather than
-            // removed: switching the age band back shows it again, nothing
-            // about it is lost.
-            const visibleModes = MODES.filter(
-              mode => mode.key !== 'learn' || childAgeBand === 'under4'
-            );
-            const modeCards = visibleModes.map(mode => {
-              const title = t(currentLanguage, mode.titleKey);
-              const description = t(currentLanguage, mode.descriptionKey);
-              // Absent for 'learn' - it has no level concept to earn a star
-              // for. See DEFAULT_STARS in game-progress.context.
-              const starCount = stars[mode.key]?.length || 0;
-
-              return (
-                <BouncyButton
-                  key={mode.key}
+                <Text
                   style={[
-                    styles.modeButton,
-                    isLandscape && styles.modeButtonLandscape,
+                    styles.title,
+                    {
+                      fontSize:
+                        42 * scale * (compact ? 0.65 : isLandscape ? 0.8 : 1),
+                      lineHeight:
+                        54 * scale * (compact ? 0.65 : isLandscape ? 0.8 : 1),
+                    },
                   ]}
-                  onPress={() => handleModeSelect(mode.key)}
-                  accessible={true}
-                  accessibilityRole="button"
-                  accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
-                    title,
-                    description,
-                  })}
+                  accessibilityRole="header"
                 >
-                  <View
-                    style={[
-                      styles.modeIconContainer,
-                      isLandscape && styles.modeIconContainerLandscape,
-                    ]}
-                  >
-                    <LottieView
-                      source={mode.icon}
-                      autoPlay
-                      loop
-                      resizeMode="contain"
-                      style={isLandscape ? ICON_SIZE_LANDSCAPE : ICON_SIZE}
-                      autoSize={false}
-                    />
-                    {starCount > 0 && (
-                      <View
-                        style={styles.starBadge}
-                        accessible={true}
-                        accessibilityLabel={t(
-                          currentLanguage,
-                          'a11yStarBadge',
-                          { count: starCount, title }
-                        )}
-                      >
-                        <MaterialIcons name="star" size={14} color="white" />
-                        <Text style={styles.starBadgeText}>{starCount}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.modeTitle,
-                      isLandscape && styles.modeTitleLandscape,
-                      fontsLoaded && { fontFamily: 'Bangers_400Regular' },
-                    ]}
-                  >
-                    {title}
-                  </Text>
-                  <Text style={styles.modeDescription}>{description}</Text>
-                </BouncyButton>
-              );
-            });
+                  {t(currentLanguage, 'appTitle')}
+                </Text>
+                <Text
+                  style={[
+                    styles.subtitle,
+                    { fontSize: (compact ? 16 : 20) * scale },
+                  ]}
+                >
+                  {t(currentLanguage, 'chooseAdventure')}
+                </Text>
+              </Animated.View>
+            </View>
+          </View>
 
-            const onLayout = e => {
-              modesY.current = e.nativeEvent.layout.y;
-            };
-
-            // Portrait stacks cards full-width in the page's own vertical
-            // scroll, which already reaches all of them. Landscape lays
-            // them out in a row instead - six cards side by side no longer
-            // fits any phone or tablet width, so that row needs its own
-            // horizontal scroll or the cards past the edge are simply
-            // unreachable (there's nothing to swipe).
-            return isLandscape ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.modeScrollLandscape}
-                contentContainerStyle={styles.modeContainerLandscape}
-                onLayout={onLayout}
-              >
-                {ambientEnabled && <AmbientBackground />}
-                {modeCards}
-              </ScrollView>
-            ) : (
-              <View style={styles.modeContainer} onLayout={onLayout}>
-                {ambientEnabled && <AmbientBackground />}
-                {modeCards}
-              </View>
-            );
-          })()}
-
-          {/* Deliberately small, plain and at the bottom: this is the one
-                control on the screen that is not for the child. */}
-          <BouncyButton
-            style={styles.parentsButton}
-            onPress={() => {
-              tapFeedback();
-              onOpenParents();
-            }}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={t(currentLanguage, 'a11yForParents')}
+          <View
+            style={[
+              styles.content,
+              {
+                maxWidth: contentMaxWidth,
+                paddingLeft: insets.left + 20,
+                paddingRight: insets.right + 20,
+              },
+            ]}
+            onLayout={e =>
+              setContentWidth(
+                e.nativeEvent.layout.width - (insets.left + insets.right + 40)
+              )
+            }
           >
-            <MaterialIcons
-              name="lock-outline"
-              size={16}
-              color="rgba(255,255,255,0.75)"
-            />
-            <Text style={styles.parentsText}>
-              {t(currentLanguage, 'forParents')}
-            </Text>
-          </BouncyButton>
+            {/* Today's Animal - a daily highlight that overlaps the band
+                like a hero banner. A tap hears it, same as the album. */}
+            <BouncyButton
+              style={[styles.heroCard, compact && styles.heroCardCompact]}
+              onPress={handlePlayTodaysAnimal}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yTodaysAnimal', {
+                animal: todaysName,
+              })}
+            >
+              <View style={styles.heroBackground} />
+              <View style={styles.heroText}>
+                <Text style={[styles.heroLabel, { fontSize: 15 * scale }]}>
+                  {t(currentLanguage, 'todaysAnimalLabel')}
+                </Text>
+                <Text
+                  style={[
+                    styles.heroName,
+                    {
+                      fontSize: 34 * scale,
+                      lineHeight: Math.round(42 * scale),
+                    },
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
+                  {todaysName}
+                </Text>
+                <View
+                  style={[
+                    styles.heroListen,
+                    compact && styles.heroListenCompact,
+                  ]}
+                >
+                  <MaterialIcons
+                    name="volume-up"
+                    size={22 * scale}
+                    color={PALETTE.ink}
+                  />
+                </View>
+              </View>
+              <LottieView
+                ref={dailyLottieRef}
+                autoPlay={showDailyCelebration}
+                loop={false}
+                autoSize={false}
+                resizeMode="contain"
+                source={todaysAnimal.animation_path}
+                style={[
+                  { width: heroAnimalSize, height: heroAnimalSize },
+                  iconScaleStyle(todaysAnimal),
+                ]}
+              />
+            </BouncyButton>
+
+            {contentWidth > 0 &&
+              CATEGORIES.map(category => {
+                const modes = visibleModes.filter(
+                  m => m.category === category.key
+                );
+                if (modes.length === 0) return null;
+                const colors = CATEGORY_COLORS[category.key];
+                return (
+                  <View key={category.key} style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      <View
+                        style={[
+                          styles.sectionIcon,
+                          { backgroundColor: colors.ring },
+                        ]}
+                      >
+                        <MaterialIcons
+                          name={category.glyph}
+                          size={20}
+                          color={PALETTE.white}
+                        />
+                      </View>
+                      <Text
+                        style={[styles.sectionTitle, { color: colors.ink }]}
+                        accessibilityRole="header"
+                      >
+                        {t(currentLanguage, category.titleKey)}
+                      </Text>
+                    </View>
+                    <View style={[styles.tiles, { gap: TILE_GAP }]}>
+                      {modes.map(mode => {
+                        const title = t(currentLanguage, mode.titleKey);
+                        const description = t(
+                          currentLanguage,
+                          mode.descriptionKey
+                        );
+                        // Absent for 'learn' - it has no level concept to
+                        // earn a star for. See DEFAULT_STARS.
+                        const starCount = stars[mode.key]?.length || 0;
+                        return (
+                          <BouncyButton
+                            key={mode.key}
+                            style={[
+                              styles.tile,
+                              { width: tileWidth, minHeight: tileWidth * 0.85 },
+                            ]}
+                            onPress={() => handleModeSelect(mode.key)}
+                            accessible={true}
+                            accessibilityRole="button"
+                            accessibilityLabel={t(
+                              currentLanguage,
+                              'a11yModeCard',
+                              { title, description }
+                            )}
+                          >
+                            {/* Fill on a sibling, not the animated view -
+                                see AnswerCard for the Android reason. */}
+                            <View
+                              style={[
+                                styles.tileBackground,
+                                {
+                                  backgroundColor: colors.fill,
+                                  borderColor: colors.ring,
+                                },
+                              ]}
+                            />
+                            <LottieView
+                              source={mode.icon}
+                              autoPlay
+                              loop
+                              resizeMode="contain"
+                              autoSize={false}
+                              style={{ width: iconSize, height: iconSize }}
+                            />
+                            <Text
+                              style={[
+                                styles.tileTitle,
+                                {
+                                  fontSize: 20 * scale,
+                                  lineHeight: Math.round(26 * scale),
+                                },
+                              ]}
+                            >
+                              {title}
+                            </Text>
+                            {starCount > 0 && (
+                              <View
+                                style={styles.starBadge}
+                                accessible={true}
+                                accessibilityLabel={t(
+                                  currentLanguage,
+                                  'a11yStarBadge',
+                                  { count: starCount, title }
+                                )}
+                              >
+                                <MaterialIcons
+                                  name="star"
+                                  size={16}
+                                  color={PALETTE.ink}
+                                />
+                                <Text style={styles.starBadgeText}>
+                                  {starCount}
+                                </Text>
+                              </View>
+                            )}
+                          </BouncyButton>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
+          </View>
         </ScrollView>
       </Animated.View>
 
+      {/* Always-visible bottom bar: the same three destinations in the same
+          place every time, each a big icon with a text label. Parents is
+          behind the parental gate (handled by App). */}
+      <View
+        style={[
+          styles.bottomBar,
+          {
+            paddingBottom: insets.bottom + (compact ? 2 : 8),
+            paddingTop: compact ? 2 : 8,
+            paddingLeft: insets.left + 16,
+            paddingRight: insets.right + 16,
+          },
+        ]}
+      >
+        <BottomBarButton
+          icon="home"
+          label={t(currentLanguage, 'navHome')}
+          active
+          accessibilityLabel={t(currentLanguage, 'navHome')}
+        />
+        <BottomBarButton
+          icon="collections-bookmark"
+          label={t(currentLanguage, 'navAlbum')}
+          onPress={() => handleModeSelect(ALBUM_MODE.key)}
+          accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
+            title: t(currentLanguage, ALBUM_MODE.titleKey),
+            description: t(currentLanguage, ALBUM_MODE.descriptionKey),
+          })}
+        />
+        <BottomBarButton
+          icon="lock-outline"
+          label={t(currentLanguage, 'navParents')}
+          onPress={handleOpenParents}
+          accessibilityLabel={t(currentLanguage, 'a11yForParents')}
+        />
+      </View>
+
       {/* Outside the ScrollView and absolutely positioned, like every other
-          ConfettiCannon in this app (see feedbackOverlay/completionOverlay in
-          the games) - rendering it in the scrollable content instead shifts
-          the content height every time it mounts/unmounts, which was
-          disrupting the mode cards' own layout and animations below it. */}
+          ConfettiCannon in this app - rendering it in the scrollable content
+          shifts the content height every time it mounts/unmounts. */}
       {showDailyCelebration && (
         <View pointerEvents="none" style={styles.dailyConfettiOverlay}>
           <ConfettiCannon
@@ -569,153 +665,256 @@ function MainMenu({
           />
         </View>
       )}
-
-      {/* Floating, like the Menu/Next Game controls on every game screen.
-          Rendered last (after the scrollable content) on purpose - see
-          AmbientBackground's own comment for why render order matters here.
-          Unlike BackToMenuButton, the absolute positioning is NOT passed as
-          a style into the button itself: BouncyButton applies its `style`
-          prop to the one child *inside* its Pressable, so a position:
-          absolute there can leave the Pressable with nothing in normal flow
-          to size itself by. Wrapping it in a plain, separately positioned
-          View and leaving the button itself in normal flow avoids that
-          ambiguity entirely. */}
-      {/* The Album, unlike the language toggle below, stays visible and
-          reachable the whole time the menu is open - it's a destination a
-          child comes back to, not a secondary control, so it doesn't fade
-          out once they start scrolling through the games (the opposite
-          would mean a child who's exploring the game list loses the one
-          button that gets them to their own collection). Labeled with
-          text, not just an icon, for the same reason the Parents button
-          below is: a bare icon isn't "clear" for a child who can't yet
-          read icon conventions. */}
-      <View style={[styles.topRightFloating, { top: insets.top + 12 }]}>
-        <BouncyButton
-          style={styles.albumButton}
-          onPress={() => handleModeSelect(ALBUM_MODE.key)}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={t(currentLanguage, 'a11yModeCard', {
-            title: t(currentLanguage, ALBUM_MODE.titleKey),
-            description: t(currentLanguage, ALBUM_MODE.descriptionKey),
-          })}
-        >
-          <MaterialIcons name={ALBUM_MODE.glyph} size={18} color="#0A3D62" />
-          <Text style={styles.albumButtonText}>
-            {t(currentLanguage, ALBUM_MODE.titleKey)}
-          </Text>
-        </BouncyButton>
-      </View>
-
-      {/* Fades out once scrolled down to the mode cards, so it stops
-          floating over them - `none` while hidden so a faded-out button
-          can't still eat a tap meant for a card underneath it. */}
-      <Animated.View
-        pointerEvents={languageVisible ? 'box-none' : 'none'}
-        style={[
-          styles.languageFloating,
-          {
-            top: insets.top + 12 + ALBUM_PILL_CLEARANCE,
-            opacity: languageOpacity,
-          },
-        ]}
-      >
-        <LanguageToggleButton
-          currentLanguage={currentLanguage}
-          onToggle={setCurrentLanguage}
-        />
-      </Animated.View>
-
-      {/* Top-left, mirroring the language/album row on the right, but gone
-          the moment there's any scroll at all - this one is purely a "a
-          parent just opened the app" shortcut, not a persistent control a
-          child would otherwise tap into by accident while browsing games.
-          The plain bottom "For Parents" link stays too, for anyone who
-          scrolls past this without noticing it. */}
-      <Animated.View
-        pointerEvents={topParentsVisible ? 'box-none' : 'none'}
-        style={[
-          styles.topParentsFloating,
-          { top: insets.top + 12, opacity: topParentsOpacity },
-        ]}
-      >
-        <BouncyButton
-          style={styles.topParentsButton}
-          onPress={() => {
-            tapFeedback();
-            onOpenParents();
-          }}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel={t(currentLanguage, 'a11yForParents')}
-        >
-          <MaterialIcons name="lock-outline" size={18} color="#0A3D62" />
-          <Text style={styles.topParentsText}>
-            {t(currentLanguage, 'forParents')}
-          </Text>
-        </BouncyButton>
-      </Animated.View>
     </View>
+  );
+}
+
+function BottomBarButton({ icon, label, active, onPress, accessibilityLabel }) {
+  return (
+    <BouncyButton
+      style={styles.navButton}
+      containerStyle={styles.navButtonContainer}
+      onPress={onPress}
+      disabled={!onPress}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active }}
+      accessibilityLabel={accessibilityLabel}
+    >
+      <View style={[styles.navIcon, active && styles.navIconActive]}>
+        <MaterialIcons
+          name={icon}
+          size={26}
+          color={active ? PALETTE.white : PALETTE.ink}
+        />
+      </View>
+      <Text style={[styles.navLabel, active && styles.navLabelActive]}>
+        {label}
+      </Text>
+    </BouncyButton>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#BD0000',
+    backgroundColor: PALETTE.cream,
   },
-  topRightFloating: {
+  fill: {
+    flex: 1,
+  },
+  band: {
+    backgroundColor: PALETTE.red,
+    paddingBottom: 64,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: 'hidden',
+  },
+  bandTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  // Floats the language button over the band's corner so the brand can
+  // use the full (short) height.
+  bandTopRowCompact: {
     position: 'absolute',
+    top: 4,
     right: 20,
+    zIndex: 2,
   },
-  // Same labeled-pill shape as topParentsButton below - icon + text, not
-  // an icon alone, per Google's "clear, consistent interactive elements"
-  // guidance for this age range.
-  albumButton: {
+  brand: {
+    alignItems: 'center',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: -24,
+  },
+  brandText: {
+    alignItems: 'center',
+  },
+  brandTextRow: {
+    alignItems: 'flex-start',
+  },
+  title: {
+    fontFamily: FONTS.title,
+    // Bangers clips on Android without an explicit lineHeight and this.
+    includeFontPadding: false,
+    color: PALETTE.white,
+    textAlign: 'center',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.35)',
+    textShadowOffset: { width: 2, height: 3 },
+    textShadowRadius: 6,
+  },
+  subtitle: {
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.gold,
+    textAlign: 'center',
+  },
+  content: {
+    width: '100%',
+    alignSelf: 'center',
+  },
+  heroCard: {
+    marginTop: -44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    minHeight: MIN_TOUCH_TARGET,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    minHeight: 120,
+  },
+  heroBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: PALETTE.white,
+    borderRadius: RADIUS.lg,
+    borderWidth: 4,
+    borderColor: PALETTE.gold,
+    ...CARD_SHADOW,
+  },
+  heroCardCompact: {
+    marginTop: -24,
+    minHeight: 76,
     paddingVertical: 8,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#FFD700',
   },
-  albumButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0A3D62',
+  heroListenCompact: {
+    display: 'none',
   },
-  // Positioned below the always-visible Album pill above it (see the
-  // inline `top` offset where this is used), so the two never overlap -
-  // this one still fades out on scroll (see its own comment above), the
-  // Album one no longer does.
-  languageFloating: {
-    position: 'absolute',
-    right: 20,
+  heroText: {
+    flex: 1,
+    marginRight: 12,
   },
-  topParentsFloating: {
-    position: 'absolute',
-    left: 20,
+  heroLabel: {
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.red,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
-  topParentsButton: {
+  heroName: {
+    fontFamily: FONTS.title,
+    includeFontPadding: false,
+    color: PALETTE.ink,
+    letterSpacing: 1,
+  },
+  heroListen: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
+    padding: 6,
+  },
+  section: {
+    marginTop: 28,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    minHeight: MIN_TOUCH_TARGET,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#FFD700',
+    gap: 10,
+    marginBottom: 14,
   },
-  topParentsText: {
+  sectionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionTitle: {
+    ...titleText(26),
+  },
+  tiles: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  tile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    gap: 8,
+  },
+  tileBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: RADIUS.md,
+    borderWidth: 3,
+    ...CARD_SHADOW,
+  },
+  tileTitle: {
+    fontFamily: FONTS.title,
+    includeFontPadding: false,
+    color: PALETTE.ink,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  starBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
+    borderWidth: 2,
+    borderColor: PALETTE.white,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  starBadgeText: {
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.ink,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#0A3D62',
+  },
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 8,
+    backgroundColor: PALETTE.white,
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    ...CARD_SHADOW,
+    shadowOffset: { width: 0, height: -3 },
+  },
+  navButtonContainer: {
+    flex: 1,
+  },
+  navButton: {
+    alignItems: 'center',
+    gap: 2,
+    minHeight: BOTTOM_BAR_HEIGHT - 8,
+  },
+  navIcon: {
+    width: 56,
+    height: 40,
+    borderRadius: RADIUS.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navIconActive: {
+    backgroundColor: PALETTE.red,
+  },
+  navLabel: {
+    fontFamily: FONTS.body,
+    fontSize: 15,
+    color: PALETTE.inkSoft,
+  },
+  navLabelActive: {
+    fontFamily: FONTS.bodyHeavy,
+    color: PALETTE.red,
   },
   dailyConfettiOverlay: {
     position: 'absolute',
@@ -723,187 +922,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-  },
-  content: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingBottom: 24,
-  },
-  contentLandscape: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  contentWrapper: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 42,
-    // Bangers clips on Android without both of these - see
-    // first-letter.game.component.jsx for the full explanation.
-    lineHeight: 54,
-    includeFontPadding: false,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 3, height: 3 },
-    textShadowRadius: 6,
-  },
-  titleLandscape: {
-    fontSize: 30,
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 22,
-    color: '#FFD700',
-    textAlign: 'center',
-    marginBottom: 50,
-    fontWeight: '600',
-  },
-  subtitleLandscape: {
-    fontSize: 17,
-    marginBottom: 14,
-  },
-  dailyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderRadius: 20,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginBottom: 24,
-    maxWidth: 320,
-    alignSelf: 'center',
-  },
-  dailyAnimation: {
-    width: 56,
-    height: 56,
-  },
-  dailyLabel: {
-    fontSize: 13,
-    color: '#5A5A5A',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  dailyName: {
-    fontSize: 22,
-    lineHeight: 28,
-    includeFontPadding: false,
-    color: '#0A3D62',
-  },
-  modeContainer: {
-    width: '100%',
-    gap: 30,
-  },
-  // Only a contentContainerStyle now (applied to the horizontal ScrollView
-  // below), not a plain View's style - see modeScrollLandscape for the
-  // ScrollView's own sizing.
-  modeContainerLandscape: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 16,
-    paddingHorizontal: 4,
-  },
-  modeScrollLandscape: {
-    width: '100%',
-  },
-  modeButton: {
-    backgroundColor: 'white',
-    borderRadius: 24,
-    padding: 28,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: '#FFD700',
-  },
-  // A fixed width rather than flex:1 - this card now sits in a horizontally
-  // scrolling row instead of a fixed-count one, so "share the row equally"
-  // no longer makes sense; each card keeps a steady, swipeable size instead.
-  // Height is fixed too (not auto, not alignItems:'stretch' on the row),
-  // because a 1-line title/description ("Guess the Animal") and a 2-line
-  // one ("Learn Animal Sounds & Names") otherwise size their own card
-  // differently, leaving a ragged row - content is centered within the
-  // fixed height so shorter cards don't look off-balance.
-  modeButtonLandscape: {
-    width: 210,
-    height: 240,
-    padding: 14,
-    justifyContent: 'center',
-  },
-  modeIconContainer: {
-    marginBottom: 15,
-  },
-  // Positioned relative to modeIconContainer (every View is a valid
-  // absolute-positioning context in React Native, no explicit
-  // position:'relative' needed on the parent).
-  starBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FFD700',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'white',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  starBadgeText: {
-    color: 'white',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  modeIconContainerLandscape: {
-    marginBottom: 6,
-  },
-  modeTitle: {
-    fontSize: 24,
-    lineHeight: 32,
-    includeFontPadding: false,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  // Only the heading shrinks in landscape; the description stays at the
-  // MIN_FONT_SIZE floor set for young readers.
-  modeTitleLandscape: {
-    fontSize: 20,
-    marginBottom: 6,
-  },
-  parentsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    alignSelf: 'center',
-    marginTop: 28,
-    minHeight: MIN_TOUCH_TARGET,
-    paddingHorizontal: 14,
-  },
-  parentsText: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  modeDescription: {
-    fontSize: 18,
-    color: '#5A5A5A',
-    textAlign: 'center',
-    lineHeight: 24,
   },
 });
 

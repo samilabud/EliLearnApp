@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Animated, Pressable, View } from 'react-native';
+import { Animated, Platform, Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts } from 'expo-font';
+import { setAudioModeAsync } from 'expo-audio';
+import { Bangers_400Regular } from '@expo-google-fonts/bangers';
+import { Nunito_700Bold, Nunito_900Black } from '@expo-google-fonts/nunito';
 import { MySplashScreen } from './components/utility/my-splash-screen.component';
 import MainMenu from './components/main_menu/main_menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
@@ -38,6 +42,13 @@ function AppContent() {
   const [gateVisible, setGateVisible] = useState(false);
   const [parentAreaVisible, setParentAreaVisible] = useState(false);
   const [fade] = useState(() => new Animated.Value(0));
+  // Loaded once for the whole app: Bangers for titles, Nunito for everything
+  // a child or parent has to read.
+  const [fontsLoaded] = useFonts({
+    Bangers_400Regular,
+    Nunito_700Bold,
+    Nunito_900Black,
+  });
 
   const { hydrated: progressReady } = useGameProgress();
   const {
@@ -56,6 +67,13 @@ function AppContent() {
 
   useEffect(() => {
     initAnalytics();
+    // Respect the iPhone/iPad ring/silent switch: a device a parent has
+    // silenced stays silent. iOS only - on Android the same flag pauses
+    // playback whenever the ringer is on vibrate, which many phones sit on
+    // with the media volume up, so the whole app would go quiet.
+    if (Platform.OS === 'ios') {
+      setAudioModeAsync({ playsInSilentMode: false }).catch(() => {});
+    }
   }, []);
 
   const handleModeSelect = mode => {
@@ -101,7 +119,7 @@ function AppContent() {
   // Holding the splash until storage has been read keeps a game from mounting
   // with a blank board and dealing a fresh one over the child's saved level.
   // Reading finishes far inside the splash window, so this costs nothing.
-  const ready = progressReady && settingsReady;
+  const ready = progressReady && settingsReady && fontsLoaded;
 
   if (showSplash || !ready) {
     return (
@@ -145,7 +163,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'guess') {
@@ -155,7 +172,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'letter') {
@@ -165,7 +181,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'lastLetter') {
@@ -175,7 +190,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'trace') {
@@ -185,7 +199,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'memory') {
@@ -195,7 +208,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'findAnimal') {
@@ -205,7 +217,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'whoseSound') {
@@ -215,7 +226,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'buildScene') {
@@ -234,7 +244,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'counting') {
@@ -244,7 +253,6 @@ function AppContent() {
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
         onNextGame={handleNextGame}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   } else if (currentMode === 'album') {
@@ -253,7 +261,6 @@ function AppContent() {
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
-        ambientEnabled={ambientEffectsEnabled}
       />
     );
   }
