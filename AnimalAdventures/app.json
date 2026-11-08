@@ -20,7 +20,9 @@
       "bundleIdentifier": "com.elilearnapps.animaladventures",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": ["en", "es"]
       },
       "requireFullScreen": true
     },
