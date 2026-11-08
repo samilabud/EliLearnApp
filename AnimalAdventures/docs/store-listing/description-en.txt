@@ -18,6 +18,8 @@ Meet 24+ animals through 11 different games, each teaching something different:
 - Coloring Book - color your favorite animals
 - Count the Animals - how many animals are there?
 
+Every game speaks its instructions out loud, so even pre-readers can play on their own. Games adapt to phones, tablets, and landscape screens.
+
 Kids earn stars as they play, meet a different Today's Animal highlight every day, and fill up their own Animal Album with every animal they've discovered - so there's always a reason to come back.
 
 Every word and sound comes in both English and Spanish, switchable with one tap, anywhere in the app.
@@ -30,4 +32,4 @@ Built for parents, too:
 - No personal information collected
 - A parent area with a daily play-time limit, sound controls, and age-based settings that adapt each game's difficulty to your child's age, protected behind a simple parental gate
 
-Animal Adventures is designed for early learners (around ages 2-7) and works great on phones and tablets.
+Animal Adventures is designed for early learners (around ages 2-7) and works great on phones and tablets, in portrait or landscape.
