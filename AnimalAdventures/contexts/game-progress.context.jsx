@@ -150,6 +150,29 @@ const DEFAULT_MET = [];
 const DEFAULT_MET_VIA = {};
 
 /**
+ * Consecutive days the app has been played, for the Album's streak badges.
+ * `best` only ever grows, so a badge once earned is not taken away by a
+ * missed day.
+ */
+const DEFAULT_STREAK = { lastDay: null, current: 0, best: 0 };
+
+/** Local calendar day before today, in the same format as `today()`. */
+const yesterday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+};
+
+const streakIsUsable = v =>
+  !!v &&
+  typeof v === 'object' &&
+  (v.lastDay === null || typeof v.lastDay === 'string') &&
+  Number.isInteger(v.current) &&
+  Number.isInteger(v.best);
+
+/**
  * Distinct levels ever completed, per leveled game.
  *
  * Permanent in the same spirit as `met` - a star earned by finishing a level
@@ -403,6 +426,7 @@ export function GameProgressProvider({ children }) {
   const [met, setMet] = useState(DEFAULT_MET);
   const [metVia, setMetVia] = useState(DEFAULT_MET_VIA);
   const [stars, setStars] = useState(DEFAULT_STARS);
+  const [streak, setStreak] = useState(DEFAULT_STREAK);
   const [scene, setScene] = useState(DEFAULT_SCENE);
   const [coloring, setColoring] = useState(DEFAULT_COLORING);
   const [lastCelebratedDailyAnimal, setLastCelebratedDailyAnimal] =
@@ -477,6 +501,9 @@ export function GameProgressProvider({ children }) {
         if (starsIsUsable(stored.stars)) {
           setStars({ ...DEFAULT_STARS, ...stored.stars });
         }
+        if (streakIsUsable(stored.streak)) {
+          setStreak(stored.streak);
+        }
         if (stored.scene && Array.isArray(stored.scene.placed)) {
           setScene({ placed: stored.scene.placed.filter(scenePlacedIsUsable) });
         }
@@ -508,6 +535,7 @@ export function GameProgressProvider({ children }) {
       met,
       metVia,
       stars,
+      streak,
       scene,
       coloring,
       lastCelebratedDailyAnimal,
@@ -532,6 +560,7 @@ export function GameProgressProvider({ children }) {
         met,
         metVia,
         stars,
+        streak,
         scene,
         coloring,
         lastCelebratedDailyAnimal,
@@ -553,6 +582,7 @@ export function GameProgressProvider({ children }) {
     met,
     metVia,
     stars,
+    streak,
     scene,
     coloring,
     lastCelebratedDailyAnimal,
@@ -576,6 +606,7 @@ export function GameProgressProvider({ children }) {
         met: k,
         metVia: mv,
         stars: st,
+        streak: sk,
         scene: sc,
         coloring: co,
         lastCelebratedDailyAnimal: lc,
@@ -595,6 +626,7 @@ export function GameProgressProvider({ children }) {
         met: k,
         metVia: mv,
         stars: st,
+        streak: sk,
         scene: sc,
         coloring: co,
         lastCelebratedDailyAnimal: lc,
@@ -658,6 +690,16 @@ export function GameProgressProvider({ children }) {
     }));
   }, []);
 
+  /** Count today towards the play streak. Cheap no-op after the first call. */
+  const recordPlayDay = useCallback(() => {
+    setStreak(prev => {
+      const day = today();
+      if (prev.lastDay === day) return prev;
+      const current = prev.lastDay === yesterday() ? prev.current + 1 : 1;
+      return { lastDay: day, current, best: Math.max(prev.best, current) };
+    });
+  }, []);
+
   /**
    * Record that a child has met an animal. Idempotent, and never undone -
    * resetting a game must not take an animal back out of the album.
@@ -667,12 +709,26 @@ export function GameProgressProvider({ children }) {
    *   a given animal gets credit - later encounters in other games don't
    *   overwrite it.
    */
-  const markAnimalMet = useCallback((id, gameKey) => {
-    if (!id || !validIds.has(id)) return;
-    setMet(prev => (prev.includes(id) ? prev : [...prev, id]));
-    if (gameKey) {
-      setMetVia(prev => (prev[id] ? prev : { ...prev, [id]: gameKey }));
-    }
+  const markAnimalMet = useCallback(
+    (id, gameKey) => {
+      if (!id || !validIds.has(id)) return;
+      recordPlayDay();
+      setMet(prev => (prev.includes(id) ? prev : [...prev, id]));
+      if (gameKey) {
+        setMetVia(prev => (prev[id] ? prev : { ...prev, [id]: gameKey }));
+      }
+    },
+    [recordPlayDay]
+  );
+
+  /**
+   * Forget every animal the child has met, so the Album starts empty again.
+   * Only reachable from the parent area - nothing a child can tap calls it.
+   * Stars are left alone: they record levels finished, not animals met.
+   */
+  const resetAlbum = useCallback(() => {
+    setMet(DEFAULT_MET);
+    setMetVia(DEFAULT_MET_VIA);
   }, []);
 
   /**
@@ -682,14 +738,18 @@ export function GameProgressProvider({ children }) {
    * @param {string} gameKey - One of the keys in DEFAULT_STARS.
    * @param {number} level - The level just completed.
    */
-  const markLevelStarred = useCallback((gameKey, level) => {
-    if (!gameKey || typeof level !== 'number') return;
-    setStars(prev => {
-      const earned = prev[gameKey] || [];
-      if (earned.includes(level)) return prev;
-      return { ...prev, [gameKey]: [...earned, level] };
-    });
-  }, []);
+  const markLevelStarred = useCallback(
+    (gameKey, level) => {
+      if (!gameKey || typeof level !== 'number') return;
+      recordPlayDay();
+      setStars(prev => {
+        const earned = prev[gameKey] || [];
+        if (earned.includes(level)) return prev;
+        return { ...prev, [gameKey]: [...earned, level] };
+      });
+    },
+    [recordPlayDay]
+  );
 
   /** Gate the once-per-day "today's animal" fanfare on the main menu. */
   const markDailyAnimalCelebrated = useCallback(() => {
@@ -877,11 +937,13 @@ export function GameProgressProvider({ children }) {
       met,
       metVia,
       stars,
+      streak,
       scene,
       coloring,
       lastCelebratedDailyAnimal,
       hasSeenTodaysAnimal,
       markAnimalMet,
+      resetAlbum,
       markLevelStarred,
       markDailyAnimalCelebrated,
       addPlacedItem,
@@ -922,11 +984,13 @@ export function GameProgressProvider({ children }) {
       met,
       metVia,
       stars,
+      streak,
       scene,
       coloring,
       lastCelebratedDailyAnimal,
       hasSeenTodaysAnimal,
       markAnimalMet,
+      resetAlbum,
       markLevelStarred,
       markDailyAnimalCelebrated,
       addPlacedItem,
@@ -972,7 +1036,7 @@ export function GameProgressProvider({ children }) {
  *   scene: {placed: object[]}, coloring: {pages: Object<string,object>},
  *   met: string[], metVia: Object<string,string>,
  *   lastCelebratedDailyAnimal: ?string, hasSeenTodaysAnimal: boolean,
- *   markLevelStarred: Function,
+ *   resetAlbum: Function, markLevelStarred: Function,
  *   markDailyAnimalCelebrated: Function, addPlacedItem: Function,
  *   movePlacedItem: Function, removePlacedItem: Function,
  *   addColorStroke: Function, undoLastStroke: Function,

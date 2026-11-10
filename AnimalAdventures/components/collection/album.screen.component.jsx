@@ -15,6 +15,7 @@ import {
 } from '../../constants/theme';
 import { gridColumns, useResponsive } from '../../utils/use-responsive';
 import { tapFeedback } from '../../utils/haptics';
+import { computeBadges } from '../../utils/badges';
 import { useBackToMenu } from '../../utils/navigation';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -39,12 +40,22 @@ export default function AlbumScreen({
   onBackToMenu,
 }) {
   const { scale } = useResponsive();
-  const { met, metVia, stars } = useGameProgress();
+  const { met, metVia, stars, streak } = useGameProgress();
   // Only the leveled games earn stars - 'learn' and 'album' have no level
   // concept, so they're naturally absent from `stars` and skipped here.
   const starGames = useMemo(
     () => MODES.filter(mode => mode.key in stars),
     [stars]
+  );
+  const badges = useMemo(
+    () =>
+      computeBadges({
+        metCount: met.length,
+        animalTotal: animalList.length,
+        starTotal: Object.values(stars).reduce((n, l) => n + l.length, 0),
+        bestStreak: streak.best,
+      }),
+    [met, stars, streak]
   );
   const animPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
@@ -170,6 +181,60 @@ export default function AlbumScreen({
                   <MaterialIcons name="star" size={14} color={PALETTE.ink} />
                   <Text style={styles.starsShelfCountText}>{count}</Text>
                 </View>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        <Text style={styles.sectionTitle}>
+          {t(currentLanguage, 'badgesTitle')}
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.badgeShelf}
+        >
+          {badges.map(badge => {
+            const labelKey =
+              badge.kind === 'animals'
+                ? badge.all
+                  ? 'badgeAllAnimals'
+                  : 'badgeAnimals'
+                : badge.kind === 'stars'
+                  ? 'badgeStars'
+                  : 'badgeStreak';
+            const label = t(currentLanguage, labelKey, { count: badge.count });
+            return (
+              <View
+                key={badge.id}
+                style={[
+                  styles.badge,
+                  { width: shelfItemSize * 1.5 },
+                  !badge.earned && styles.badgeLocked,
+                ]}
+                accessible
+                accessibilityLabel={t(
+                  currentLanguage,
+                  badge.earned ? 'a11yBadgeEarned' : 'a11yBadgeLocked',
+                  { label }
+                )}
+              >
+                <MaterialIcons
+                  name={badge.earned ? badge.icon : 'lock'}
+                  size={shelfItemSize * 0.45}
+                  color={badge.earned ? PALETTE.ink : PALETTE.inkSoft}
+                />
+                <Text
+                  style={[
+                    styles.badgeText,
+                    !badge.earned && styles.badgeTextLocked,
+                  ]}
+                  numberOfLines={3}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {label}
+                </Text>
               </View>
             );
           })}
@@ -320,6 +385,36 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
     fontSize: 13,
+  },
+  badgeShelf: {
+    gap: 12,
+    paddingTop: 8,
+    paddingBottom: 18,
+  },
+  badge: {
+    minHeight: 96,
+    borderRadius: RADIUS.sm,
+    backgroundColor: PALETTE.white,
+    borderWidth: 3,
+    borderColor: PALETTE.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    gap: 4,
+  },
+  badgeLocked: {
+    backgroundColor: PALETTE.creamDeep,
+    borderColor: 'rgba(10, 61, 98, 0.15)',
+    borderStyle: 'dashed',
+  },
+  badgeText: {
+    fontFamily: FONTS.bodyHeavy,
+    fontSize: 13,
+    color: PALETTE.ink,
+    textAlign: 'center',
+  },
+  badgeTextLocked: {
+    color: PALETTE.inkSoft,
   },
   grid: {
     flexDirection: 'row',
