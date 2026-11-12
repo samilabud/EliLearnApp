@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Alert,
   Linking,
   Modal,
   Platform,
@@ -18,6 +19,7 @@ import {
   PLAY_LIMIT_OPTIONS,
   useSettings,
 } from '../../contexts/settings.context';
+import { useGameProgress } from '../../contexts/game-progress.context';
 import { BouncyButton } from '../utility/bouncy-button.component';
 
 /**
@@ -67,6 +69,7 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     childAgeBand,
     setChildAgeBand,
   } = useSettings();
+  const { resetAlbum } = useGameProgress();
 
   const handleSound = value => {
     tapFeedback();
@@ -96,6 +99,22 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
   const handleChildAge = band => {
     tapFeedback();
     setChildAgeBand(band);
+  };
+
+  const handleResetAlbum = () => {
+    tapFeedback();
+    Alert.alert(
+      t(currentLanguage, 'resetAlbumConfirmTitle'),
+      t(currentLanguage, 'resetAlbumConfirmBody'),
+      [
+        { text: t(currentLanguage, 'cancel'), style: 'cancel' },
+        {
+          text: t(currentLanguage, 'resetAlbumConfirm'),
+          style: 'destructive',
+          onPress: resetAlbum,
+        },
+      ]
+    );
   };
 
   const handleDonate = () => {
@@ -283,6 +302,26 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               })}
             </View>
 
+            {/* Album reset - parent-only, confirmed, and leaves stars alone */}
+            <Text style={styles.sectionLabel}>
+              {t(currentLanguage, 'resetAlbumTitle')}
+            </Text>
+            <Text style={styles.rowHint}>
+              {t(currentLanguage, 'resetAlbumHint')}
+            </Text>
+            <BouncyButton
+              onPress={handleResetAlbum}
+              style={styles.resetButton}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={t(currentLanguage, 'a11yResetAlbum')}
+            >
+              <MaterialIcons name="restart-alt" size={20} color="#BD0000" />
+              <Text style={styles.resetButtonText}>
+                {t(currentLanguage, 'resetAlbumLabel')}
+              </Text>
+            </BouncyButton>
+
             {/* What this app does not do */}
             <Text style={styles.sectionLabel}>
               {t(currentLanguage, 'aboutTitle')}
@@ -463,6 +502,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    minHeight: MIN_TOUCH_TARGET,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#BD0000',
+    backgroundColor: '#ffffff',
+  },
+  resetButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#BD0000',
   },
   version: {
     marginTop: 24,

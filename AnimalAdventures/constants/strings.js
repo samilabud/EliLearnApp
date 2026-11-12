@@ -86,6 +86,13 @@ export const STRINGS = {
     albumHintEmpty: 'Play any game to start meeting animals!',
     notMetYet: 'Not met yet',
     starsShelfTitle: 'Stars Earned',
+    badgesTitle: 'Badges',
+    badgeAnimals: 'Met {count} animals',
+    badgeAllAnimals: 'Met all {count} animals!',
+    badgeStars: 'Earned {count} stars',
+    badgeStreak: 'Played {count} days in a row',
+    a11yBadgeEarned: 'Badge earned: {label}',
+    a11yBadgeLocked: 'Badge to earn: {label}',
 
     // Rewards
     starsEarnedLabel: '{count} stars',
@@ -114,6 +121,15 @@ export const STRINGS = {
     age4to6: '4-6',
     age7plus: '7+',
     aboutTitle: 'About this app',
+    resetAlbumTitle: 'Animal Album',
+    resetAlbumLabel: 'Reset Animal Album',
+    resetAlbumHint:
+      'Starts the Album over so your child can meet all the animals again. Stars are kept.',
+    resetAlbumConfirmTitle: 'Reset the Animal Album?',
+    resetAlbumConfirmBody:
+      'Every animal will go back to "not met yet". This cannot be undone.',
+    resetAlbumConfirm: 'Reset',
+    a11yResetAlbum: 'Reset the Animal Album',
     promiseNoAds: 'No advertising',
     promiseNoAccounts: 'No accounts or sign-in',
     promiseNoPurchases: 'No purchases',
@@ -295,6 +311,13 @@ export const STRINGS = {
     albumHintEmpty: '¡Juega para empezar a conocer animales!',
     notMetYet: 'Aún no lo conoces',
     starsShelfTitle: 'Estrellas Ganadas',
+    badgesTitle: 'Insignias',
+    badgeAnimals: 'Conociste {count} animales',
+    badgeAllAnimals: '¡Conociste los {count} animales!',
+    badgeStars: 'Ganaste {count} estrellas',
+    badgeStreak: 'Jugaste {count} días seguidos',
+    a11yBadgeEarned: 'Insignia ganada: {label}',
+    a11yBadgeLocked: 'Insignia por ganar: {label}',
 
     // Recompensas
     starsEarnedLabel: '{count} estrellas',
@@ -323,6 +346,15 @@ export const STRINGS = {
     age4to6: '4-6',
     age7plus: '7+',
     aboutTitle: 'Sobre esta app',
+    resetAlbumTitle: 'Álbum de Animales',
+    resetAlbumLabel: 'Reiniciar el Álbum de Animales',
+    resetAlbumHint:
+      'Empieza el Álbum de nuevo para que tu hijo conozca otra vez a todos los animales. Las estrellas se conservan.',
+    resetAlbumConfirmTitle: '¿Reiniciar el Álbum de Animales?',
+    resetAlbumConfirmBody:
+      'Todos los animales volverán a "aún no conocido". Esto no se puede deshacer.',
+    resetAlbumConfirm: 'Reiniciar',
+    a11yResetAlbum: 'Reiniciar el Álbum de Animales',
     promiseNoAds: 'Sin publicidad',
     promiseNoAccounts: 'Sin cuentas ni registro',
     promiseNoPurchases: 'Sin compras',
