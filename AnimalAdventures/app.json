@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.elilearnapps.animaladventures",
-      "versionCode": 34,
+      "versionCode": 35,
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.VIBRATE",
