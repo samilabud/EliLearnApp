@@ -27,6 +27,10 @@ export const STRINGS = {
     modeTraceDescription: "Draw each animal's first letter!",
     modeFindAnimalTitle: 'Find the Animal',
     modeFindAnimalDescription: 'Listen for the name and tap it!',
+    modeMissingTitle: "What's Missing?",
+    modeMissingDescription: 'Look at the animals, then spot who went away!',
+    modeBandTitle: 'Animal Band',
+    modeBandDescription: 'Tap the animals to make music!',
     modeWhoseSoundTitle: 'Whose Sound Is It?',
     modeWhoseSoundDescription: 'Listen and tap the animal!',
     modeBuildSceneTitle: 'Build a Scene',
@@ -72,6 +76,10 @@ export const STRINGS = {
 
     // Find the Animal
     findAnimalHelperText: 'Tap the animal you hear!',
+    missingLookText: 'Look at them all!',
+    missingGuessText: 'Who went away? Tap it!',
+    bandHelperText: 'Tap the animals to make music!',
+    bandPlaySong: 'Play my song',
 
     // Whose Sound Is It?
     whoseSoundHelperText: 'Listen, then tap the animal that makes this sound!',
@@ -113,6 +121,15 @@ export const STRINGS = {
     off: 'Off',
     ambientEffectsLabel: 'Floating bubbles',
     ambientEffectsHint: 'Turn off if the app feels slow on this device',
+    menuStyleLabel: 'Home screen',
+    menuStyleHint: 'World map or the simple list of games',
+    menuStyleMap: 'World map',
+    menuStyleList: 'List',
+    a11yNextWorld: 'Next world: {title}',
+    a11yPrevWorld: 'Previous world: {title}',
+    a11yWorldDot: 'Go to {title}, world {n} of {total}',
+    a11yWorldPage: '{title} world',
+    a11yTreasureChest: 'Animal Album treasure chest. {description}',
     playLimitLabel: 'Daily play limit',
     noLimit: 'No limit',
     minutesShort: '{count} min',
@@ -165,6 +182,9 @@ export const STRINGS = {
     a11yAnimalCard: '{animal}. Tap to hear its sound',
     a11yAnswerOption: '{animal}. Tap if this animal makes the sound',
     a11yFindAnimalOption: '{animal}. Tap if this is the animal you heard',
+    a11yMissingOption: '{animal}. Tap if this animal went away',
+    a11yBandAnimal: '{animal}. Tap to hear it',
+    a11yBandPlay: 'Play the song you made',
     a11yWhoseSoundOption:
       '{animal}. Tap if this animal makes the sound you heard',
     a11yTrayAnimal: '{animal}. Drag into the scene to place it',
@@ -251,6 +271,10 @@ export const STRINGS = {
     modeTraceDescription: '¡Dibuja la primera letra de cada animal!',
     modeFindAnimalTitle: 'Encuentra al Animal',
     modeFindAnimalDescription: '¡Escucha el nombre y tócalo!',
+    modeMissingTitle: '¿Qué falta?',
+    modeMissingDescription: '¡Mira a los animales y descubre quién se fue!',
+    modeBandTitle: 'Banda de Animales',
+    modeBandDescription: '¡Toca los animales para hacer música!',
     modeWhoseSoundTitle: '¿De Quién es Este Sonido?',
     modeWhoseSoundDescription: '¡Escucha y toca el animal!',
     modeBuildSceneTitle: 'Crea una Escena',
@@ -296,6 +320,10 @@ export const STRINGS = {
 
     // Encuentra al Animal
     findAnimalHelperText: '¡Toca el animal que escuchaste!',
+    missingLookText: '¡Míralos a todos!',
+    missingGuessText: '¿Quién se fue? ¡Tócalo!',
+    bandHelperText: '¡Toca los animales para hacer música!',
+    bandPlaySong: 'Mi canción',
 
     // ¿De Quién es Este Sonido?
     whoseSoundHelperText:
@@ -338,6 +366,15 @@ export const STRINGS = {
     off: 'Desactivado',
     ambientEffectsLabel: 'Burbujas flotantes',
     ambientEffectsHint: 'Desactívalas si la app va lenta en este dispositivo',
+    menuStyleLabel: 'Pantalla de inicio',
+    menuStyleHint: 'Mapa del mundo o la lista sencilla de juegos',
+    menuStyleMap: 'Mapa del mundo',
+    menuStyleList: 'Lista',
+    a11yNextWorld: 'Mundo siguiente: {title}',
+    a11yPrevWorld: 'Mundo anterior: {title}',
+    a11yWorldDot: 'Ir a {title}, mundo {n} de {total}',
+    a11yWorldPage: 'Mundo {title}',
+    a11yTreasureChest: 'Cofre del tesoro del Álbum de Animales. {description}',
     playLimitLabel: 'Límite diario',
     noLimit: 'Sin límite',
     minutesShort: '{count} min',
@@ -390,6 +427,9 @@ export const STRINGS = {
     a11yAnimalCard: '{animal}. Toca para escuchar su sonido',
     a11yAnswerOption: '{animal}. Toca si este animal hace el sonido',
     a11yFindAnimalOption: '{animal}. Toca si este es el animal que escuchaste',
+    a11yMissingOption: '{animal}. Toca si este animal se fue',
+    a11yBandAnimal: '{animal}. Toca para escucharlo',
+    a11yBandPlay: 'Reproducir la canción que hiciste',
     a11yWhoseSoundOption:
       '{animal}. Toca si este animal hace el sonido que escuchaste',
     a11yTrayAnimal: '{animal}. Arrastra a la escena para colocarlo',

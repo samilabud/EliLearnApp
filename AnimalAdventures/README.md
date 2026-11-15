@@ -164,6 +164,8 @@ Notes:
 
 This project is licensed under the MIT License.
 
+World map background art: "Background Elements Redux" by Kenney (www.kenney.nl), CC0. See `assets/backgrounds/kenney/`.
+
 ## 🆘 Support
 
 For support and questions, please contact the development team.

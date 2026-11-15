@@ -45,10 +45,10 @@ const BOTTOM_BAR_HEIGHT = 72;
 // The app's own dog sublogo mark as a mascot above the title - unlike the
 // dog baked into the store icon artwork, it has no background and doesn't
 // carry English text that can't switch to Spanish.
-const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog-1.png');
+export const DOG_MASCOT = require('../../assets/logo/appname-sublogo-cute-dog-1.png');
 // The mascot's bark reuses the dog's own clip, already loudness-matched to
 // the rest of the app's audio - no sudden loud surprise.
-const MASCOT_BARK = animalList.find(a => a.id === 'dog-tail-wag')?.sound;
+export const MASCOT_BARK = animalList.find(a => a.id === 'dog-tail-wag')?.sound;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -133,6 +133,14 @@ export const MODES = [
     descriptionKey: 'modeFindAnimalDescription',
   },
   {
+    key: 'missing',
+    category: 'memory',
+    icon: require('../../assets/animations/icons/missing_icon.json'),
+    glyph: 'help-outline',
+    titleKey: 'modeMissingTitle',
+    descriptionKey: 'modeMissingDescription',
+  },
+  {
     key: 'whoseSound',
     category: 'listen',
     icon: require('../../assets/animations/icons/whoseSound_icon.json'),
@@ -155,6 +163,14 @@ export const MODES = [
     glyph: 'palette',
     titleKey: 'modeColoringTitle',
     descriptionKey: 'modeColoringDescription',
+  },
+  {
+    key: 'band',
+    category: 'create',
+    icon: require('../../assets/animations/icons/band_icon.json'),
+    glyph: 'music-note',
+    titleKey: 'modeBandTitle',
+    descriptionKey: 'modeBandDescription',
   },
   {
     key: 'counting',

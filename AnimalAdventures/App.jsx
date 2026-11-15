@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { Bangers_400Regular } from '@expo-google-fonts/bangers';
 import { Nunito_700Bold, Nunito_900Black } from '@expo-google-fonts/nunito';
 import { MySplashScreen } from './components/utility/my-splash-screen.component';
 import MainMenu from './components/main_menu/main_menu.component.jsx';
+import WorldMenu from './components/world_menu/world-menu.component.jsx';
 import HomeScreen from './components/home/home.component.js';
 import GuessAnimalGame from './components/games/guess-animal.game.component.jsx';
 import FirstLetterGame from './components/games/first-letter.game.component.jsx';
@@ -15,6 +16,8 @@ import LastLetterGame from './components/games/last-letter.game.component.jsx';
 import TraceLetterGame from './components/games/trace-letter.game.component.jsx';
 import MemoryAnimalGame from './components/games/memory-animal.game.component.jsx';
 import FindAnimalGame from './components/games/find-animal.game.component.jsx';
+import MissingAnimalGame from './components/games/missing-animal.game.component.jsx';
+import BandGame from './components/games/band.game.component.jsx';
 import WhoseSoundGame from './components/games/whose-sound.game.component.jsx';
 import BuildSceneGame from './components/games/build-scene.game.component.jsx';
 import ColoringGame from './components/games/coloring.game.component.jsx';
@@ -22,6 +25,7 @@ import CountingGame from './components/games/counting.game.component.jsx';
 import AlbumScreen from './components/collection/album.screen.component.jsx';
 import ParentalGate from './components/parents/parental-gate.component.jsx';
 import ParentArea from './components/parents/parent-area.component.jsx';
+import ZoomTransition from './components/utility/zoom-transition.component.jsx';
 import PlayTimeUp from './components/utility/play-time-up.component.jsx';
 import {
   GameProgressProvider,
@@ -42,6 +46,10 @@ function AppContent() {
   const [gateVisible, setGateVisible] = useState(false);
   const [parentAreaVisible, setParentAreaVisible] = useState(false);
   const [fade] = useState(() => new Animated.Value(0));
+  const zoom = useRef(null);
+  // Where the last game was launched from on the map, so closing it can
+  // shrink back to the same landmark.
+  const launchOrigin = useRef(null);
   // Loaded once for the whole app: Bangers for titles, Nunito for everything
   // a child or parent has to read.
   const [fontsLoaded] = useFonts({
@@ -58,6 +66,7 @@ function AppContent() {
     timeUp,
     grantMoreTime,
     ambientEffectsEnabled,
+    menuStyle,
   } = useSettings();
 
   useEffect(() => {
@@ -76,12 +85,34 @@ function AppContent() {
     }
   }, []);
 
-  const handleModeSelect = mode => {
+  const handleModeSelect = (mode, origin) => {
     track(EVENTS.MODE_SELECTED, { mode });
+    if (origin) {
+      launchOrigin.current = origin;
+      zoom.current?.run({
+        origin,
+        color: origin.color,
+        direction: 'open',
+        onCovered: () => setCurrentMode(mode),
+      });
+      return;
+    }
+    launchOrigin.current = null;
     setCurrentMode(mode);
   };
 
   const handleBackToMenu = () => {
+    const origin = launchOrigin.current;
+    launchOrigin.current = null;
+    if (origin) {
+      zoom.current?.run({
+        origin,
+        color: origin.color,
+        direction: 'close',
+        onCovered: () => setCurrentMode(null),
+      });
+      return;
+    }
     setCurrentMode(null);
   };
 
@@ -94,6 +125,9 @@ function AppContent() {
     const currentIndex = GAME_ORDER.indexOf(currentMode);
     const nextMode =
       GAME_ORDER[(currentIndex + 1) % GAME_ORDER.length] || GAME_ORDER[0];
+    // Moving on to a different game: the old landmark is no longer where
+    // this one came from.
+    launchOrigin.current = null;
     track(EVENTS.MODE_SELECTED, { mode: nextMode, via: 'next_game' });
     setCurrentMode(nextMode);
   }, [currentMode]);
@@ -147,15 +181,25 @@ function AppContent() {
 
   let content;
   if (!currentMode) {
-    content = (
-      <MainMenu
-        onModeSelect={handleModeSelect}
-        currentLanguage={language}
-        setCurrentLanguage={handleLanguageChange}
-        onOpenParents={() => setGateVisible(true)}
-        ambientEnabled={ambientEffectsEnabled}
-      />
-    );
+    // The world map is the default home; the original tile list stays
+    // available from the parent area (and is picked for screen readers).
+    content =
+      menuStyle === 'map' ? (
+        <WorldMenu
+          onModeSelect={handleModeSelect}
+          currentLanguage={language}
+          setCurrentLanguage={handleLanguageChange}
+          onOpenParents={() => setGateVisible(true)}
+        />
+      ) : (
+        <MainMenu
+          onModeSelect={handleModeSelect}
+          currentLanguage={language}
+          setCurrentLanguage={handleLanguageChange}
+          onOpenParents={() => setGateVisible(true)}
+          ambientEnabled={ambientEffectsEnabled}
+        />
+      );
   } else if (currentMode === 'learn') {
     content = (
       <HomeScreen
@@ -219,6 +263,15 @@ function AppContent() {
         onNextGame={handleNextGame}
       />
     );
+  } else if (currentMode === 'missing') {
+    content = (
+      <MissingAnimalGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
+      />
+    );
   } else if (currentMode === 'whoseSound') {
     content = (
       <WhoseSoundGame
@@ -240,6 +293,15 @@ function AppContent() {
   } else if (currentMode === 'coloring') {
     content = (
       <ColoringGame
+        currentLanguage={language}
+        setCurrentLanguage={handleLanguageChange}
+        onBackToMenu={handleBackToMenu}
+        onNextGame={handleNextGame}
+      />
+    );
+  } else if (currentMode === 'band') {
+    content = (
+      <BandGame
         currentLanguage={language}
         setCurrentLanguage={handleLanguageChange}
         onBackToMenu={handleBackToMenu}
@@ -270,6 +332,8 @@ function AppContent() {
       <Animated.View style={{ flex: 1, opacity: fade }}>
         {content}
       </Animated.View>
+
+      <ZoomTransition ref={zoom} />
 
       <ParentalGate
         visible={gateVisible}
