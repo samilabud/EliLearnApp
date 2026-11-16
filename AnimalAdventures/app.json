@@ -16,7 +16,7 @@
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.elilearnapps.animaladventures",
       "buildNumber": "1",
       "infoPlist": {
