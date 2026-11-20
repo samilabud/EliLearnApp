@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   levelChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     flexShrink: 1,
   },

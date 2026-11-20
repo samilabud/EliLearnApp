@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     // Floor kept at MIN_TOUCH_TARGET for small hands.
     minHeight: MIN_TOUCH_TARGET,
     minWidth: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
   fill: {

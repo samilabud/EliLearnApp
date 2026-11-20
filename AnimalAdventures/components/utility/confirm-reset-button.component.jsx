@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
     gap: 0,
     minHeight: MIN_TOUCH_TARGET,
     minWidth: LARGE_TOUCH_TARGET,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
   fill: {
