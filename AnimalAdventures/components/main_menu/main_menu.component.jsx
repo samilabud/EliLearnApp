@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -28,6 +29,7 @@ import {
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { gridColumns, useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
@@ -219,6 +221,7 @@ function MainMenu({
   const dailyVoicePlayer = useAudioPlayer(null);
   const mascotPlayer = useAudioPlayer(null);
   const [showDailyCelebration, setShowDailyCelebration] = useState(false);
+  const reduceMotion = useReduceMotion();
   // Imperative play/reset rather than a static `autoPlay` prop, so the same
   // animation can be replayed on tap, not just once on the day's first view.
   const dailyLottieRef = useRef(null);
@@ -470,10 +473,10 @@ function MainMenu({
             >
               <View style={styles.heroBackground} />
               <View style={styles.heroText}>
-                <Text style={[styles.heroLabel, { fontSize: 15 * scale }]}>
+                <Text style={[styles.heroLabel, { fontSize: 16 * scale }]}>
                   {t(currentLanguage, 'todaysAnimalLabel')}
                 </Text>
-                <Text
+                <FitText
                   style={[
                     styles.heroName,
                     {
@@ -481,12 +484,11 @@ function MainMenu({
                       lineHeight: Math.round(42 * scale),
                     },
                   ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.6}
+                  maxLines={1}
+                  minScale={0.6}
                 >
                   {todaysName}
-                </Text>
+                </FitText>
                 <View
                   style={[
                     styles.heroListen,
@@ -536,12 +538,14 @@ function MainMenu({
                           color={PALETTE.white}
                         />
                       </View>
-                      <Text
+                      <FitText
                         style={[styles.sectionTitle, { color: colors.ink }]}
+                        maxLines={2}
+                        minScale={0.75}
                         accessibilityRole="header"
                       >
                         {t(currentLanguage, category.titleKey)}
-                      </Text>
+                      </FitText>
                     </View>
                     <View style={[styles.tiles, { gap: TILE_GAP }]}>
                       {modes.map(mode => {
@@ -588,7 +592,9 @@ function MainMenu({
                               autoSize={false}
                               style={{ width: iconSize, height: iconSize }}
                             />
-                            <Text
+                            <FitText
+                              maxLines={3}
+                              minScale={0.75}
                               style={[
                                 styles.tileTitle,
                                 {
@@ -598,7 +604,7 @@ function MainMenu({
                               ]}
                             >
                               {title}
-                            </Text>
+                            </FitText>
                             {starCount > 0 && (
                               <View
                                 style={styles.starBadge}
@@ -670,7 +676,7 @@ function MainMenu({
       {/* Outside the ScrollView and absolutely positioned, like every other
           ConfettiCannon in this app - rendering it in the scrollable content
           shifts the content height every time it mounts/unmounts. */}
-      {showDailyCelebration && (
+      {showDailyCelebration && !reduceMotion && (
         <View pointerEvents="none" style={styles.dailyConfettiOverlay}>
           <ConfettiCannon
             count={60}
@@ -889,7 +895,7 @@ const styles = StyleSheet.create({
   starBadgeText: {
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
-    fontSize: 14,
+    fontSize: 16,
   },
   bottomBar: {
     position: 'absolute',
@@ -925,7 +931,7 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontFamily: FONTS.body,
-    fontSize: 15,
+    fontSize: 16,
     color: PALETTE.inkSoft,
   },
   navLabelActive: {

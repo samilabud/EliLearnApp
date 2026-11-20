@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../../constants';
 import { PALETTE, RADIUS, titleText } from '../../constants/theme';
 import { useResponsive } from '../../utils/use-responsive';
 import { HomeButton } from './back-to-menu-button.component';
+import { FitText } from './fit-text.component';
 import { ConfirmResetButton } from './confirm-reset-button.component';
 import { InstructionText } from './instruction-text.component';
 import { LanguageToggleButton } from './language-toggle-button.component';
@@ -34,6 +35,7 @@ export function GameScreen({
   onReset,
   resetLabelKey,
   resetConfirmLabelKey,
+  resetVisibleLabelKey,
   level,
   maxLevel,
   // Short status shown in the level chip's place on screens without
@@ -56,9 +58,10 @@ export function GameScreen({
   const levelChip =
     level == null && badge ? (
       <View style={styles.levelChip}>
-        <Text style={styles.levelText} numberOfLines={1}>
+        <View style={styles.levelChipFill} importantForAccessibility="no" />
+        <FitText style={styles.levelText} maxLines={2} minScale={0.7}>
           {badge}
-        </Text>
+        </FitText>
       </View>
     ) : level != null ? (
       <View
@@ -70,9 +73,10 @@ export function GameScreen({
           max: maxLevel,
         })}
       >
-        <Text style={styles.levelText} numberOfLines={1}>
-          {t(currentLanguage, 'level')} {level}/{maxLevel}
-        </Text>
+        <View style={styles.levelChipFill} importantForAccessibility="no" />
+        <FitText style={styles.levelText} maxLines={2} minScale={0.7}>
+          {`${t(currentLanguage, 'level')} ${level}/${maxLevel}`}
+        </FitText>
       </View>
     ) : null;
 
@@ -85,6 +89,19 @@ export function GameScreen({
         textStyle={styles.instructionText}
       />
     </View>
+  ) : null;
+
+  const resetButton = onReset ? (
+    <ConfirmResetButton
+      currentLanguage={currentLanguage}
+      onConfirm={onReset}
+      labelKey={resetLabelKey}
+      confirmLabelKey={resetConfirmLabelKey}
+      visibleLabelKey={resetVisibleLabelKey}
+    />
+  ) : null;
+  const nextButton = onNextGame ? (
+    <NextGameButton currentLanguage={currentLanguage} onPress={onNextGame} />
   ) : null;
 
   return (
@@ -110,20 +127,8 @@ export function GameScreen({
             <View style={styles.spacer} />
           )}
           <View style={styles.actions}>
-            {onReset && (
-              <ConfirmResetButton
-                currentLanguage={currentLanguage}
-                onConfirm={onReset}
-                labelKey={resetLabelKey}
-                confirmLabelKey={resetConfirmLabelKey}
-              />
-            )}
-            {onNextGame && (
-              <NextGameButton
-                currentLanguage={currentLanguage}
-                onPress={onNextGame}
-              />
-            )}
+            {inlineHeader && resetButton}
+            {inlineHeader && nextButton}
             {setCurrentLanguage && (
               <LanguageToggleButton
                 currentLanguage={currentLanguage}
@@ -132,11 +137,17 @@ export function GameScreen({
             )}
           </View>
         </View>
-        {!inlineHeader && (levelChip || instructionRow) && (
+        {/* A phone in portrait has no room for four labelled buttons in one
+            row, so Again and Next sit with the level chip on a second row. */}
+        {!inlineHeader && (levelChip || resetButton || nextButton) && (
           <View style={styles.secondRow}>
             {levelChip}
-            {instructionRow}
+            {resetButton}
+            {nextButton}
           </View>
+        )}
+        {!inlineHeader && instructionRow && (
+          <View style={styles.secondRow}>{instructionRow}</View>
         )}
       </View>
 
@@ -220,13 +231,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
-    gap: 12,
+    // 16 is this app's floor for gaps between adjacent tappable controls.
+    gap: 16,
   },
   levelChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    flexShrink: 1,
+  },
+  // The gold fill is a sibling, not on the chip itself: Android clips the
+  // text of a view with both a border radius and a fill (see FitText).
+  levelChipFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: PALETTE.gold,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
   },
   levelText: {
     ...titleText(20, PALETTE.ink),

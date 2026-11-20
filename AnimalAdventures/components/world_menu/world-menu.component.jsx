@@ -5,8 +5,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import {
-  AccessibilityInfo,
   Animated,
   BackHandler,
   Easing,
@@ -24,6 +24,7 @@ import { WORLDS } from '../../constants/worlds';
 import { CATEGORY_COLORS, FONTS, PALETTE, RADIUS } from '../../constants/theme';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { loadJSON, saveJSON } from '../../utils/storage';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useResponsive } from '../../utils/use-responsive';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -75,7 +76,7 @@ export default function WorldMenu({
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [page, setPage] = useState(memory.page);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useReduceMotion();
   // Which games have been opened from the map. Kept on this device only.
   const [visited, setVisited] = useState([]);
   const [scrollX] = useState(() => new Animated.Value(0));
@@ -89,21 +90,6 @@ export default function WorldMenu({
   // Taps before this moment are ignored: mid-swipe, mid-glide, mid-launch.
   const lockUntil = useRef(0);
   const mascotPlayer = useAudioPlayer(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(on => !cancelled && setReduceMotion(on))
-      .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion
-    );
-    return () => {
-      cancelled = true;
-      sub.remove();
-    };
-  }, []);
 
   useEffect(() => () => releasePlayer(mascotPlayer), [mascotPlayer]);
 
@@ -367,23 +353,22 @@ export default function WorldMenu({
           currentLanguage={currentLanguage}
           onToggle={setCurrentLanguage}
         />
-        <View
-          style={[styles.titlePill, { borderColor: colors.ring }]}
-          accessible
-          accessibilityRole="header"
-        >
+        <View style={styles.titlePill} accessible accessibilityRole="header">
+          <View
+            style={[styles.titlePillFill, { borderColor: colors.ring }]}
+            importantForAccessibility="no"
+          />
           <MaterialIcons name={world.glyph} size={24} color={colors.ink} />
-          <Text
+          <FitText
             style={[
               styles.title,
               { color: colors.ink, fontSize: 26 * Math.min(scale, 1.3) },
             ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
+            maxLines={1}
+            minScale={0.5}
           >
             {t(currentLanguage, world.titleKey)}
-          </Text>
+          </FitText>
         </View>
         <BouncyButton
           style={[styles.roundButton, { width: nav, height: nav }]}
@@ -697,7 +682,15 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: RADIUS.pill,
+  },
+  // Fill and ring on a sibling so Android cannot clip the wrapped title.
+  titlePillFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 28,
     borderWidth: 3,
     backgroundColor: 'rgba(255,255,255,0.96)',
   },

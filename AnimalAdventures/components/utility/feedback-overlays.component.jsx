@@ -5,7 +5,10 @@ import ConfettiCannon from 'react-native-confetti-cannon';
 import { t } from '../../constants';
 import { PALETTE, RADIUS, titleText } from '../../constants/theme';
 import { BouncyButton } from './bouncy-button.component';
+import { FitText } from './fit-text.component';
 import { useResponsive } from '../../utils/use-responsive';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
+import { useFeedbackVoice } from '../../utils/feedback-sounds';
 
 /**
  * The celebration and encouragement layers every quiz game shares. They were
@@ -14,8 +17,15 @@ import { useResponsive } from '../../utils/use-responsive';
  */
 
 /** Big check mark and confetti after a correct answer. */
-export function CorrectBurst({ visible, opacity, confettiKey }) {
+export function CorrectBurst({
+  visible,
+  opacity,
+  confettiKey,
+  currentLanguage,
+}) {
   const { width } = useResponsive();
+  const reduceMotion = useReduceMotion();
+  useFeedbackVoice(visible, 'correct', currentLanguage, confettiKey);
   if (!visible) return null;
   return (
     <Animated.View
@@ -23,14 +33,16 @@ export function CorrectBurst({ visible, opacity, confettiKey }) {
       style={[styles.fill, styles.center, { opacity }]}
     >
       <Text style={styles.check}>✅</Text>
-      <ConfettiCannon
-        key={`confetti-${confettiKey}`}
-        count={80}
-        fadeOut={true}
-        explosionSpeed={350}
-        fallSpeed={3000}
-        origin={{ x: width / 2, y: 0 }}
-      />
+      {!reduceMotion && (
+        <ConfettiCannon
+          key={`confetti-${confettiKey}`}
+          count={80}
+          fadeOut={true}
+          explosionSpeed={350}
+          fallSpeed={3000}
+          origin={{ x: width / 2, y: 0 }}
+        />
+      )}
     </Animated.View>
   );
 }
@@ -40,13 +52,65 @@ export function CorrectBurst({ visible, opacity, confettiKey }) {
  * no red, no X, and it clears itself.
  */
 export function TryAgainBanner({ visible, currentLanguage }) {
+  useFeedbackVoice(visible, 'tryAgain', currentLanguage);
   if (!visible) return null;
   return (
     <View pointerEvents="none" style={[styles.fill, styles.center]}>
       <View style={styles.tryAgainPill}>
-        <Text style={styles.tryAgainText}>
+        <View style={styles.tryAgainFill} importantForAccessibility="no" />
+        <FitText style={styles.tryAgainText} maxLines={2} minScale={0.6}>
           {t(currentLanguage, 'tryOnceMore')}
-        </Text>
+        </FitText>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * One button on the completion card. The fill is a sibling of the label, not
+ * on the animated button itself: Android clips the text of a pressable view
+ * that has both a border radius and a fill, and this label can wrap.
+ */
+function ActionButton({ icon, label, a11yLabel, onPress, primary }) {
+  return (
+    <BouncyButton
+      onPress={onPress}
+      style={styles.action}
+      accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+    >
+      <View
+        style={[styles.actionFill, primary && styles.actionFillPrimary]}
+        importantForAccessibility="no"
+      />
+      <MaterialIcons name={icon} size={24} color={PALETTE.ink} />
+      <FitText
+        font="body"
+        style={styles.actionText}
+        maxLines={2}
+        minScale={0.8}
+      >
+        {label}
+      </FitText>
+    </BouncyButton>
+  );
+}
+
+/**
+ * A small thank-you when an open-ended mode earns its first star. It fades
+ * with the parent's timer, never blocks a tap, and has no sound or motion
+ * of its own, so it is fine under reduced motion.
+ */
+export function StarToast({ visible, currentLanguage }) {
+  if (!visible) return null;
+  return (
+    <View pointerEvents="none" style={[styles.fill, styles.toastWrap]}>
+      <View style={styles.toast}>
+        <View style={styles.toastFill} importantForAccessibility="no" />
+        <MaterialIcons name="star" size={28} color={PALETTE.ink} />
+        <FitText style={styles.toastText} maxLines={2} minScale={0.7}>
+          {t(currentLanguage, 'starToast')}
+        </FitText>
       </View>
     </View>
   );
@@ -64,10 +128,12 @@ export function CompletionOverlay({
   subtitle,
 }) {
   const { width } = useResponsive();
+  const reduceMotion = useReduceMotion();
   const [pulse] = useState(() => new Animated.Value(0));
+  useFeedbackVoice(visible, 'allDone', currentLanguage);
 
   useEffect(() => {
-    if (!visible) return undefined;
+    if (!visible || reduceMotion) return undefined;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -86,7 +152,7 @@ export function CompletionOverlay({
     );
     loop.start();
     return () => loop.stop();
-  }, [visible, pulse]);
+  }, [visible, reduceMotion, pulse]);
 
   if (!visible) return null;
   const scale = pulse.interpolate({
@@ -97,67 +163,60 @@ export function CompletionOverlay({
   return (
     <View style={[styles.fill, styles.center, styles.dim]}>
       <View style={styles.card}>
-        <Text style={styles.title}>
+        <FitText style={styles.title} maxLines={2} minScale={0.6}>
           {title || t(currentLanguage, 'amazing')}
-        </Text>
-        <Text style={styles.subtitle}>
+        </FitText>
+        <FitText
+          font="body"
+          style={styles.subtitle}
+          maxLines={3}
+          minScale={0.8}
+        >
           {subtitle || t(currentLanguage, 'finishedAllLevels')}
-        </Text>
+        </FitText>
         <View style={styles.actions}>
           {onRestart && (
             <Animated.View
               renderToHardwareTextureAndroid
               style={{ transform: [{ scale }] }}
             >
-              <BouncyButton
+              <ActionButton
+                primary
+                icon="replay"
+                label={t(currentLanguage, 'restart')}
+                a11yLabel={t(currentLanguage, 'a11yResetButton')}
                 onPress={onRestart}
-                style={[styles.action, styles.actionPrimary]}
-                accessibilityRole="button"
-                accessibilityLabel={t(currentLanguage, 'a11yResetButton')}
-              >
-                <MaterialIcons name="replay" size={24} color={PALETTE.ink} />
-                <Text style={styles.actionText}>
-                  {t(currentLanguage, 'restart')}
-                </Text>
-              </BouncyButton>
+              />
             </Animated.View>
           )}
           {onNextGame && (
-            <BouncyButton
+            <ActionButton
+              icon="skip-next"
+              label={t(currentLanguage, 'nextGame')}
+              a11yLabel={t(currentLanguage, 'a11yNextGame')}
               onPress={onNextGame}
-              style={styles.action}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yNextGame')}
-            >
-              <MaterialIcons name="skip-next" size={24} color={PALETTE.ink} />
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'nextGame')}
-              </Text>
-            </BouncyButton>
+            />
           )}
           {onHome && (
-            <BouncyButton
+            <ActionButton
+              icon="home"
+              label={t(currentLanguage, 'mainMenuFull')}
+              a11yLabel={t(currentLanguage, 'a11yMainMenuButton')}
               onPress={onHome}
-              style={styles.action}
-              accessibilityRole="button"
-              accessibilityLabel={t(currentLanguage, 'a11yMainMenuButton')}
-            >
-              <MaterialIcons name="home" size={24} color={PALETTE.ink} />
-              <Text style={styles.actionText}>
-                {t(currentLanguage, 'mainMenuFull')}
-              </Text>
-            </BouncyButton>
+            />
           )}
         </View>
       </View>
-      <ConfettiCannon
-        key={`final-${confettiKey}`}
-        count={200}
-        fadeOut={true}
-        explosionSpeed={300}
-        fallSpeed={3500}
-        origin={{ x: width / 2, y: 0 }}
-      />
+      {!reduceMotion && (
+        <ConfettiCannon
+          key={`final-${confettiKey}`}
+          count={200}
+          fadeOut={true}
+          explosionSpeed={300}
+          fallSpeed={3500}
+          origin={{ x: width / 2, y: 0 }}
+        />
+      )}
     </View>
   );
 }
@@ -182,12 +241,50 @@ const styles = StyleSheet.create({
     fontSize: 80,
   },
   tryAgainPill: {
+    maxWidth: '92%',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+  },
+  tryAgainFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: PALETTE.white,
     borderRadius: RADIUS.lg,
     borderWidth: 4,
     borderColor: PALETTE.gold,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
+  },
+  // The header band has a higher z-index than a plain sibling, so the toast
+  // needs its own to be seen at all.
+  toastWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 10,
+  },
+  toast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '92%',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  toastFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
+    borderWidth: 3,
+    borderColor: PALETTE.white,
+  },
+  toastText: {
+    ...titleText(26, PALETTE.ink),
   },
   tryAgainText: {
     ...titleText(40, PALETTE.ink),
@@ -227,12 +324,21 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 60,
     paddingHorizontal: 22,
+    paddingVertical: 6,
+    maxWidth: '100%',
+  },
+  actionFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: PALETTE.white,
-    borderRadius: RADIUS.pill,
+    borderRadius: 30,
     borderWidth: 3,
     borderColor: PALETTE.gold,
   },
-  actionPrimary: {
+  actionFillPrimary: {
     backgroundColor: PALETTE.gold,
     borderColor: PALETTE.white,
   },

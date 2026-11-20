@@ -1,4 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
@@ -318,18 +319,23 @@ function Landmark({
         )}
       </View>
       <View style={styles.labelPill}>
-        <Text
+        {/* The white fill lives on a sibling: Android clips the text of a
+            view that has both a border radius and a fill, which cut long
+            titles down to their first word. */}
+        <View style={styles.labelBackground} importantForAccessibility="no" />
+        <FitText
           style={[
             styles.label,
             { fontSize: labelSize, lineHeight: Math.round(labelSize * 1.2) },
           ]}
-          numberOfLines={2}
+          maxLines={3}
+          minScale={0.7}
         >
           {/* Trailing non-breaking spaces give the slanted font's last
               letter room that padding alone did not. */}
           {title}
           {'\u00A0\u00A0'}
-        </Text>
+        </FitText>
       </View>
     </BouncyButton>
   );
@@ -401,7 +407,14 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: RADIUS.pill,
+  },
+  labelBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.92)',
   },
   label: {
@@ -431,7 +444,7 @@ const styles = StyleSheet.create({
   starBadgeText: {
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
-    fontSize: 14,
+    fontSize: 16,
   },
 });
 

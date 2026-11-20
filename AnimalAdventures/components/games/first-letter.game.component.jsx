@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import { StyleSheet, Text, View, Animated, Easing } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
@@ -25,6 +26,7 @@ import {
   getLetterDifficulty,
 } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { firstLetterOf, lastLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
@@ -258,7 +260,12 @@ export default function FirstLetterGame({
   ]);
 
   // Continuous bubble effect on the Play button, matching the other games.
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    if (reduceMotion) {
+      promptPulse.setValue(0);
+      return undefined;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(promptPulse, {
@@ -277,7 +284,7 @@ export default function FirstLetterGame({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [promptPulse]);
+  }, [promptPulse, reduceMotion]);
 
   useEffect(() => {
     if (showComplete) {
@@ -594,17 +601,16 @@ export default function FirstLetterGame({
             size={30 * scale}
             color={PALETTE.ink}
           />
-          <Text
+          <FitText
             style={[
               styles.promptText,
               { fontSize: 24 * scale, lineHeight: 32 * scale },
             ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
+            maxLines={1}
+            minScale={0.6}
           >
             {t(currentLanguage, 'playName')}
-          </Text>
+          </FitText>
         </BouncyButton>
       </Animated.View>
     </View>
@@ -628,6 +634,7 @@ export default function FirstLetterGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}

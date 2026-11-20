@@ -382,6 +382,7 @@ export default function MissingAnimalGame({
             visible={phase === 'solved'}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrong}

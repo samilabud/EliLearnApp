@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { FitText } from '../utility/fit-text.component';
+import { StyleSheet, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -22,6 +23,9 @@ import { GameScreen } from '../utility/game-screen.component';
 import { FitGrid } from '../utility/fit-grid.component';
 import { AnswerCard } from '../utility/answer-card.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
+import { useGameProgress } from '../../contexts/game-progress.context';
+import { useCreativeStar } from '../../utils/use-creative-star';
+import { StarToast } from '../utility/feedback-overlays.component';
 
 /** The band: animals with a clear, short sound that sit well together. */
 const BAND_IDS = [
@@ -60,6 +64,9 @@ export default function BandGame({
   onNextGame,
 }) {
   const { scale, touchTarget } = useResponsive();
+  const { markAnimalMet } = useGameProgress();
+  const [playedSong, setPlayedSong] = useState(false);
+  const starToast = useCreativeStar('band', playedSong);
   const { replay: replayInstruction } = useInstructionPrompt(
     'band',
     currentLanguage
@@ -99,15 +106,19 @@ export default function BandGame({
       if (playing) return;
       tapFeedback();
       sound(animal);
+      // Playing with an animal is meeting it, so the band feeds the Album
+      // like every other mode.
+      markAnimalMet(animal.id, 'band');
       setSong(prev => [...prev, animal.id].slice(-SONG_LENGTH));
     },
-    [playing, sound]
+    [playing, sound, markAnimalMet]
   );
 
   const handlePlaySong = useCallback(() => {
     if (playing || song.length === 0) return;
     tapFeedback();
     setPlaying(true);
+    setPlayedSong(true);
     song.forEach((id, i) => {
       later(() => {
         const animal = BAND.find(a => a.id === id);
@@ -157,17 +168,16 @@ export default function BandGame({
           size={36 * scale}
           color={PALETTE.ink}
         />
-        <Text
+        <FitText
           style={[
             styles.playText,
             { fontSize: 26 * scale, lineHeight: 34 * scale },
           ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
+          maxLines={1}
+          minScale={0.6}
         >
           {t(currentLanguage, 'bandPlaySong')}
-        </Text>
+        </FitText>
       </BouncyButton>
       {/* One dot per note in the song so far - the tune made visible. */}
       <View style={styles.dots} importantForAccessibility="no">
@@ -194,6 +204,9 @@ export default function BandGame({
       onReplayInstruction={replayInstruction}
       prompt={prompt}
       promptPaneRatio={0.3}
+      overlay={
+        <StarToast visible={starToast} currentLanguage={currentLanguage} />
+      }
     >
       <FitGrid
         items={BAND}

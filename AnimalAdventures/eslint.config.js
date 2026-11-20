@@ -36,6 +36,29 @@ module.exports = [
     },
   },
   {
+    // Child-facing text must never be cut off. `numberOfLines` truncates
+    // with no ellipsis on Android, and `adjustsFontSizeToFit` does not shrink
+    // reliably with Bangers, so a wrapped title showed only its first word.
+    // FitText shrinks and wraps without ever truncating. The parent area is
+    // adult text and may use either.
+    files: ['components/**/*.{js,jsx}', 'App.jsx'],
+    ignores: [
+      'components/utility/fit-text.component.jsx',
+      'components/parents/**',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'JSXAttribute[name.name=/^(numberOfLines|adjustsFontSizeToFit|minimumFontScale)$/]',
+          message:
+            'Use <FitText> (components/utility/fit-text.component.jsx) instead: numberOfLines and adjustsFontSizeToFit cut titles down to their first word on Android.',
+        },
+      ],
+    },
+  },
+  {
     // Build tooling runs in Node, not React Native.
     files: ['scripts/**/*.js', '*.config.js'],
     languageOptions: {

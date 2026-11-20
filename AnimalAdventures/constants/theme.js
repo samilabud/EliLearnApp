@@ -64,9 +64,25 @@ export const CARD_SHADOW = {
 };
 
 /**
- * Bangers clips on Android unless lineHeight is set explicitly and the
- * platform's own font padding is turned off - see the long-form note in
- * trace-letter.game.component.jsx. Spread this into any Bangers text style.
+ * Bangers on Android: why text gets cut off, and the three fixes.
+ *
+ * The slanted display font has tall ascenders and overhangs its last glyph.
+ * On Android it is clipped unless all of these hold:
+ * 1. `lineHeight` is set explicitly (about 1.3x the font size).
+ * 2. `includeFontPadding: false`, so the platform's own padding does not
+ *    shift the baseline.
+ * 3. `textBreakStrategy="simple"` for text that wraps.
+ * Spread this into any Bangers text style for 1 and 2.
+ *
+ * Wrapped titles have two more traps:
+ * - `numberOfLines` truncates with no ellipsis and `adjustsFontSizeToFit`
+ *   does not shrink reliably with this font, so a long title showed only its
+ *   first word or two. Never use them in child-facing UI (ESLint enforces
+ *   it); use `FitText` from components/utility/fit-text.component.jsx, which
+ *   applies all of the above and shrinks without ever cutting words off.
+ * - A pressable or animated view with both a `borderRadius` and a fill clips
+ *   its text children on Android. Draw the fill on an absolutely positioned
+ *   sibling instead (see `AnswerCard`).
  */
 export const titleText = (fontSize, color = PALETTE.white) => ({
   fontFamily: FONTS.title,

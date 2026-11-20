@@ -5,7 +5,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, Text, View, Animated, Easing } from 'react-native';
+import { FitText } from '../utility/fit-text.component';
+import { StyleSheet, View, Animated, Easing } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import {
   getHintAfterTries,
 } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import {
@@ -182,7 +184,12 @@ export default function GuessAnimalGame({
   ]);
 
   // Continuous bubble effect on Play Sound button
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    if (reduceMotion) {
+      promptPulse.setValue(0);
+      return undefined;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(promptPulse, {
@@ -201,7 +208,7 @@ export default function GuessAnimalGame({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [promptPulse]);
+  }, [promptPulse, reduceMotion]);
 
   // Play win sound when the user completes all levels
   useEffect(() => {
@@ -438,17 +445,16 @@ export default function GuessAnimalGame({
         {/* Fill lives on a sibling, not the animated view - see AnswerCard. */}
         <View style={styles.promptButtonBackground} />
         <MaterialIcons name="volume-up" size={32 * scale} color={PALETTE.ink} />
-        <Text
+        <FitText
           style={[
             styles.promptText,
             { fontSize: 26 * scale, lineHeight: 34 * scale },
           ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
+          maxLines={1}
+          minScale={0.6}
         >
           {t(currentLanguage, 'playSound')}
-        </Text>
+        </FitText>
       </BouncyButton>
     </Animated.View>
   );
@@ -472,6 +478,7 @@ export default function GuessAnimalGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}

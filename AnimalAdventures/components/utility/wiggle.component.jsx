@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing } from 'react-native';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 
 /**
  * A soft head-tilt for a wrong answer: the tapped card tips side to side
@@ -10,11 +11,14 @@ import { Animated, Easing } from 'react-native';
  */
 export function Wiggle({ trigger, style, children }) {
   const [tilt] = useState(() => new Animated.Value(0));
+  const reduceMotion = useReduceMotion();
   const last = useRef(trigger);
 
   useEffect(() => {
     if (!trigger || trigger === last.current) return;
     last.current = trigger;
+    // Reduced motion: the "Try again!" banner already says it, no tilt.
+    if (reduceMotion) return;
     tilt.setValue(0);
     Animated.sequence([
       Animated.timing(tilt, {
@@ -42,7 +46,7 @@ export function Wiggle({ trigger, style, children }) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [trigger, tilt]);
+  }, [trigger, tilt, reduceMotion]);
 
   const rotate = tilt.interpolate({
     inputRange: [-1, 1],

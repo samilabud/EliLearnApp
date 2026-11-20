@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
@@ -224,17 +225,16 @@ export default function AlbumScreen({
                   size={shelfItemSize * 0.45}
                   color={badge.earned ? PALETTE.ink : PALETTE.inkSoft}
                 />
-                <Text
+                <FitText
                   style={[
                     styles.badgeText,
                     !badge.earned && styles.badgeTextLocked,
                   ]}
-                  numberOfLines={3}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
+                  maxLines={3}
+                  minScale={0.7}
                 >
                   {label}
-                </Text>
+                </FitText>
               </View>
             );
           })}
@@ -319,17 +319,16 @@ export default function AlbumScreen({
                     )}
                   </View>
 
-                  <Text
+                  <FitText
                     style={[
                       styles.label,
                       isMet ? styles.labelMet : styles.labelLocked,
                     ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.7}
+                    maxLines={1}
+                    minScale={0.7}
                   >
                     {isMet ? name : t(currentLanguage, 'notMetYet')}
-                  </Text>
+                  </FitText>
                 </BouncyButton>
               );
             })}
@@ -384,7 +383,7 @@ const styles = StyleSheet.create({
   starsShelfCountText: {
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
-    fontSize: 13,
+    fontSize: 16,
   },
   badgeShelf: {
     gap: 12,
@@ -409,7 +408,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: FONTS.bodyHeavy,
-    fontSize: 13,
+    fontSize: 16,
     color: PALETTE.ink,
     textAlign: 'center',
   },
@@ -463,7 +462,7 @@ const styles = StyleSheet.create({
   },
   labelLocked: {
     fontFamily: FONTS.body,
-    fontSize: 14,
+    fontSize: 18,
     color: PALETTE.inkSoft,
   },
 });

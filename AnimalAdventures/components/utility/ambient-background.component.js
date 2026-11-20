@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 
 // Each bubble drives two looping native animations for as long as the
 // screen is mounted. Six of them (twelve concurrent loops) was reported as
@@ -13,6 +14,7 @@ const BUBBLES = [
 ];
 
 export const AmbientBackground = () => {
+  const reduceMotion = useReduceMotion();
   const animated = useMemo(
     () =>
       BUBBLES.map(() => ({
@@ -24,6 +26,9 @@ export const AmbientBackground = () => {
   );
 
   useEffect(() => {
+    // Drifting bubbles are pure decoration: hold them still (hidden) when
+    // the device asks for reduced motion.
+    if (reduceMotion) return undefined;
     const loops = animated.map(({ translateY, sway, opacity }, idx) => {
       const config = BUBBLES[idx];
 
@@ -85,7 +90,7 @@ export const AmbientBackground = () => {
     });
 
     return () => loops.forEach(stop => stop && stop());
-  }, [animated]);
+  }, [animated, reduceMotion]);
 
   return (
     <View pointerEvents="none" style={styles.container}>
@@ -138,5 +143,3 @@ const styles = StyleSheet.create({
 });
 
 export default AmbientBackground;
-
-
