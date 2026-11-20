@@ -26,6 +26,7 @@ import {
   getLetterDifficulty,
 } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { firstLetterOf, lastLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
@@ -259,7 +260,12 @@ export default function FirstLetterGame({
   ]);
 
   // Continuous bubble effect on the Play button, matching the other games.
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    if (reduceMotion) {
+      promptPulse.setValue(0);
+      return undefined;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(promptPulse, {
@@ -278,7 +284,7 @@ export default function FirstLetterGame({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [promptPulse]);
+  }, [promptPulse, reduceMotion]);
 
   useEffect(() => {
     if (showComplete) {

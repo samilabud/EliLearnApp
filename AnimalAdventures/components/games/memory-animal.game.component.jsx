@@ -30,6 +30,7 @@ import {
 } from '../../contexts/game-progress.context';
 import { EVENTS, track } from '../../utils/analytics';
 import { useBackToMenu } from '../../utils/navigation';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { useResponsive } from '../../utils/use-responsive';
 import { GameScreen } from '../utility/game-screen.component';
@@ -70,6 +71,7 @@ export default function MemoryAnimalGame({
   onNextGame,
 }) {
   const { scale } = useResponsive();
+  const reduceMotion = useReduceMotion();
   // Spoken once when the mode opens; tapping the instruction replays it.
   const { replay: replayInstruction } = useInstructionPrompt(
     'memory',
@@ -458,11 +460,13 @@ export default function MemoryAnimalGame({
                   {t(currentLanguage, 'movingToLevel', { level: level + 1 })}
                 </Text>
               </View>
-              <ConfettiCannon
-                key={`level-${level}-complete`}
-                fadeOut={true}
-                {...CELEBRATIONS[level % CELEBRATIONS.length]}
-              />
+              {!reduceMotion && (
+                <ConfettiCannon
+                  key={`level-${level}-complete`}
+                  fadeOut={true}
+                  {...CELEBRATIONS[level % CELEBRATIONS.length]}
+                />
+              )}
             </View>
           )}
           <CompletionOverlay

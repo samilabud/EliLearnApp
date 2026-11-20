@@ -29,6 +29,7 @@ import {
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { gridColumns, useResponsive } from '../../utils/use-responsive';
 import { BouncyButton } from '../utility/bouncy-button.component';
@@ -220,6 +221,7 @@ function MainMenu({
   const dailyVoicePlayer = useAudioPlayer(null);
   const mascotPlayer = useAudioPlayer(null);
   const [showDailyCelebration, setShowDailyCelebration] = useState(false);
+  const reduceMotion = useReduceMotion();
   // Imperative play/reset rather than a static `autoPlay` prop, so the same
   // animation can be replayed on tap, not just once on the day's first view.
   const dailyLottieRef = useRef(null);
@@ -674,7 +676,7 @@ function MainMenu({
       {/* Outside the ScrollView and absolutely positioned, like every other
           ConfettiCannon in this app - rendering it in the scrollable content
           shifts the content height every time it mounts/unmounts. */}
-      {showDailyCelebration && (
+      {showDailyCelebration && !reduceMotion && (
         <View pointerEvents="none" style={styles.dailyConfettiOverlay}>
           <ConfettiCannon
             count={60}

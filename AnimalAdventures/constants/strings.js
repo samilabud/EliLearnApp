@@ -46,6 +46,10 @@ export const STRINGS = {
     mainMenuFull: 'Main Menu',
     level: 'Level',
     nextGame: 'Next Game',
+    nextShort: 'Next',
+    resetShort: 'Again',
+    clearShort: 'Clear',
+    tapAgainShort: 'Tap again!',
 
     // Guess the Animal
     playSound: 'Play Sound',
@@ -290,6 +294,10 @@ export const STRINGS = {
     mainMenuFull: 'Menú Principal',
     level: 'Nivel',
     nextGame: 'Siguiente Juego',
+    nextShort: 'Siguiente',
+    resetShort: 'Otra vez',
+    clearShort: 'Borrar',
+    tapAgainShort: '¡Toca otra vez!',
 
     // Adivina el Animal
     playSound: 'Reproducir Sonido',

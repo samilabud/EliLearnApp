@@ -572,6 +572,7 @@ export default function ColoringGame({
       onReset={handleReset}
       resetLabelKey="a11yClearPage"
       resetConfirmLabelKey="a11yClearPageConfirm"
+      resetVisibleLabelKey="clearShort"
       instruction={t(currentLanguage, 'modeColoringDescription')}
       onReplayInstruction={replayInstruction}
     >

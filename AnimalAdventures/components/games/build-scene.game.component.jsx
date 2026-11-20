@@ -422,6 +422,7 @@ export default function BuildSceneGame({
       onReset={handleReset}
       resetLabelKey="a11yClearScene"
       resetConfirmLabelKey="a11yClearSceneConfirm"
+      resetVisibleLabelKey="clearShort"
       instruction={t(currentLanguage, 'buildSceneEmptyHint')}
       onReplayInstruction={replayInstruction}
       overlay={

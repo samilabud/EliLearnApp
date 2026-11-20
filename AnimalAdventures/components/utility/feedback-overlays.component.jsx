@@ -7,6 +7,7 @@ import { PALETTE, RADIUS, titleText } from '../../constants/theme';
 import { BouncyButton } from './bouncy-button.component';
 import { FitText } from './fit-text.component';
 import { useResponsive } from '../../utils/use-responsive';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 
 /**
  * The celebration and encouragement layers every quiz game shares. They were
@@ -17,6 +18,7 @@ import { useResponsive } from '../../utils/use-responsive';
 /** Big check mark and confetti after a correct answer. */
 export function CorrectBurst({ visible, opacity, confettiKey }) {
   const { width } = useResponsive();
+  const reduceMotion = useReduceMotion();
   if (!visible) return null;
   return (
     <Animated.View
@@ -24,14 +26,16 @@ export function CorrectBurst({ visible, opacity, confettiKey }) {
       style={[styles.fill, styles.center, { opacity }]}
     >
       <Text style={styles.check}>✅</Text>
-      <ConfettiCannon
-        key={`confetti-${confettiKey}`}
-        count={80}
-        fadeOut={true}
-        explosionSpeed={350}
-        fallSpeed={3000}
-        origin={{ x: width / 2, y: 0 }}
-      />
+      {!reduceMotion && (
+        <ConfettiCannon
+          key={`confetti-${confettiKey}`}
+          count={80}
+          fadeOut={true}
+          explosionSpeed={350}
+          fallSpeed={3000}
+          origin={{ x: width / 2, y: 0 }}
+        />
+      )}
     </Animated.View>
   );
 }
@@ -96,10 +100,11 @@ export function CompletionOverlay({
   subtitle,
 }) {
   const { width } = useResponsive();
+  const reduceMotion = useReduceMotion();
   const [pulse] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    if (!visible) return undefined;
+    if (!visible || reduceMotion) return undefined;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -118,7 +123,7 @@ export function CompletionOverlay({
     );
     loop.start();
     return () => loop.stop();
-  }, [visible, pulse]);
+  }, [visible, reduceMotion, pulse]);
 
   if (!visible) return null;
   const scale = pulse.interpolate({
@@ -173,14 +178,16 @@ export function CompletionOverlay({
           )}
         </View>
       </View>
-      <ConfettiCannon
-        key={`final-${confettiKey}`}
-        count={200}
-        fadeOut={true}
-        explosionSpeed={300}
-        fallSpeed={3500}
-        origin={{ x: width / 2, y: 0 }}
-      />
+      {!reduceMotion && (
+        <ConfettiCannon
+          key={`final-${confettiKey}`}
+          count={200}
+          fadeOut={true}
+          explosionSpeed={300}
+          fallSpeed={3500}
+          origin={{ x: width / 2, y: 0 }}
+        />
+      )}
     </View>
   );
 }

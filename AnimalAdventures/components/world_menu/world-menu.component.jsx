@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { FitText } from '../utility/fit-text.component';
 import {
-  AccessibilityInfo,
   Animated,
   BackHandler,
   Easing,
@@ -25,6 +24,7 @@ import { WORLDS } from '../../constants/worlds';
 import { CATEGORY_COLORS, FONTS, PALETTE, RADIUS } from '../../constants/theme';
 import { tapFeedback, selectFeedback } from '../../utils/haptics';
 import { loadJSON, saveJSON } from '../../utils/storage';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, releasePlayer } from '../../utils/sound';
 import { useResponsive } from '../../utils/use-responsive';
 import { useGameProgress } from '../../contexts/game-progress.context';
@@ -76,7 +76,7 @@ export default function WorldMenu({
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [page, setPage] = useState(memory.page);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useReduceMotion();
   // Which games have been opened from the map. Kept on this device only.
   const [visited, setVisited] = useState([]);
   const [scrollX] = useState(() => new Animated.Value(0));
@@ -90,21 +90,6 @@ export default function WorldMenu({
   // Taps before this moment are ignored: mid-swipe, mid-glide, mid-launch.
   const lockUntil = useRef(0);
   const mascotPlayer = useAudioPlayer(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(on => !cancelled && setReduceMotion(on))
-      .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion
-    );
-    return () => {
-      cancelled = true;
-      sub.remove();
-    };
-  }, []);
 
   useEffect(() => () => releasePlayer(mascotPlayer), [mascotPlayer]);
 

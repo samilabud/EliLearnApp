@@ -31,6 +31,7 @@ import { useGameProgress } from '../../contexts/game-progress.context';
 import { useSettings } from '../../contexts/settings.context';
 import { getTraceTolerance } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { firstLetterOf } from '../../utils/helpers';
 import { getLetterSound } from '../../utils/letter-sounds';
@@ -263,7 +264,12 @@ export default function TraceLetterGame({
   ]);
 
   // Continuous bubble effect on the Play button, matching the other games.
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    if (reduceMotion) {
+      promptPulse.setValue(0);
+      return undefined;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(promptPulse, {
@@ -282,7 +288,7 @@ export default function TraceLetterGame({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [promptPulse]);
+  }, [promptPulse, reduceMotion]);
 
   useEffect(() => {
     if (showComplete) {
