@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import {
   PanResponder,
   StyleSheet,
@@ -751,17 +752,16 @@ export default function TraceLetterGame({
               size={28 * scale}
               color={PALETTE.ink}
             />
-            <Text
+            <FitText
               style={[
                 styles.promptText,
                 { fontSize: 22 * scale, lineHeight: 30 * scale },
               ]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.6}
+              maxLines={1}
+              minScale={0.6}
             >
               {t(currentLanguage, 'playName')}
-            </Text>
+            </FitText>
           </BouncyButton>
         </Animated.View>
       </View>

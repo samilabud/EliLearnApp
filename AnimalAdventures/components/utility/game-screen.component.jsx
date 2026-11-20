@@ -1,10 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { t } from '../../constants';
 import { PALETTE, RADIUS, titleText } from '../../constants/theme';
 import { useResponsive } from '../../utils/use-responsive';
 import { HomeButton } from './back-to-menu-button.component';
+import { FitText } from './fit-text.component';
 import { ConfirmResetButton } from './confirm-reset-button.component';
 import { InstructionText } from './instruction-text.component';
 import { LanguageToggleButton } from './language-toggle-button.component';
@@ -56,9 +57,10 @@ export function GameScreen({
   const levelChip =
     level == null && badge ? (
       <View style={styles.levelChip}>
-        <Text style={styles.levelText} numberOfLines={1}>
+        <View style={styles.levelChipFill} importantForAccessibility="no" />
+        <FitText style={styles.levelText} maxLines={2} minScale={0.7}>
           {badge}
-        </Text>
+        </FitText>
       </View>
     ) : level != null ? (
       <View
@@ -70,9 +72,10 @@ export function GameScreen({
           max: maxLevel,
         })}
       >
-        <Text style={styles.levelText} numberOfLines={1}>
-          {t(currentLanguage, 'level')} {level}/{maxLevel}
-        </Text>
+        <View style={styles.levelChipFill} importantForAccessibility="no" />
+        <FitText style={styles.levelText} maxLines={2} minScale={0.7}>
+          {`${t(currentLanguage, 'level')} ${level}/${maxLevel}`}
+        </FitText>
       </View>
     ) : null;
 
@@ -223,10 +226,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   levelChip: {
-    backgroundColor: PALETTE.gold,
-    borderRadius: RADIUS.pill,
     paddingHorizontal: 14,
     paddingVertical: 4,
+    flexShrink: 1,
+  },
+  // The gold fill is a sibling, not on the chip itself: Android clips the
+  // text of a view with both a border radius and a fill (see FitText).
+  levelChipFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
   },
   levelText: {
     ...titleText(20, PALETTE.ink),

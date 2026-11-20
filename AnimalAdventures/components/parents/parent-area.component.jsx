@@ -4,6 +4,7 @@ import {
   Linking,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -21,6 +22,7 @@ import {
 } from '../../contexts/settings.context';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { BouncyButton } from '../utility/bouncy-button.component';
+import TextStressScreen from './text-stress.screen.jsx';
 
 /**
  * The things this app does not do.
@@ -55,6 +57,7 @@ const AGE_LABEL_KEYS = {
 };
 
 export default function ParentArea({ visible, currentLanguage, onClose }) {
+  const [stressVisible, setStressVisible] = React.useState(false);
   const {
     soundEnabled,
     setSoundEnabled,
@@ -402,14 +405,26 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
               </>
             )}
 
-            <Text style={styles.version}>
-              {t(currentLanguage, 'brandCredit')}
-              {!!appVersion &&
-                ` · ${t(currentLanguage, 'versionLabel', { version: appVersion })}`}
-            </Text>
+            {/* Long-press opens the developer text-fit screen, a QA tool
+                for checking that no title is ever cut off. */}
+            <Pressable
+              onLongPress={() => setStressVisible(true)}
+              delayLongPress={1500}
+              accessible={false}
+            >
+              <Text style={styles.version}>
+                {t(currentLanguage, 'brandCredit')}
+                {!!appVersion &&
+                  ` · ${t(currentLanguage, 'versionLabel', { version: appVersion })}`}
+              </Text>
+            </Pressable>
           </ScrollView>
         </View>
       </View>
+      <TextStressScreen
+        visible={stressVisible}
+        onClose={() => setStressVisible(false)}
+      />
     </Modal>
   );
 }

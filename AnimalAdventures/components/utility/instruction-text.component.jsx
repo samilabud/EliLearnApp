@@ -10,8 +10,8 @@ import { MIN_TOUCH_TARGET } from '../../constants/layout';
  * instruction aloud again. Lets a child who can't read the text hear it
  * whenever they need to, not just once when the game opens.
  *
- * The Bangers text carries the Android clipping fix (textBreakStrategy /
- * collapsable) described in trace-letter.game.component.jsx.
+ * The Bangers text carries the Android clipping fixes (textBreakStrategy /
+ * collapsable) explained above `titleText` in constants/theme.js.
  */
 export function InstructionText({
   text,

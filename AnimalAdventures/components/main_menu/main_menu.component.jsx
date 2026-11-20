@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -473,7 +474,7 @@ function MainMenu({
                 <Text style={[styles.heroLabel, { fontSize: 15 * scale }]}>
                   {t(currentLanguage, 'todaysAnimalLabel')}
                 </Text>
-                <Text
+                <FitText
                   style={[
                     styles.heroName,
                     {
@@ -481,12 +482,11 @@ function MainMenu({
                       lineHeight: Math.round(42 * scale),
                     },
                   ]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.6}
+                  maxLines={1}
+                  minScale={0.6}
                 >
                   {todaysName}
-                </Text>
+                </FitText>
                 <View
                   style={[
                     styles.heroListen,
@@ -536,12 +536,14 @@ function MainMenu({
                           color={PALETTE.white}
                         />
                       </View>
-                      <Text
+                      <FitText
                         style={[styles.sectionTitle, { color: colors.ink }]}
+                        maxLines={2}
+                        minScale={0.75}
                         accessibilityRole="header"
                       >
                         {t(currentLanguage, category.titleKey)}
-                      </Text>
+                      </FitText>
                     </View>
                     <View style={[styles.tiles, { gap: TILE_GAP }]}>
                       {modes.map(mode => {
@@ -588,7 +590,9 @@ function MainMenu({
                               autoSize={false}
                               style={{ width: iconSize, height: iconSize }}
                             />
-                            <Text
+                            <FitText
+                              maxLines={3}
+                              minScale={0.75}
                               style={[
                                 styles.tileTitle,
                                 {
@@ -598,7 +602,7 @@ function MainMenu({
                               ]}
                             >
                               {title}
-                            </Text>
+                            </FitText>
                             {starCount > 0 && (
                               <View
                                 style={styles.starBadge}

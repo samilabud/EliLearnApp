@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { FitText } from '../utility/fit-text.component';
+import { StyleSheet, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -157,17 +158,16 @@ export default function BandGame({
           size={36 * scale}
           color={PALETTE.ink}
         />
-        <Text
+        <FitText
           style={[
             styles.playText,
             { fontSize: 26 * scale, lineHeight: 34 * scale },
           ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
+          maxLines={1}
+          minScale={0.6}
         >
           {t(currentLanguage, 'bandPlaySong')}
-        </Text>
+        </FitText>
       </BouncyButton>
       {/* One dot per note in the song so far - the tune made visible. */}
       <View style={styles.dots} importantForAccessibility="no">

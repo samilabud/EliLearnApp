@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { FitText } from '../utility/fit-text.component';
 import {
   AccessibilityInfo,
   Animated,
@@ -367,23 +368,22 @@ export default function WorldMenu({
           currentLanguage={currentLanguage}
           onToggle={setCurrentLanguage}
         />
-        <View
-          style={[styles.titlePill, { borderColor: colors.ring }]}
-          accessible
-          accessibilityRole="header"
-        >
+        <View style={styles.titlePill} accessible accessibilityRole="header">
+          <View
+            style={[styles.titlePillFill, { borderColor: colors.ring }]}
+            importantForAccessibility="no"
+          />
           <MaterialIcons name={world.glyph} size={24} color={colors.ink} />
-          <Text
+          <FitText
             style={[
               styles.title,
               { color: colors.ink, fontSize: 26 * Math.min(scale, 1.3) },
             ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.6}
+            maxLines={2}
+            minScale={0.7}
           >
             {t(currentLanguage, world.titleKey)}
-          </Text>
+          </FitText>
         </View>
         <BouncyButton
           style={[styles.roundButton, { width: nav, height: nav }]}
@@ -697,7 +697,15 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: RADIUS.pill,
+  },
+  // Fill and ring on a sibling so Android cannot clip the wrapped title.
+  titlePillFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 28,
     borderWidth: 3,
     backgroundColor: 'rgba(255,255,255,0.96)',
   },

@@ -5,7 +5,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { StyleSheet, Text, View, Animated, Easing } from 'react-native';
+import { FitText } from '../utility/fit-text.component';
+import { StyleSheet, View, Animated, Easing } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -438,17 +439,16 @@ export default function GuessAnimalGame({
         {/* Fill lives on a sibling, not the animated view - see AnswerCard. */}
         <View style={styles.promptButtonBackground} />
         <MaterialIcons name="volume-up" size={32 * scale} color={PALETTE.ink} />
-        <Text
+        <FitText
           style={[
             styles.promptText,
             { fontSize: 26 * scale, lineHeight: 34 * scale },
           ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}
+          maxLines={1}
+          minScale={0.6}
         >
           {t(currentLanguage, 'playSound')}
-        </Text>
+        </FitText>
       </BouncyButton>
     </Animated.View>
   );

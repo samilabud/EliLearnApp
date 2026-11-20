@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FitText } from '../utility/fit-text.component';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import { animalList, iconScaleStyle } from './animal.list';
@@ -124,7 +125,7 @@ const AnimalScreen = ({ currentLanguage }) => {
                       iconScaleStyle(animal),
                     ]}
                   />
-                  <Text
+                  <FitText
                     style={[
                       styles.animationName,
                       {
@@ -132,13 +133,12 @@ const AnimalScreen = ({ currentLanguage }) => {
                         lineHeight: Math.round(24 * scale),
                       },
                     ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.7}
+                    maxLines={1}
+                    minScale={0.7}
                     accessible={false}
                   >
                     {name}
-                  </Text>
+                  </FitText>
                 </AnswerCard>
               </View>
             );
