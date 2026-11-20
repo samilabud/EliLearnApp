@@ -8,28 +8,46 @@ import { playVoice, releasePlayer } from './sound';
  *
  * Each kind has a few variants (children tune out a line that never
  * changes). Metro needs a literal path for every `require()`, so this is a
- * static table like ./instruction-sounds. It starts EMPTY on purpose: until
- * a clip is recorded and listed here, every kind is silent and the game
- * behaves exactly as before. A missing clip must never block a game.
+ * static table like ./instruction-sounds. The current clips are DRAFTS made
+ * with an unlicensed text-to-speech voice (edge-tts): regenerate them with a
+ * licensed service before publishing. A kind with an empty list is silent,
+ * and a missing clip must never block a game.
  *
- * To add clips: record them (see docs/plans/feedback-voice-script.md for
- * the exact lines), put the mp3s in assets/sounds/feedback/<english|spanish>/,
- * normalise each to about -16 LUFS, then list them, e.g.
- *
- *   correct: [require(`${english_folder}correct1.mp3`), ...],
+ * To add or replace clips: see docs/plans/feedback-voice-script.md for the
+ * exact lines, keep the file names, normalise each to about -16 LUFS.
  *
  * Playback goes through `playVoice`, so the parent's Voice setting and
  * speed apply to these clips too.
  */
 
-// eslint-disable-next-line no-unused-vars
 const english_folder = '../assets/sounds/feedback/english/';
-// eslint-disable-next-line no-unused-vars
 const spanish_folder = '../assets/sounds/feedback/spanish/';
 
 export const FEEDBACK_SOUNDS = {
-  en: { correct: [], tryAgain: [], allDone: [] },
-  es: { correct: [], tryAgain: [], allDone: [] },
+  en: {
+    correct: [
+      require(`${english_folder}correct1.mp3`),
+      require(`${english_folder}correct2.mp3`),
+      require(`${english_folder}correct3.mp3`),
+    ],
+    tryAgain: [
+      require(`${english_folder}tryAgain1.mp3`),
+      require(`${english_folder}tryAgain2.mp3`),
+    ],
+    allDone: [require(`${english_folder}allDone1.mp3`)],
+  },
+  es: {
+    correct: [
+      require(`${spanish_folder}correct1.mp3`),
+      require(`${spanish_folder}correct2.mp3`),
+      require(`${spanish_folder}correct3.mp3`),
+    ],
+    tryAgain: [
+      require(`${spanish_folder}tryAgain1.mp3`),
+      require(`${spanish_folder}tryAgain2.mp3`),
+    ],
+    allDone: [require(`${spanish_folder}allDone1.mp3`)],
+  },
 };
 
 /** How long to wait so the line follows the animal's own sound, not over it. */
