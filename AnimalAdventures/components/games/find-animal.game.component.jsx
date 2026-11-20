@@ -20,6 +20,7 @@ import {
   getHintAfterTries,
 } from '../../constants/difficulty';
 import { useBackToMenu } from '../../utils/navigation';
+import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { playClip, stopClip, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import {
@@ -196,7 +197,12 @@ export default function FindAnimalGame({
   ]);
 
   // Continuous bubble effect on Play Sound button
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    if (reduceMotion) {
+      promptPulse.setValue(0);
+      return undefined;
+    }
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(promptPulse, {
@@ -215,7 +221,7 @@ export default function FindAnimalGame({
     );
     pulse.start();
     return () => pulse.stop();
-  }, [promptPulse]);
+  }, [promptPulse, reduceMotion]);
 
   // Play win sound when the user completes all levels
   useEffect(() => {
@@ -498,6 +504,7 @@ export default function FindAnimalGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}

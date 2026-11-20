@@ -35,6 +35,7 @@ export function GameScreen({
   onReset,
   resetLabelKey,
   resetConfirmLabelKey,
+  resetVisibleLabelKey,
   level,
   maxLevel,
   // Short status shown in the level chip's place on screens without
@@ -90,6 +91,19 @@ export function GameScreen({
     </View>
   ) : null;
 
+  const resetButton = onReset ? (
+    <ConfirmResetButton
+      currentLanguage={currentLanguage}
+      onConfirm={onReset}
+      labelKey={resetLabelKey}
+      confirmLabelKey={resetConfirmLabelKey}
+      visibleLabelKey={resetVisibleLabelKey}
+    />
+  ) : null;
+  const nextButton = onNextGame ? (
+    <NextGameButton currentLanguage={currentLanguage} onPress={onNextGame} />
+  ) : null;
+
   return (
     <View style={styles.screen}>
       <View
@@ -113,20 +127,8 @@ export function GameScreen({
             <View style={styles.spacer} />
           )}
           <View style={styles.actions}>
-            {onReset && (
-              <ConfirmResetButton
-                currentLanguage={currentLanguage}
-                onConfirm={onReset}
-                labelKey={resetLabelKey}
-                confirmLabelKey={resetConfirmLabelKey}
-              />
-            )}
-            {onNextGame && (
-              <NextGameButton
-                currentLanguage={currentLanguage}
-                onPress={onNextGame}
-              />
-            )}
+            {inlineHeader && resetButton}
+            {inlineHeader && nextButton}
             {setCurrentLanguage && (
               <LanguageToggleButton
                 currentLanguage={currentLanguage}
@@ -135,11 +137,17 @@ export function GameScreen({
             )}
           </View>
         </View>
-        {!inlineHeader && (levelChip || instructionRow) && (
+        {/* A phone in portrait has no room for four labelled buttons in one
+            row, so Again and Next sit with the level chip on a second row. */}
+        {!inlineHeader && (levelChip || resetButton || nextButton) && (
           <View style={styles.secondRow}>
             {levelChip}
-            {instructionRow}
+            {resetButton}
+            {nextButton}
           </View>
+        )}
+        {!inlineHeader && instructionRow && (
+          <View style={styles.secondRow}>{instructionRow}</View>
         )}
       </View>
 
@@ -223,10 +231,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
-    gap: 12,
+    // 16 is this app's floor for gaps between adjacent tappable controls.
+    gap: 16,
   },
   levelChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     flexShrink: 1,
   },

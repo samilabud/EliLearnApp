@@ -4,6 +4,19 @@ Written 2026-11-19 for an implementing agent (Claude Sonnet). Work through the
 phases **in order**. Each phase is its own branch and PR into `main`. Do not
 start a phase until the previous one is merged or the user says to skip it.
 
+## Status (2026-11-19)
+
+| Phase | Code | Branch | Still open |
+| --- | --- | --- | --- |
+| 1 Text fit | Done | `fix/text-fit-component` | Device screenshots, iPad check |
+| 2 Interaction | Done (2.1-2.7) | `feat/interaction-design` (stacked) | Device check; Coloring hit areas not re-audited |
+| 3 Words/sounds | Plumbing, loudness script and 9 clip fixes done | same | You: record clips (`feedback-voice-script.md`), approve copy (`copy-proposals.md`) |
+| 4 Engagement | Band to Album; first stars for Band/Build/Coloring | same | Learn already uses `GameScreen` (the plan was wrong); age bands already differ |
+| 5 Review gate | Not started | - | Yours: videos, store screenshots, release, request on/after 2027-01-22 |
+
+Known mismatch: the recorded spoken instruction for Build a Scene still says
+"drag"; the on-screen text now says "tap or drag". Re-record when convenient.
+
 ## Context you need first
 
 - App: Animal Adventures, Expo 57 / React Native 0.86, child-directed (ages

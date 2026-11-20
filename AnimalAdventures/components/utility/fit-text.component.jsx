@@ -23,8 +23,9 @@ const SETTLE_FALLBACK_MS = 400;
  * 3. If it still does not fit at `minScale`, it keeps every line and its box
  *    grows taller. A slightly tall label is fine; a missing word is not.
  *
- * The text stays invisible until it has settled (usually one or two passes),
- * so there is no visible jump.
+ * The text is always visible: it may show at full size for a moment and then
+ * shrink. (Hiding it while measuring left an empty label for seconds on a
+ * busy screen, which is worse than a small resize.)
  *
  * Container rules, which are what keep the text from being clipped by its
  * parent:
@@ -121,7 +122,6 @@ export function FitText({
         {
           fontSize: baseSize * current.scale,
           lineHeight: baseLineHeight * current.scale,
-          opacity: current.settled ? (flat.opacity ?? 1) : 0,
         },
       ]}
     >

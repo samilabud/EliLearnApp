@@ -190,6 +190,11 @@ const DEFAULT_STARS = {
   missing: [],
   whoseSound: [],
   counting: [],
+  // Open-ended modes earn one star for making something (see
+  // utils/use-creative-star.js).
+  band: [],
+  buildScene: [],
+  coloring: [],
 };
 
 /**

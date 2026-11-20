@@ -19,6 +19,9 @@ import {
 import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
+import { useCreativeStar } from '../../utils/use-creative-star';
+import { StarToast } from '../utility/feedback-overlays.component';
+import { FitText } from '../utility/fit-text.component';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import { tapFeedback } from '../../utils/haptics';
@@ -352,6 +355,8 @@ export default function ColoringGame({
   }, []);
 
   const strokes = coloring.pages[animalId]?.strokes || [];
+  // A first star once a page has real colour on it.
+  const starToast = useCreativeStar('coloring', strokes.length >= 6);
 
   const handleUndo = useCallback(() => {
     if (strokes.length === 0) return;
@@ -454,12 +459,24 @@ export default function ColoringGame({
       <BouncyButton
         style={[styles.toolButton, strokes.length === 0 && styles.disabled]}
         onPress={handleUndo}
+        hitSlop={8}
         accessible
         accessibilityRole="button"
         accessibilityState={{ disabled: strokes.length === 0 }}
         accessibilityLabel={t(currentLanguage, 'a11yUndo')}
       >
+        {/* Fill on a sibling: Android clips text in a pressable view that
+            has both a border radius and a fill. */}
+        <View style={styles.toolFill} importantForAccessibility="no" />
         <MaterialIcons name="undo" size={24} color={THEME.ink} />
+        <FitText
+          font="body"
+          style={styles.toolText}
+          maxLines={1}
+          minScale={0.8}
+        >
+          {t(currentLanguage, 'undoShort')}
+        </FitText>
       </BouncyButton>
       {BRUSH_SIZES.map(({ width, key }) => (
         <BouncyButton
@@ -469,6 +486,7 @@ export default function ColoringGame({
             brushWidth === width && styles.sizeButtonActive,
           ]}
           onPress={() => handleSelectBrushSize(width)}
+          hitSlop={8}
           accessible
           accessibilityRole="button"
           accessibilityState={{ selected: brushWidth === width }}
@@ -498,6 +516,7 @@ export default function ColoringGame({
         isErasing && styles.swatchActive,
       ]}
       onPress={handleToggleEraser}
+      hitSlop={8}
       accessible
       accessibilityRole="button"
       accessibilityState={{ selected: isErasing }}
@@ -514,6 +533,7 @@ export default function ColoringGame({
           !isErasing && activeColor === color && styles.swatchActive,
         ]}
         onPress={() => handleSelectColor(color)}
+        hitSlop={8}
         accessible
         accessibilityRole="button"
         accessibilityState={{ selected: !isErasing && activeColor === color }}
@@ -572,8 +592,12 @@ export default function ColoringGame({
       onReset={handleReset}
       resetLabelKey="a11yClearPage"
       resetConfirmLabelKey="a11yClearPageConfirm"
+      resetVisibleLabelKey="clearShort"
       instruction={t(currentLanguage, 'modeColoringDescription')}
       onReplayInstruction={replayInstruction}
+      overlay={
+        <StarToast visible={starToast} currentLanguage={currentLanguage} />
+      }
     >
       {/* Portrait: tools stacked under the canvas. Landscape: tools in a
           side panel so the canvas keeps the full height. */}
@@ -655,14 +679,28 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   toolButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
     minHeight: MIN_TOUCH_TARGET,
     minWidth: MIN_TOUCH_TARGET,
+    paddingHorizontal: 14,
+  },
+  toolFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: THEME.white,
     borderRadius: RADIUS.pill,
     borderWidth: 2,
     borderColor: THEME.gold,
+  },
+  toolText: {
+    fontSize: 16,
+    color: THEME.ink,
   },
   sizeButton: {
     width: MIN_TOUCH_TARGET,
