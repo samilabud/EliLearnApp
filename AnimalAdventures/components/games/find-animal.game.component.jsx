@@ -504,6 +504,7 @@ export default function FindAnimalGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}

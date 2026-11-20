@@ -8,6 +8,7 @@ import { BouncyButton } from './bouncy-button.component';
 import { FitText } from './fit-text.component';
 import { useResponsive } from '../../utils/use-responsive';
 import { useReduceMotion } from '../../utils/use-reduce-motion';
+import { useFeedbackVoice } from '../../utils/feedback-sounds';
 
 /**
  * The celebration and encouragement layers every quiz game shares. They were
@@ -16,9 +17,15 @@ import { useReduceMotion } from '../../utils/use-reduce-motion';
  */
 
 /** Big check mark and confetti after a correct answer. */
-export function CorrectBurst({ visible, opacity, confettiKey }) {
+export function CorrectBurst({
+  visible,
+  opacity,
+  confettiKey,
+  currentLanguage,
+}) {
   const { width } = useResponsive();
   const reduceMotion = useReduceMotion();
+  useFeedbackVoice(visible, 'correct', currentLanguage, confettiKey);
   if (!visible) return null;
   return (
     <Animated.View
@@ -45,6 +52,7 @@ export function CorrectBurst({ visible, opacity, confettiKey }) {
  * no red, no X, and it clears itself.
  */
 export function TryAgainBanner({ visible, currentLanguage }) {
+  useFeedbackVoice(visible, 'tryAgain', currentLanguage);
   if (!visible) return null;
   return (
     <View pointerEvents="none" style={[styles.fill, styles.center]}>
@@ -102,6 +110,7 @@ export function CompletionOverlay({
   const { width } = useResponsive();
   const reduceMotion = useReduceMotion();
   const [pulse] = useState(() => new Animated.Value(0));
+  useFeedbackVoice(visible, 'allDone', currentLanguage);
 
   useEffect(() => {
     if (!visible || reduceMotion) return undefined;

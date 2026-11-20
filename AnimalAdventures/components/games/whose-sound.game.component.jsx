@@ -507,6 +507,7 @@ export default function WhoseSoundGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}

@@ -793,6 +793,7 @@ export default function TraceLetterGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}

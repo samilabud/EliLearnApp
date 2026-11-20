@@ -634,6 +634,7 @@ export default function FirstLetterGame({
             visible={isCorrect}
             opacity={feedbackAnim}
             confettiKey={confettiKey}
+            currentLanguage={currentLanguage}
           />
           <TryAgainBanner
             visible={showWrongOverlay}
