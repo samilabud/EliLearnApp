@@ -51,6 +51,7 @@ export const STRINGS = {
     clearShort: 'Clear',
     tapAgainShort: 'Tap again!',
     starToast: 'You earned a star!',
+    undoShort: 'Undo',
 
     // Guess the Animal
     playSound: 'Play Sound',
@@ -300,6 +301,7 @@ export const STRINGS = {
     clearShort: 'Borrar',
     tapAgainShort: '¡Toca otra vez!',
     starToast: '¡Ganaste una estrella!',
+    undoShort: 'Deshacer',
 
     // Adivina el Animal
     playSound: 'Escuchar el sonido',
