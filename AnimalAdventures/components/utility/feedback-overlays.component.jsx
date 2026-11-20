@@ -96,6 +96,26 @@ function ActionButton({ icon, label, a11yLabel, onPress, primary }) {
   );
 }
 
+/**
+ * A small thank-you when an open-ended mode earns its first star. It fades
+ * with the parent's timer, never blocks a tap, and has no sound or motion
+ * of its own, so it is fine under reduced motion.
+ */
+export function StarToast({ visible, currentLanguage }) {
+  if (!visible) return null;
+  return (
+    <View pointerEvents="none" style={[styles.fill, styles.toastWrap]}>
+      <View style={styles.toast}>
+        <View style={styles.toastFill} importantForAccessibility="no" />
+        <MaterialIcons name="star" size={28} color={PALETTE.ink} />
+        <FitText style={styles.toastText} maxLines={2} minScale={0.7}>
+          {t(currentLanguage, 'starToast')}
+        </FitText>
+      </View>
+    </View>
+  );
+}
+
 /** End-of-game celebration with Play Again, Next Game and Menu. */
 export function CompletionOverlay({
   visible,
@@ -235,6 +255,33 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     borderWidth: 4,
     borderColor: PALETTE.gold,
+  },
+  toastWrap: {
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 96,
+  },
+  toast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '92%',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  toastFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: PALETTE.gold,
+    borderRadius: RADIUS.pill,
+    borderWidth: 3,
+    borderColor: PALETTE.white,
+  },
+  toastText: {
+    ...titleText(26, PALETTE.ink),
   },
   tryAgainText: {
     ...titleText(40, PALETTE.ink),

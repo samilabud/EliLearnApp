@@ -22,6 +22,8 @@ import { animalList, iconScaleStyle, sceneScale } from '../animals/animal.list';
 import { sceneryList } from '../scenery/scenery.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
+import { useCreativeStar } from '../../utils/use-creative-star';
+import { StarToast } from '../utility/feedback-overlays.component';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import { tapFeedback, successFeedback } from '../../utils/haptics';
@@ -266,6 +268,9 @@ export default function BuildSceneGame({
     markAnimalMet,
   } = useGameProgress();
 
+  // A first star once the scene has a handful of things in it.
+  const starToast = useCreativeStar('buildScene', scene.placed.length >= 5);
+
   const soundPlayer = useAudioPlayer(null);
   const voicePlayer = useAudioPlayer(null);
   const voiceTimer = useRef(null);
@@ -477,6 +482,7 @@ export default function BuildSceneGame({
       onReplayInstruction={replayInstruction}
       overlay={
         <>
+          <StarToast visible={starToast} currentLanguage={currentLanguage} />
           {/* The drag ghost - a direct child of the root view, not of the scene
               or the tray, so neither's clipping touches it. See DraggableItem's
               comment for why this exists. */}

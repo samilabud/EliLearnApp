@@ -19,6 +19,8 @@ import {
 import { animalList, iconScaleStyle } from '../animals/animal.list';
 import { useGameProgress } from '../../contexts/game-progress.context';
 import { useBackToMenu } from '../../utils/navigation';
+import { useCreativeStar } from '../../utils/use-creative-star';
+import { StarToast } from '../utility/feedback-overlays.component';
 import { playClip, releasePlayer, playVoice } from '../../utils/sound';
 import { EVENTS, track } from '../../utils/analytics';
 import { tapFeedback } from '../../utils/haptics';
@@ -352,6 +354,8 @@ export default function ColoringGame({
   }, []);
 
   const strokes = coloring.pages[animalId]?.strokes || [];
+  // A first star once a page has real colour on it.
+  const starToast = useCreativeStar('coloring', strokes.length >= 6);
 
   const handleUndo = useCallback(() => {
     if (strokes.length === 0) return;
@@ -575,6 +579,9 @@ export default function ColoringGame({
       resetVisibleLabelKey="clearShort"
       instruction={t(currentLanguage, 'modeColoringDescription')}
       onReplayInstruction={replayInstruction}
+      overlay={
+        <StarToast visible={starToast} currentLanguage={currentLanguage} />
+      }
     >
       {/* Portrait: tools stacked under the canvas. Landscape: tools in a
           side panel so the canvas keeps the full height. */}
