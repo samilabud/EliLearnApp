@@ -68,6 +68,8 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
     setAmbientEffectsEnabled,
     childAgeBand,
     setChildAgeBand,
+    menuStyle,
+    setMenuStyle,
   } = useSettings();
   const { resetAlbum } = useGameProgress();
 
@@ -296,6 +298,43 @@ export default function ParentArea({ visible, currentLanguage, onClose }) {
                       style={[styles.chipText, active && styles.chipTextActive]}
                     >
                       {ageLabel(band)}
+                    </Text>
+                  </BouncyButton>
+                );
+              })}
+            </View>
+
+            {/* Home screen style - the world map, or the original list */}
+            <Text style={styles.sectionLabel}>
+              {t(currentLanguage, 'menuStyleLabel')}
+            </Text>
+            <Text style={styles.rowHint}>
+              {t(currentLanguage, 'menuStyleHint')}
+            </Text>
+            <View style={styles.chips}>
+              {['map', 'list'].map(style => {
+                const active = menuStyle === style;
+                const label = t(
+                  currentLanguage,
+                  style === 'map' ? 'menuStyleMap' : 'menuStyleList'
+                );
+                return (
+                  <BouncyButton
+                    key={style}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() => {
+                      tapFeedback();
+                      setMenuStyle(style);
+                    }}
+                    accessible
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    accessibilityLabel={label}
+                  >
+                    <Text
+                      style={[styles.chipText, active && styles.chipTextActive]}
+                    >
+                      {label}
                     </Text>
                   </BouncyButton>
                 );

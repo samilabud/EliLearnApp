@@ -187,6 +187,7 @@ const DEFAULT_STARS = {
   trace: [],
   memory: [],
   findAnimal: [],
+  missing: [],
   whoseSound: [],
   counting: [],
 };
@@ -290,7 +291,10 @@ const countingIsUsable = counting => {
 const starsIsUsable = stars =>
   !!stars &&
   typeof stars === 'object' &&
-  Object.keys(DEFAULT_STARS).every(
+  // Only keys present in the save are checked: a game added after the save
+  // was written has no entry yet, and that must not throw away every star
+  // already earned. Missing keys are filled from DEFAULT_STARS on load.
+  Object.keys(stars).every(
     key =>
       Array.isArray(stars[key]) && stars[key].every(n => typeof n === 'number')
   );

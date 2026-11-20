@@ -18,7 +18,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { AppState } from 'react-native';
+import { AccessibilityInfo, AppState } from 'react-native';
 import { loadJSON, saveJSON } from '../utils/storage';
 import { setSoundEnabled, setVoiceEnabled, setVoiceRate } from '../utils/sound';
 
@@ -55,6 +55,10 @@ const DEFAULT_SETTINGS = {
   // Installs that already chose a value keep it.
   ambientEffectsEnabled: false,
   childAgeBand: '4to6',
+  // 'map' (the world pages) or 'list' (the original tile menu). null means
+  // a grown-up never chose, so the app picks: the map, except for a screen
+  // reader, which has an easier time with a plain list.
+  menuStyle: null,
 };
 
 /** Push the audio-related settings into the playback module. */
@@ -79,6 +83,24 @@ export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [usedSeconds, setUsedSeconds] = useState(0);
   const usageDay = useRef(today());
+  const [screenReaderOn, setScreenReaderOn] = useState(false);
+
+  // A screen reader walks a plain list far better than a scene of floating
+  // landmarks, so it picks the list until a grown-up chooses otherwise.
+  useEffect(() => {
+    let cancelled = false;
+    AccessibilityInfo.isScreenReaderEnabled()
+      .then(on => !cancelled && setScreenReaderOn(on))
+      .catch(() => {});
+    const sub = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setScreenReaderOn
+    );
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +194,8 @@ export function SettingsProvider({ children }) {
       playLimitMinutes: settings.playLimitMinutes,
       ambientEffectsEnabled: settings.ambientEffectsEnabled,
       childAgeBand: settings.childAgeBand,
+      menuStyle: settings.menuStyle ?? (screenReaderOn ? 'list' : 'map'),
+      setMenuStyle: menuStyle => update({ menuStyle }),
       setLanguage: language => update({ language }),
       setSoundEnabled: soundEnabled => update({ soundEnabled }),
       setVoiceEnabled: voiceEnabled => update({ voiceEnabled }),
@@ -190,6 +214,7 @@ export function SettingsProvider({ children }) {
     [
       hydrated,
       settings,
+      screenReaderOn,
       timeUp,
       limitSeconds,
       usedSeconds,
