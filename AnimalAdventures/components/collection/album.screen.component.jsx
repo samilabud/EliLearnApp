@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   starsShelfCountText: {
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
-    fontSize: 13,
+    fontSize: 16,
   },
   badgeShelf: {
     gap: 12,
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontFamily: FONTS.bodyHeavy,
-    fontSize: 13,
+    fontSize: 16,
     color: PALETTE.ink,
     textAlign: 'center',
   },
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   },
   labelLocked: {
     fontFamily: FONTS.body,
-    fontSize: 14,
+    fontSize: 18,
     color: PALETTE.inkSoft,
   },
 });

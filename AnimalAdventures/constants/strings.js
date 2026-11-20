@@ -89,7 +89,7 @@ export const STRINGS = {
     whoseSoundHelperText: 'Listen, then tap the animal that makes this sound!',
 
     // Build a Scene
-    buildSceneEmptyHint: 'Drag animals here to build your scene!',
+    buildSceneEmptyHint: 'Tap or drag animals to build your scene!',
 
     // Animal album
     albumTitle: 'Animal Album',
@@ -191,9 +191,9 @@ export const STRINGS = {
     a11yBandPlay: 'Play the song you made',
     a11yWhoseSoundOption:
       '{animal}. Tap if this animal makes the sound you heard',
-    a11yTrayAnimal: '{animal}. Drag into the scene to place it',
+    a11yTrayAnimal: '{animal}. Tap to add it to the scene, or drag it in',
     a11yPlacedAnimal: '{animal}. Tap to hear it, or drag to move it',
-    a11ySceneDropZone: 'Your scene. Drag animals here to place them',
+    a11ySceneDropZone: 'Your scene. Tap or drag animals to place them',
     a11yClearScene: 'Clear your scene and start over',
     a11yClearSceneConfirm: 'Tap again to clear your scene',
     a11yColoringCanvas: 'Coloring page for the {animal}. Draw with your finger',
@@ -338,7 +338,7 @@ export const STRINGS = {
       '¡Escucha y luego toca el animal que hace este sonido!',
 
     // Crea una Escena
-    buildSceneEmptyHint: '¡Arrastra animales aquí para crear tu escena!',
+    buildSceneEmptyHint: '¡Toca o arrastra animales para crear tu escena!',
 
     // Álbum de animales
     albumTitle: 'Álbum de Animales',
@@ -440,9 +440,9 @@ export const STRINGS = {
     a11yBandPlay: 'Reproducir la canción que hiciste',
     a11yWhoseSoundOption:
       '{animal}. Toca si este animal hace el sonido que escuchaste',
-    a11yTrayAnimal: '{animal}. Arrastra a la escena para colocarlo',
+    a11yTrayAnimal: '{animal}. Toca para añadirlo a la escena, o arrástralo',
     a11yPlacedAnimal: '{animal}. Toca para escucharlo, o arrastra para moverlo',
-    a11ySceneDropZone: 'Tu escena. Arrastra animales aquí para colocarlos',
+    a11ySceneDropZone: 'Tu escena. Toca o arrastra animales para colocarlos',
     a11yClearScene: 'Borrar tu escena y empezar de nuevo',
     a11yClearSceneConfirm: 'Toca otra vez para borrar tu escena',
     a11yColoringCanvas: 'Página para colorear el {animal}. Dibuja con el dedo',

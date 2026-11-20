@@ -39,7 +39,10 @@ import { AnswerCard } from '../utility/answer-card.component';
 import { CompletionOverlay } from '../utility/feedback-overlays.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
 import { useSettings } from '../../contexts/settings.context';
-import { getMemoryCardCount } from '../../constants/difficulty';
+import {
+  getHintAfterTries,
+  getMemoryCardCount,
+} from '../../constants/difficulty';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -88,6 +91,11 @@ export default function MemoryAnimalGame({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showLevelComplete, setShowLevelComplete] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
+  // Flipping two cards that do not match is normal here, so the hint comes a
+  // couple of misses later than in the quiz games. Once it fires, the two
+  // cards of one pair glow gold for a moment - help, never a scolding.
+  const [missStreak, setMissStreak] = useState(0);
+  const [hintId, setHintId] = useState(null);
 
   // Audio players
   const cardFlipPlayer = useAudioPlayer(null);
@@ -184,6 +192,7 @@ export default function MemoryAnimalGame({
   // which covers a first run, a level change, a reset and a change of age band. A saved board that
   // does fit is left exactly as the child left it.
   const expectedCardCount = getMemoryCardCount(childAgeBand, level);
+  const hintAfterMisses = getHintAfterTries(childAgeBand) + 2;
   useEffect(() => {
     if (memory.cards.length !== expectedCardCount) {
       dealBoard(level);
@@ -324,6 +333,7 @@ export default function MemoryAnimalGame({
 
         if (isMatch) {
           successFeedback();
+          setMissStreak(0);
           markAnimalMet(firstCard.id, 'memory');
           updateMemory(prev => ({
             matchedPairs: [...prev.matchedPairs, firstCard.id],
@@ -347,6 +357,9 @@ export default function MemoryAnimalGame({
           // only holds the board briefly so the celebration can play.
           later(() => setIsProcessing(false), 500);
         } else {
+          const misses = missStreak + 1;
+          const giveHint = misses >= hintAfterMisses;
+          setMissStreak(giveHint ? 0 : misses);
           later(() => {
             updateMemory(prev => ({
               cards: prev.cards.map(c =>
@@ -356,6 +369,13 @@ export default function MemoryAnimalGame({
               ),
             }));
             setIsProcessing(false);
+            if (giveHint) {
+              const target = cards.find(c => !c.isMatched);
+              if (target) {
+                setHintId(target.id);
+                later(() => setHintId(null), 1800);
+              }
+            }
           }, CARD_FLIP_DELAY);
         }
       }
@@ -363,6 +383,9 @@ export default function MemoryAnimalGame({
     [
       isProcessing,
       flippedCards,
+      cards,
+      missStreak,
+      hintAfterMisses,
       playCardFlipSound,
       playAnimalNameSound,
       gameSuccessPlayer,
@@ -378,6 +401,8 @@ export default function MemoryAnimalGame({
     setIsProcessing(false);
     setShowLevelComplete(false);
     setConfettiKey(prev => prev + 1);
+    setMissStreak(0);
+    setHintId(null);
     resetMemory();
   }, [resetMemory, level]);
 
@@ -495,6 +520,7 @@ export default function MemoryAnimalGame({
             <AnswerCard
               category="memory"
               fill={faceUp ? undefined : CATEGORY_COLORS.memory.ring}
+              hinted={!faceUp && hintId != null && card.id === hintId}
               onPress={() => handleCardPress(card)}
               disabled={isProcessing}
               accessibilityState={{ disabled: isProcessing }}

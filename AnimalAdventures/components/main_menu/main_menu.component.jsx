@@ -473,7 +473,7 @@ function MainMenu({
             >
               <View style={styles.heroBackground} />
               <View style={styles.heroText}>
-                <Text style={[styles.heroLabel, { fontSize: 15 * scale }]}>
+                <Text style={[styles.heroLabel, { fontSize: 16 * scale }]}>
                   {t(currentLanguage, 'todaysAnimalLabel')}
                 </Text>
                 <FitText
@@ -895,7 +895,7 @@ const styles = StyleSheet.create({
   starBadgeText: {
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
-    fontSize: 14,
+    fontSize: 16,
   },
   bottomBar: {
     position: 'absolute',
@@ -931,7 +931,7 @@ const styles = StyleSheet.create({
   },
   navLabel: {
     fontFamily: FONTS.body,
-    fontSize: 15,
+    fontSize: 16,
     color: PALETTE.inkSoft,
   },
   navLabelActive: {

@@ -8,6 +8,7 @@ import React, {
 import {
   Animated,
   PanResponder,
+  Pressable,
   ScrollView,
   StyleSheet,
   View,
@@ -37,6 +38,18 @@ const placedSizeFor = (item, scale = 1) =>
 // How far a touch has to travel before a placed animal's release counts as
 // a drag rather than a tap.
 const TAP_SLOP = 6;
+
+// Where tapped items land, as fractions of the scene: spread across so
+// repeated taps fan out. Sky things (clouds, the sun) stay in the sky.
+const SPOT_XS = [0.18, 0.5, 0.82, 0.34, 0.66, 0.1, 0.9, 0.42, 0.58];
+const SKY_IDS = ['cloud', 'sun'];
+const nextSpot = (count, kind, id) => {
+  const x = SPOT_XS[count % SPOT_XS.length];
+  const row = Math.floor(count / SPOT_XS.length) % 2;
+  if (SKY_IDS.includes(id)) return { x, y: row ? 0.28 : 0.16 };
+  if (kind === 'animal') return { x, y: row ? 0.62 : 0.76 };
+  return { x, y: row ? 0.38 : 0.5 };
+};
 
 /**
  * One draggable item - an animal or a scenery object, either a tray
@@ -179,11 +192,25 @@ function DraggableItem({
 
   const name = currentLanguage === 'en' ? item.name : item.spanish_name;
 
+  const art = (
+    <LottieView
+      autoPlay={false}
+      loop={false}
+      autoSize={false}
+      resizeMode="contain"
+      source={item.animation_path}
+      style={[{ width: size, height: size }, iconScaleStyle(item)]}
+    />
+  );
+
   return (
     <View
       {...panResponder.panHandlers}
       accessible={true}
       accessibilityRole="button"
+      // A screen reader's double-tap is not a touch, so it needs its own
+      // way to add a tray item to the scene.
+      onAccessibilityTap={isPlaced ? undefined : onTap}
       accessibilityLabel={t(
         currentLanguage,
         isPlaced ? 'a11yPlacedAnimal' : 'a11yTrayAnimal',
@@ -194,14 +221,20 @@ function DraggableItem({
         isPlaced && { position: 'absolute', left, top },
       ]}
     >
-      <LottieView
-        autoPlay={false}
-        loop={false}
-        autoSize={false}
-        resizeMode="contain"
-        source={item.animation_path}
-        style={[{ width: size, height: size }, iconScaleStyle(item)]}
-      />
+      {isPlaced ? (
+        art
+      ) : (
+        // A tap adds the item to the scene, so dragging is never the only
+        // way to play. A vertical drag still wins (see the pan responder
+        // above) and a sideways swipe still scrolls the tray.
+        <Pressable
+          onPress={onTap}
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+        >
+          {art}
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -355,6 +388,23 @@ export default function BuildSceneGame({
       }
     },
     [resolveDrop, addPlacedItem, markAnimalMet, playAnimal]
+  );
+
+  // Tapping a tray item drops it onto a free-looking spot, so a child who
+  // cannot drag (or a screen-reader user) can still build a scene. Spots
+  // fan out across the ground, so repeated taps do not stack on one point.
+  const handleTrayTap = useCallback(
+    (item, kind) => {
+      tapFeedback();
+      successFeedback();
+      const spot = nextSpot(scene.placed.length, kind, item.id);
+      addPlacedItem(item.id, kind, spot.x, spot.y);
+      if (kind === 'animal') {
+        markAnimalMet(item.id, 'buildScene');
+        playAnimal(item);
+      }
+    },
+    [scene.placed.length, addPlacedItem, markAnimalMet, playAnimal]
   );
 
   const handlePlacedDragEnd = useCallback(
@@ -522,6 +572,7 @@ export default function BuildSceneGame({
                 currentLanguage={currentLanguage}
                 size={traySize}
                 isPlaced={false}
+                onTap={() => handleTrayTap(animal, 'animal')}
                 hidden={drag?.key === `tray-animal-${animal.id}`}
                 onDragStart={(pageX, pageY) =>
                   beginDrag(
@@ -555,6 +606,7 @@ export default function BuildSceneGame({
                 currentLanguage={currentLanguage}
                 size={traySize}
                 isPlaced={false}
+                onTap={() => handleTrayTap(scenery, 'scenery')}
                 hidden={drag?.key === `tray-scenery-${scenery.id}`}
                 onDragStart={(pageX, pageY) =>
                   beginDrag(

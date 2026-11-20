@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
   starBadgeText: {
     fontFamily: FONTS.bodyHeavy,
     color: PALETTE.ink,
-    fontSize: 14,
+    fontSize: 16,
   },
 });
 
