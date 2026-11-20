@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { BouncyButton } from './bouncy-button.component';
 import { FitText } from './fit-text.component';
@@ -28,25 +28,26 @@ export function NextGameButton({ currentLanguage, onPress, style }) {
       {/* Fill on a sibling: Android clips the text of a pressable view
           that has both a border radius and a fill. */}
       <View style={styles.fill} importantForAccessibility="no" />
+      <MaterialIcons name="skip-next" size={22} color="#0A3D62" />
       <FitText font="body" style={styles.text} maxLines={2} minScale={0.8}>
         {t(currentLanguage, 'nextShort')}
       </FitText>
-      <MaterialIcons name="skip-next" size={22} color="#0A3D62" />
     </BouncyButton>
   );
 }
 
 const styles = StyleSheet.create({
+  // Icon over label, matching the Again button (see ConfirmResetButton).
   button: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 0,
     // Floor kept at MIN_TOUCH_TARGET for small hands.
     minHeight: MIN_TOUCH_TARGET,
-    minWidth: MIN_TOUCH_TARGET,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    minWidth: LARGE_TOUCH_TARGET,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   fill: {
     position: 'absolute',
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#ffffff',
-    borderRadius: 25,
+    borderRadius: 28,
     borderWidth: 2,
     borderColor: '#FFD700',
   },

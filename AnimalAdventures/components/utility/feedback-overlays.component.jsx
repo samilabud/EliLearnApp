@@ -256,10 +256,13 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: PALETTE.gold,
   },
+  // The header band has a higher z-index than a plain sibling, so the toast
+  // needs its own to be seen at all.
   toastWrap: {
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 96,
+    zIndex: 10,
+    elevation: 10,
   },
   toast: {
     flexDirection: 'row',

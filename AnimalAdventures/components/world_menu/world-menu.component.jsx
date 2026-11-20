@@ -364,8 +364,8 @@ export default function WorldMenu({
               styles.title,
               { color: colors.ink, fontSize: 26 * Math.min(scale, 1.3) },
             ]}
-            maxLines={2}
-            minScale={0.7}
+            maxLines={1}
+            minScale={0.5}
           >
             {t(currentLanguage, world.titleKey)}
           </FitText>

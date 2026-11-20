@@ -481,6 +481,10 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH_TARGET,
   },
   rowLabel: {
+    // Shrinks and wraps instead of pushing the switch off the screen when
+    // the label is long or the system font is large.
+    flexShrink: 1,
+    paddingRight: 12,
     fontSize: 18,
     color: '#0A3D62',
     fontWeight: '600',

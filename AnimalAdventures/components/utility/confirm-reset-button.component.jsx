@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { t, MIN_TOUCH_TARGET } from '../../constants';
+import { t, MIN_TOUCH_TARGET, LARGE_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import { useReduceMotion } from '../../utils/use-reduce-motion';
 import { BouncyButton } from './bouncy-button.component';
@@ -117,15 +117,17 @@ export function ConfirmResetButton({
 }
 
 const styles = StyleSheet.create({
+  // Icon over label: narrower than side by side, so Again, Next and the
+  // level chip fit one row on a 360 pt phone even at a large font size.
   button: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 0,
     minHeight: MIN_TOUCH_TARGET,
-    minWidth: MIN_TOUCH_TARGET,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    minWidth: LARGE_TOUCH_TARGET,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   fill: {
     position: 'absolute',
@@ -134,7 +136,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#ffffff',
-    borderRadius: 25,
+    borderRadius: 28,
     borderWidth: 2,
     borderColor: '#FFD700',
   },
