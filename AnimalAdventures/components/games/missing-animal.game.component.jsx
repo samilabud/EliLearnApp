@@ -27,6 +27,7 @@ import {
   TryAgainBanner,
 } from '../utility/feedback-overlays.component';
 import { useInstructionPrompt } from '../../utils/use-instruction-prompt';
+import { FitText } from '../utility/fit-text.component';
 
 const MAX_LEVEL = 6;
 const MIN_OPTION_SIZE = 96;
@@ -401,14 +402,14 @@ export default function MissingAnimalGame({
     >
       {phase === 'look' ? (
         <View style={styles.lookMessage}>
-          <Text
+          <FitText
             style={[
               styles.lookText,
               { fontSize: 34 * scale, lineHeight: 44 * scale },
             ]}
           >
             {t(currentLanguage, 'missingLookText')}
-          </Text>
+          </FitText>
         </View>
       ) : (
         <FitGrid

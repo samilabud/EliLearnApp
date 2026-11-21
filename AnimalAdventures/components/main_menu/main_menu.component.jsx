@@ -419,7 +419,7 @@ function MainMenu({
                   { transform: [{ scale: titleScale }] },
                 ]}
               >
-                <Text
+                <FitText
                   style={[
                     styles.title,
                     {
@@ -432,15 +432,15 @@ function MainMenu({
                   accessibilityRole="header"
                 >
                   {t(currentLanguage, 'appTitle')}
-                </Text>
-                <Text
+                </FitText>
+                <FitText
                   style={[
                     styles.subtitle,
                     { fontSize: (compact ? 16 : 20) * scale },
                   ]}
                 >
                   {t(currentLanguage, 'chooseAdventure')}
-                </Text>
+                </FitText>
               </Animated.View>
             </View>
           </View>
@@ -473,9 +473,9 @@ function MainMenu({
             >
               <View style={styles.heroBackground} />
               <View style={styles.heroText}>
-                <Text style={[styles.heroLabel, { fontSize: 16 * scale }]}>
+                <FitText style={[styles.heroLabel, { fontSize: 16 * scale }]}>
                   {t(currentLanguage, 'todaysAnimalLabel')}
-                </Text>
+                </FitText>
                 <FitText
                   style={[
                     styles.heroName,

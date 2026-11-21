@@ -1,11 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { FONTS } from '../../constants/theme';
 
+/**
+ * A non-breaking space added after every title. Bangers is slanted and its
+ * last letter overhangs its advance width. Android 15 counts that overhang
+ * when it draws the text but not when it measures the box, so a one-line
+ * title that is measured to the exact pixel wraps its last word onto a second
+ * line that the box has no height for. The extra advance gives the draw
+ * pass room; trailing white space never wraps and is invisible.
+ */
+const TRAILING_SLACK = '\u00A0';
 /** How much smaller each re-measure pass makes the text. */
 const SHRINK_STEP = 0.92;
-/** If the text never reports a layout, show it anyway after this long. */
-const SETTLE_FALLBACK_MS = 400;
 
 /**
  * The one way to show a title or label that might not fit its box.
@@ -70,40 +77,31 @@ export function FitText({
 
   // Measurement restarts whenever anything that changes the layout changes.
   const key = `${text}|${baseSize}|${baseLineHeight}|${maxLines}|${windowWidth}`;
-  const [state, setState] = useState({ key, scale: 1, settled: false });
+  const [state, setState] = useState({ key, scale: 1 });
   let current = state;
   if (state.key !== key) {
-    // Derived-state reset: start the new text at full size, unsettled.
-    current = { key, scale: 1, settled: false };
+    // Derived-state reset: start the new text at full size.
+    current = { key, scale: 1 };
     setState(current);
   }
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setState(prev =>
-        prev.key === key && !prev.settled ? { ...prev, settled: true } : prev
-      );
-    }, SETTLE_FALLBACK_MS);
-    return () => clearTimeout(timer);
-  }, [key]);
-
+  // Every layout report is checked, not just the first. Android can report a
+  // wide first layout and then wrap the text once its parent has been sized,
+  // so a "settled after the first report" rule left wrapped titles clipped.
+  // Shrinking only ever goes down, so this cannot loop.
   const handleTextLayout = event => {
     rest.onTextLayout?.(event);
-    if (state.key !== key || state.settled) return;
     const lines = event.nativeEvent.lines || [];
     // A non-final line that does not end in whitespace means a long word was
     // broken in the middle to make it fit - treat that as not fitting.
     const brokeWord = lines.slice(0, -1).some(line => !/\s$/.test(line.text));
     const overflows = lines.length > maxLines || brokeWord;
-    if (overflows && state.scale > minScale + 0.001) {
-      setState({
-        key,
-        scale: Math.max(minScale, state.scale * SHRINK_STEP),
-        settled: false,
-      });
-    } else {
-      setState({ ...state, settled: true });
-    }
+    if (!overflows) return;
+    setState(prev =>
+      prev.key === key && prev.scale > minScale + 0.001
+        ? { key, scale: Math.max(minScale, prev.scale * SHRINK_STEP) }
+        : prev
+    );
   };
 
   if (!text) return null;
@@ -125,7 +123,7 @@ export function FitText({
         },
       ]}
     >
-      {text}
+      {text + TRAILING_SLACK}
     </Text>
   );
 }

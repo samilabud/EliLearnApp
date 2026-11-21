@@ -6,14 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { FitText } from '../utility/fit-text.component';
-import {
-  PanResponder,
-  StyleSheet,
-  Text,
-  View,
-  Animated,
-  Easing,
-} from 'react-native';
+import { PanResponder, StyleSheet, View, Animated, Easing } from 'react-native';
 import { useAudioPlayer } from 'expo-audio';
 import LottieView from 'lottie-react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -731,11 +724,11 @@ export default function TraceLetterGame({
       </View>
       <View style={styles.promptColumn}>
         {!!targetAnimal && (
-          <Text style={[styles.animalNameText, { fontSize: 22 * scale }]}>
+          <FitText style={[styles.animalNameText, { fontSize: 22 * scale }]}>
             {currentLanguage === 'en'
               ? targetAnimal.name
               : targetAnimal.spanish_name}
-          </Text>
+          </FitText>
         )}
         <Animated.View
           renderToHardwareTextureAndroid
@@ -866,9 +859,9 @@ export default function TraceLetterGame({
                 size={22}
                 color={PALETTE.ink}
               />
-              <Text style={styles.clearButtonText}>
+              <FitText style={styles.clearButtonText}>
                 {t(currentLanguage, 'clearDrawing')}
-              </Text>
+              </FitText>
             </BouncyButton>
           )}
         </View>

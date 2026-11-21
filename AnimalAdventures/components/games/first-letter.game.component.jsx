@@ -574,11 +574,11 @@ export default function FirstLetterGame({
         )}
       </View>
       {!!targetAnimal && (
-        <Text style={[styles.animalNameText, { fontSize: 24 * scale }]}>
+        <FitText style={[styles.animalNameText, { fontSize: 24 * scale }]}>
           {currentLanguage === 'en'
             ? targetAnimal.name
             : targetAnimal.spanish_name}
-        </Text>
+        </FitText>
       )}
       <Animated.View
         renderToHardwareTextureAndroid
