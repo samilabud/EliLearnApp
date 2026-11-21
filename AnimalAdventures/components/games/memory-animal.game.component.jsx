@@ -43,6 +43,7 @@ import {
   getHintAfterTries,
   getMemoryCardCount,
 } from '../../constants/difficulty';
+import { FitText } from '../utility/fit-text.component';
 
 const MAX_LEVEL = 7; // Level 1: 4 cards, Level 2: 6 cards, ..., Level 7: 16 cards
 const CARD_FLIP_DELAY = 1000; // 1 second delay before flipping back unmatched cards
@@ -478,12 +479,12 @@ export default function MemoryAnimalGame({
           {showLevelComplete && (
             <View style={styles.levelCompleteOverlay}>
               <View style={styles.levelCompleteCard}>
-                <Text style={styles.levelCompleteTitle}>
+                <FitText style={styles.levelCompleteTitle}>
                   {t(currentLanguage, 'levelComplete')}
-                </Text>
-                <Text style={styles.levelCompleteSubtitle}>
+                </FitText>
+                <FitText style={styles.levelCompleteSubtitle}>
                   {t(currentLanguage, 'movingToLevel', { level: level + 1 })}
-                </Text>
+                </FitText>
               </View>
               {!reduceMotion && (
                 <ConfettiCannon

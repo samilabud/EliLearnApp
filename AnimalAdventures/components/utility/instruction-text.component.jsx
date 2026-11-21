@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BouncyButton } from './bouncy-button.component';
+import { FitText } from './fit-text.component';
 import { t } from '../../constants';
 import { MIN_TOUCH_TARGET } from '../../constants/layout';
 
@@ -37,18 +38,14 @@ export function InstructionText({
         color={dark ? '#0A3D62' : 'white'}
         style={dark ? null : styles.icon}
       />
-      <Text
-        style={[
-          styles.text,
-          { fontFamily: 'Bangers_400Regular' },
-          dark && styles.textDark,
-          textStyle,
-        ]}
-        textBreakStrategy="simple"
+      <FitText
+        style={[styles.text, dark && styles.textDark, textStyle]}
+        maxLines={2}
+        minScale={0.7}
         collapsable={false}
       >
         {text}
-      </Text>
+      </FitText>
     </BouncyButton>
   );
 }

@@ -6,6 +6,7 @@ import { t, MIN_TOUCH_TARGET } from '../../constants';
 import { tapFeedback } from '../../utils/haptics';
 import ParentalGate from '../parents/parental-gate.component';
 import { BouncyButton } from './bouncy-button.component';
+import { FitText } from './fit-text.component';
 
 /** Minutes handed back when a grown-up allows more play. */
 const EXTENSION_MINUTES = 10;
@@ -31,18 +32,18 @@ export default function PlayTimeUp({ currentLanguage, onMoreTime }) {
         style={styles.animation}
       />
 
-      <Text
+      <FitText
         style={[
           styles.title,
           fontsLoaded && { fontFamily: 'Bangers_400Regular' },
         ]}
       >
         {t(currentLanguage, 'timeUpTitle')}
-      </Text>
+      </FitText>
 
-      <Text style={styles.subtitle}>
+      <FitText style={styles.subtitle}>
         {t(currentLanguage, 'timeUpSubtitle')}
-      </Text>
+      </FitText>
 
       <BouncyButton
         style={styles.grownUpButton}
